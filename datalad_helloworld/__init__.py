@@ -91,3 +91,7 @@ class HelloWorld(Interface):
             # case string expansion with arguments is delayed until the
             # message actually needs to be rendered (analog to exception messages)
             message=msg)
+
+
+from datalad import setup_package
+from datalad import teardown_package
