@@ -14,9 +14,6 @@ SETUP_REQUIRES += ['wheel'] if 'bdist_wheel' in sys.argv else []
 if __name__ == '__main__':
     setup(name='datalad_helloworld',
           version=versioneer.get_version(),
-          author="The DataLad Team and Contributors",
-          author_email="team@datalad.org",
-          description="demo DataLad extension package",
           cmdclass=versioneer.get_cmdclass(),
           setup_requires=SETUP_REQUIRES,
           entry_points={
