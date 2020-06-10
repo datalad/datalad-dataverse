@@ -30,7 +30,7 @@ command_suite = (
             # optional name of the command in the cmdline API
             'hello-cmd',
             # optional name of the command in the Python API
-            'hello_py'
+            'hello_cmd'
         ),
     ]
 )
@@ -95,3 +95,7 @@ class HelloWorld(Interface):
 
 from datalad import setup_package
 from datalad import teardown_package
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
