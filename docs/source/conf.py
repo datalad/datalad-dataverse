@@ -12,9 +12,16 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import sys
+import os
+
 import datetime
-from os.path import join as opj, exists
-from os.path import dirname
+from os.path import (
+    abspath,
+    dirname,
+    exists,
+    join as opj,
+)
 from os import pardir
 
 import datalad_helloworld
@@ -24,17 +31,23 @@ import datalad_helloworld
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-## generate missing pieces
-#for setup_py_path in (opj(pardir, 'setup.py'),  # travis
-#                      opj(pardir, pardir, 'setup.py')):  # RTD
-#    if exists(setup_py_path):
-#        sys.path.insert(0, os.path.abspath(dirname(setup_py_path)))
-#        try:
-#            for cmd in 'manpage',: #'examples':
-#                os.system('{} build_{}'.format(setup_py_path, cmd))
-#        except:
-#            # shut up and do your best
-#            pass
+# generate missing pieces
+for setup_py_path in (opj(pardir, 'setup.py'),  # travis
+                      opj(pardir, pardir, 'setup.py')):  # RTD
+    if exists(setup_py_path):
+        sys.path.insert(0, os.path.abspath(dirname(setup_py_path)))
+        try:
+            for cmd in 'manpage',: #'examples':
+                os.system(
+                    '{} build_{} --cmdsuite {} --manpath {} --rstpath {}'.format(
+                        setup_py_path,
+                        cmd,
+                        'datalad_helloworld:command_suite',
+                        abspath(opj(dirname(setup_py_path), 'build', 'man')),
+                        opj(dirname(__file__), 'generated', 'man')))
+        except:
+            # shut up and do your best
+            pass
 
 # -- General configuration ------------------------------------------------
 

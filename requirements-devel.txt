@@ -3,3 +3,4 @@ nose
 coverage
 sphinx
 sphinx_rtd_theme
+git://github.com/mih/datalad@enh-extbuild#egg=datalad
