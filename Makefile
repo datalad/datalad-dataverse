@@ -12,3 +12,11 @@ release-pypi:
 	$(PYTHON) setup.py sdist
 	python setup.py bdist_wheel --universal
 	twine upload dist/*
+
+update-buildsupport:
+	git subtree pull \
+		-m "Update DataLad build helper" \
+		--squash \
+		--prefix _datalad_build_support \
+		https://github.com/datalad/datalad-buildsupport.git \
+		master
