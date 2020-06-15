@@ -17,6 +17,6 @@ update-buildsupport:
 	git subtree pull \
 		-m "Update DataLad build helper" \
 		--squash \
-		--prefix _datalad_build_support \
+		--prefix _datalad_buildsupport \
 		https://github.com/datalad/datalad-buildsupport.git \
 		master
