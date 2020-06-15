@@ -23,4 +23,12 @@ DataLad will now expose a new command suite with `hello...` commands.
 To start implementing your own extension, fork this project and adjust
 as necessary. The comments in [setup.py](setup.py) and
 [__init__.py](datalad_helloworld/__init__.py) illustrate the purpose of the various
-aspects of a command implementation and the setup of an extension package. 
+aspects of a command implementation and the setup of an extension package.
+
+You can consider filling in the provided [.zenodo.json](.zenodo.json) file with
+contributor information and [meta data](https://developers.zenodo.org/#representation)
+to acknowledge contributors and describe the publication record that is created when
+[you make your code citeable](https://guides.github.com/activities/citable-code/)
+by archiving it using [zenodo.org](https://zenodo.org/). You may also want to
+consider acknowledging contributors with the
+[allcontributors bot](https://allcontributors.org/docs/en/bot/overview).
