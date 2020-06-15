@@ -18,6 +18,15 @@ High-level API commands
    hello_cmd
 
 
+Command line reference
+----------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   generated/man/datalad-hello-cmd
+
+
 Indices and tables
 ==================
 
