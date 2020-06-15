@@ -12,7 +12,7 @@ For a demo, clone this repository and install the demo extension via
 
     pip install -e .
 
-DataLad will now expose a new command suite with `hello...` commands.
+DataLad will now expose a new command suite with a `hello...` command.
 
     % datalad --help |grep -B2 -A2 hello
     *Demo DataLad command suite*
@@ -20,10 +20,24 @@ DataLad will now expose a new command suite with `hello...` commands.
       hello-cmd
           Short description of the command
 
-To start implementing your own extension, fork this project and adjust
-as necessary. The comments in [setup.py](setup.py) and
-[__init__.py](datalad_helloworld/__init__.py) illustrate the purpose of the various
-aspects of a command implementation and the setup of an extension package.
+To start implementing your own extension, [use this
+template](https://github.com/datalad/datalad-extension-template/generate), and
+adjust as necessary. A good approach is to
+
+- Pick a name for the new extension.
+- Look through the sources and replace `datalad_helloworld` with
+  `datalad_<newname>` (hint: `git grep datalad_helloworld` should find all
+  spots).
+- Delete the example command implementation in `datalad_helloworld/__init__.py`
+  by (re)moving the `HelloWorld` class.
+- Implement a new command, and adjust the `command_suite` in
+  `datalad_helloworld/__init__.py` to point to it.
+- Replace `hello_cmd` with the name of the new command in
+  `datalad_helloworld/tests/test_register.py` to automatically test whether the
+  new extension installs correctly.
+- Adjust the documentation in `docs/source/index.rst`.
+- Replace this README.
+- Update `setup.cfg` with appropriate metadata on the new extension.
 
 You can consider filling in the provided [.zenodo.json](.zenodo.json) file with
 contributor information and [meta data](https://developers.zenodo.org/#representation)
