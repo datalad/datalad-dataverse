@@ -62,7 +62,7 @@ class HelloWorld(Interface):
 
     @staticmethod
     # decorator binds the command to the Dataset class as a method
-    @datasetmethod(name='hello')
+    @datasetmethod(name='hello_cmd')
     # generic handling of command results (logging, rendering, filtering, ...)
     @eval_results
     # signature must match parameter list above
