@@ -136,3 +136,8 @@ html_split_index = True
 
 # If true, links to the reST sources are added to the pages.
 html_show_sourcelink = False
+
+# smart quotes are incompatible with the RST flavor of the generated manpages
+# but see `smartquotes_action` for more fine-grained control, in case
+# some of this functionality is needed
+smartquotes = False
