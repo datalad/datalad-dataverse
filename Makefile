@@ -10,7 +10,7 @@ release-pypi:
 	# avoid upload of stale builds
 	test ! -e dist
 	$(PYTHON) setup.py sdist
-	python setup.py bdist_wheel --universal
+	python setup.py bdist_wheel
 	twine upload dist/*
 
 update-buildsupport:
