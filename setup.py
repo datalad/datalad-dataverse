@@ -12,9 +12,10 @@ cmdclass = versioneer.get_cmdclass()
 cmdclass.update(build_manpage=BuildManPage)
 
 # Give setuptools a hint to complain if it's too old a version
-# 30.3.0 allows us to put most metadata in setup.cfg
+# 43.0.0 allows us to put most metadata in setup.cfg and causes pyproject.toml
+# to be automatically included in sdists
 # Should match pyproject.toml
-SETUP_REQUIRES = ['setuptools >= 30.3.0']
+SETUP_REQUIRES = ['setuptools >= 43.0.0']
 # This enables setuptools to install wheel on-the-fly
 SETUP_REQUIRES += ['wheel'] if 'bdist_wheel' in sys.argv else []
 
