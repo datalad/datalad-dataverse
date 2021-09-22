@@ -23,14 +23,4 @@ if __name__ == '__main__':
           version=versioneer.get_version(),
           cmdclass=cmdclass,
           setup_requires=SETUP_REQUIRES,
-          entry_points={
-              # 'datalad.extensions' is THE entrypoint inspected by the datalad API builders
-              'datalad.extensions': [
-                  # the label in front of '=' is the command suite label
-                  # the entrypoint can point to any symbol of any name, as long it is
-                  # valid datalad interface specification (see demo in this extensions
-                  'helloworld=datalad_helloworld:command_suite',
-              ],
-          },
     )
-
