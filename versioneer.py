@@ -1500,7 +1500,7 @@ def get_cmdclass():
     cmds = {}
 
     # we add "version" to both distutils and setuptools
-    from distutils.core import Command
+    from setuptools import Command
 
     class cmd_version(Command):
         description = "report generated version string"
