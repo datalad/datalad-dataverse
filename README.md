@@ -35,7 +35,7 @@ adjust as necessary. A good approach is to
 - Replace `hello_cmd` with the name of the new command in
   `datalad_helloworld/tests/test_register.py` to automatically test whether the
   new extension installs correctly.
-- Adjust the documentation in `docs/source/index.rst`.
+- Adjust the documentation in `docs/source/index.rst`. Refer to [`docs/README.md`](docs/README.md) for more information on documentation building, testing and publishing.
 - Replace this README.
 - Update `setup.cfg` with appropriate metadata on the new extension.
 
