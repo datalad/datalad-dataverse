@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# datalad_metalad documentation build configuration file, created by
+# datalad_helloworld documentation build configuration file, created by
 # sphinx-quickstart on Tue Oct 13 08:41:19 2015.
 #
 # This file is execfile()d with the current directory set to its
