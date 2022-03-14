@@ -50,19 +50,6 @@ for setup_py_path in (opj(pardir, 'setup.py'),  # travis
         except (FileNotFoundError, subprocess.CalledProcessError):
             # shut up and do your best
             pass
-        # Build examples (uncomment if needed)
-        # try:
-        #     subprocess.run(
-        #         args=[setup_py_path, 'build_examples',
-        #              '--expath', abspath(opj(
-        #                  dirname(__file__), pardir, 'examples')),
-        #              '--rstpath', opj(
-        #                  dirname(__file__), 'generated', 'examples'),
-        #              ],
-        #         check=True,
-        #     )
-        # except (FileNotFoundError, subprocess.CalledProcessError):
-        #     pass
 
 # -- General configuration ------------------------------------------------
 
