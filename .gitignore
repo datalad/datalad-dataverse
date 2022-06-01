@@ -10,3 +10,4 @@ docs/build
 docs/source/generated
 build/
 dist/
+.idea/*

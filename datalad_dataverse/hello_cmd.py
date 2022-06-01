@@ -15,7 +15,7 @@ from datalad.support.constraints import EnsureChoice
 from datalad.interface.results import get_status_dict
 
 import logging
-lgr = logging.getLogger('datalad.helloworld.hello_cmd')
+lgr = logging.getLogger('datalad.dataverse.hello_cmd')
 
 
 # decoration auto-generates standard help

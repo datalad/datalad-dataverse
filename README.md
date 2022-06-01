@@ -1,6 +1,6 @@
 # DataLad extension template
 
-[![Build status](https://ci.appveyor.com/api/projects/status/g9von5wtpoidcecy/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-extension-template/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-extension-template/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-extension-template?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-extension-template/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-extension-template/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-extension-template/workflows/docs/badge.svg)](https://github.com/datalad/datalad-extension-template/actions?query=workflow%3Adocs)
+[![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
 
 
 This repository contains an extension template that can serve as a starting point
