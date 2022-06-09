@@ -1,5 +1,5 @@
 #!/bin/bash
-# This is setting up the (already running!) server with everything needed for
+# This is setting up and launching a docker container with everything needed for
 # our tests to run against this instance.
 # Most importantly with respect to the CI builds, it deposits the API tokens
 # for the users `pete` and `uma` in environment variabes TEST_TOKEN_PETE and
