@@ -48,7 +48,7 @@ consider acknowledging contributors with the
 [allcontributors bot](https://allcontributors.org/docs/en/bot/overview).
 
 
-## Dataverse docker
+## Dataverse docker for running tests
 
 The [dataverse-docker](https://github.com/IQSS/dataverse-docker) repository 
 provides everything needed to run dataverse in a container. The continuous 
