@@ -78,7 +78,6 @@ environment:
       # Python version specification is non-standard on windows
       PY: 39-x64
       INSTALL_GITANNEX: git-annex -m datalad/packages
-      traefikhost: localhost
     # MacOS core tests
     - ID: MacP38core
       DTS: datalad_dataverse
@@ -168,10 +167,12 @@ install:
   #- sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer -E ${HOME}/dlinstaller_env.sh --sudo ok ${INSTALL_GITANNEX}"
   # add location of datalad installer results to PATH
   #- sh: "[ -f ${HOME}/dlinstaller_env.sh ] && . ${HOME}/dlinstaller_env.sh || true"
-  # Set up dataverse docker (Ubuntu build only):
+  # Set up dataverse docker (Ubuntu build only); sourced since it's exporting the API tokens:
   - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then source tools/ci/setup_docker_dataverse.sh; else true; fi;"
   # Show what we got after setup in case something is going wrong:
-  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then echo \"Received tokens: $TESTS_TOKEN_PETE $TESTS_TOKEN_UMA\"; else true; fi;"
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then echo \"Received tokens: $TESTS_TOKEN_TESTADMIN $TESTS_TOKEN_USER1\"; else true; fi;"
+  # Check we got a our dataverse and it's accessible with the admin token:
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${TESTS_TOKEN_TESTADMIN}\"; else true; fi;"
 
 #before_build:
 #

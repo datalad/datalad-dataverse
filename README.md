@@ -70,7 +70,13 @@ The basic setup is this:
 If you want to customize your setup, you may want to edit this `.env` file.
 Note, that the following call to `docker-compose` relies on being in the 
 directory of the docker-compose file and that `.env`. If that's not suitable 
-in your case, `docker-compose` provides a `--file` and a `--env-file` parameter.
+in your case, `docker-compose` provides a `--file` and a `--env-file` 
+parameter to pass their paths to.
+Note, however, that even if you call it with those parameters from the 
+outside, the several specified paths in both files refer to their base 
+directory (the cloned repo's root) and more configs underneath it. Hence, 
+residual directories `minio-data` and `database-data` are still created within
+the repository.
 
     docker-compose up -d
 
@@ -102,8 +108,10 @@ Several additional notes:
 - This is only the most basic setup. Within the container there are a bunch 
   of setup scripts to initialize the demo version. If you get into the 
   container, you can find them in HOME (`/opt/payara/dvinstall`). You may 
-  want to check out `init-setup.sh`, `setup-dvs.sh`, `setup-users.sh` (see 
-  also the aforementioned script in this repository here.)
+  want to check out `setup-users.sh` and `setup-dvs.sh` to see some basic 
+  API requests setting up users and dataverses. `setup-dvs.sh` doesn't 
+  actually run, though, since `setup-users.sh` doesn't assign `pete` the 
+  required permissions. That piece seems to be missing.
 - The dataverse-docker repo comes with a bunch of docker-compose recipes. We 
   currently use just the default.
 - If you run this locally and need to start over for some reason, note that 
@@ -114,3 +122,25 @@ Several additional notes:
   one is readable only by `root`, hence a regular user's `git status` 
   doesn't show it. A `sudo git status` would confirm, that this is untracked,
   too.
+- If you need to wipe out your local instance and you don't have any other 
+  docker images, then this command may be useful for you:
+    `for i in $(docker ps -qa); do docker stop $i && docker rm $i; done;`
+  It stops all containers and removes them, so you get back to where you 
+  started. If you only want currently running containers to be affected, 
+  leave out the `a` option to `docker ps`. If you have other containers 
+  running, I assume you know how to deal with that anyway.
+  Don't forget to `rm` everything untracked in `dataverse-docker`. If you 
+  followed those instructions, this would be `.env` and the two directories 
+  `minio-data` and `database-data`. The latter is only readable by root, so 
+  you'll need `sudo` for `rm`'ing it as well as to see it reported untracked 
+  by `git status`.
+
+The CI setup results in two users and a root dataverse being created. A 
+superuser 'testadmin' and a regular user 'user1'. Their API tokens are 
+acccessible for the tests via the environment variables `TESTS_TOKEN_TESTADMIN`
+and `TESTS_TOKEN_USER1` respectively.
+If you want to see how that is done, so you can reproduce it locally check 
+`setup_docker_dataverse.sh` for how it calls `docker cp` to 
+copy several JSON files and `init_dataverse.sh` into the container and then 
+executes the latter. Both scripts and the JSONs are here in the repository 
+under `tools/ci`.
