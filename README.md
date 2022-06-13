@@ -3,49 +3,63 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
 
 
-This repository contains an extension template that can serve as a starting point
-for implementing a [DataLad](http://datalad.org) extension. An extension can
-provide any number of additional DataLad commands that are automatically
-included in DataLad's command line and Python API.
+Welcome to the DataLad-Dataverse project of the OHBM 2022 Brainhack!
 
-For a demo, clone this repository and install the demo extension via
+What do we want to do during this Brainhack?
+[Dataverse](https://dataverse.org) is open source research data repository software that is deployed all over the world in data or metadata repositories.
+It supports sharing, preserving, citing, exploring, and analyzing research data with descriptive metadata, and thus contributes greatly to open, reproducible, and FAIR science.
+[DataLad](https://www.datalad.org), on the other hand, is a data management and data publication tool build on Git and git-annex.
+Its core data structure, DataLad datasets, can version control files of any size, and streamline data sharing, updating, and collaboration.
+In this hackathon project, we aim to make DataLad interoperable with Dataverse to support dataset transport from and to Dataverse instances.
+To this end, we will build a new DataLad extension datalad-dataverse, and would be delighted to welcome you onboard of the contributor team.
 
-    pip install -e .
+SKILLS
 
-DataLad will now expose a new command suite with a `hello...` command.
+We plan to start from zero with this project, and welcome all kinds of contributions from various skills at any level.
+From setting up and writing documentation, discussing relevant functionality, or user-experience-testing, to Python-based implementation of the desired functionality and creating real-world use cases and workflows.
+Here is a non-exhaustive list of skills that can be beneficial in this project:
+- You have used a Dataverse instance before and/or have access to one, or you are interested in using one in the future
+- You know technical details about Dataverse, such as its API, or would have fun finding out about them
+- You know Python
+- You have experience with the Unix command line
+- You are interested in creating accessible documentation
+- You are interested in learning about the DataLad ecosystem or the process of creating a DataLad extension
+- Your secret hobby is Git plumbing
+- You know git-annex, and/or about its backends
+- You want to help create metadata extractors for Dataverse to generate dataset metadata automatically
 
-    % datalad --help |grep -B2 -A2 hello
-    *Demo DataLad command suite*
 
-      hello-cmd
-          Short description of the command
+## Getting started
 
-To start implementing your own extension, [use this
-template](https://github.com/datalad/datalad-extension-template/generate), and
-adjust as necessary. A good approach is to
+Great that you're joining us in this project! Here's a list of things that can help you to prepare or to get started:
 
-- Pick a name for the new extension.
-- Look through the sources and replace `datalad_helloworld` with
-  `datalad_<newname>` (hint: `git grep datalad_helloworld` should find all
-  spots).
-- Delete the example command implementation in `datalad_helloworld/__init__.py`
-  by (re)moving the `HelloWorld` class.
-- Implement a new command, and adjust the `command_suite` in
-  `datalad_helloworld/__init__.py` to point to it.
-- Replace `hello_cmd` with the name of the new command in
-  `datalad_helloworld/tests/test_register.py` to automatically test whether the
-  new extension installs correctly.
-- Adjust the documentation in `docs/source/index.rst`. Refer to [`docs/README.md`](docs/README.md) for more information on documentation building, testing and publishing.
-- Replace this README.
-- Update `setup.cfg` with appropriate metadata on the new extension.
+- Create a GitHub account. Ideally, set up SSH keys following [the Github docs](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+- Clone this repository. If you haven't, install Git first [the Traintrack installation instructions](https://psy6983.brainhackmtl.org/modules/installation/) can help with this.
 
-You can consider filling in the provided [.zenodo.json](.zenodo.json) file with
-contributor information and [meta data](https://developers.zenodo.org/#representation)
-to acknowledge contributors and describe the publication record that is created when
-[you make your code citeable](https://guides.github.com/activities/citable-code/)
-by archiving it using [zenodo.org](https://zenodo.org/). You may also want to
-consider acknowledging contributors with the
-[allcontributors bot](https://allcontributors.org/docs/en/bot/overview).
+```
+git clone git@github.com:datalad/datalad-dataverse.git
+```
+- Install DataLad and its dependencies. The [DataLad Handbook](http://handbook.datalad.org/en/latest/intro/installation.html#install) has installation instructions for your operating system.
+- Set up a Python environment. This project is written in Python, and creating a Python development environment is the best preparation to get started right away. There are a multitude of ways in which one can set up a virtual environment, and some might fit better to your operating system or to the software you already have installed. The brainhack [traintrack corner](https://psy6983.brainhackmtl.org/modules/installation) can show you how to do it with Miniconda. Below, you'll find code snippets how the DataLad team usually creates their development environment.
+
+```
+# create a virtual environment (for Linux/MacOS)
+virtualenv --python=python3 ~/env/hacking
+# activate the virtual environment
+source ~/env/hacking/bin/activate
+# install datalad-dataverse in its development version
+cd datalad-dataverse
+pip install -e .
+```
+- Take a look at the section "Dataverse docker for running tests" to learn how to spin up your own dataverse instance (if you are on a Linux computer or Mac). Alternatively or in addition, checkout [demo.dataverse.org](https://demo.dataverse.org), a free dataverse installation for testing purposes that you can register, sign-up, and play in.
+- Check out the [Dataverse Documentation](https://guides.dataverse.org/en/latest) for an overview of the software, and likewise, the [DataLad docs](http://docs.datalad.org/en/stable/)
+
+## Contact
+
+The virtual lead for this project (time zone: EMEA) is @bpoldrack.
+The on-site lead for this project (time zone: Glasgow) is @adswa.
+The best way to reach us is by tagging us in issues or pull requests.
+You can find us and our voice channel [on Discord](https://discord.com/invite/qUzW56dZT2).
 
 
 ## Dataverse docker for running tests
