@@ -64,10 +64,12 @@ environment:
     - ID: Ubu20
       DTS: datalad_dataverse
       APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
-      INSTALL_SYSPKGS: python3-virtualenv
+      INSTALL_SYSPKGS: python3-virtualenv jq
       # system git-annex is way too old, use better one
       INSTALL_GITANNEX: git-annex -m deb-url --url http://snapshot.debian.org/archive/debian/20210906T204127Z/pool/main/g/git-annex/git-annex_8.20210903-1_amd64.deb
       CODECOV_BINARY: https://uploader.codecov.io/latest/linux/codecov
+      # setting critically needed for launching the dataverse container
+      traefikhost: localhost
     # Windows core tests
     - ID: WinP39core
       # ~35 min
@@ -165,7 +167,12 @@ install:
   #- sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer -E ${HOME}/dlinstaller_env.sh --sudo ok ${INSTALL_GITANNEX}"
   # add location of datalad installer results to PATH
   #- sh: "[ -f ${HOME}/dlinstaller_env.sh ] && . ${HOME}/dlinstaller_env.sh || true"
-
+  # Set up dataverse docker (Ubuntu build only); sourced since it's exporting the API tokens:
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then source tools/ci/setup_docker_dataverse.sh; else true; fi;"
+  # Show what we got after setup in case something is going wrong:
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then echo \"Received tokens: $TESTS_TOKEN_TESTADMIN $TESTS_TOKEN_USER1\"; else true; fi;"
+  # Check we got a our dataverse and it's accessible with the admin token:
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${TESTS_TOKEN_TESTADMIN}\"; else true; fi;"
 
 #before_build:
 #
