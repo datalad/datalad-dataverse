@@ -34,12 +34,13 @@ jobs:
         python-version: 3.6
     - name: Install dependencies
       run: |
+        pip install -r requirements.txt
         pip install -r requirements-devel.txt
         python -m pip install --upgrade pip
     - name: Installation
       run: |
         # package install
-        python -m pip install .
+        python -m pip install ".[devel]"
     - name: Run tests
       env:
         # forces all test repos/paths into the VFAT FS
@@ -52,4 +53,4 @@ jobs:
         echo "== mount >>"
         mount
         echo "<< mount =="
-        python -m nose -s -v --with-doctest --with-coverage --cover-package datalad_dataverse datalad_dataverse
+        PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v --doctest-modules --cov=datalad_dataverse --pyargs datalad_dataverse
