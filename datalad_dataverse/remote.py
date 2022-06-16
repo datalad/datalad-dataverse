@@ -8,7 +8,7 @@ class DataverseRemote(SpecialRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.configs['url'] = 'The OSF URL for the remote'
+        self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
 
     def initremote(self):
