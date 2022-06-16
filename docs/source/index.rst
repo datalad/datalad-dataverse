@@ -11,7 +11,7 @@ so called Dataverse collections. It supports sharing, preserving, citing,
 exploring, and analyzing research data with descriptive metadata, and thus 
 contributes greatly to open, reproducible, and FAIR science. `DataLad <http://datalad.org>`__, 
 on the other hand, is a data management and data publication tool build on 
-`Git <https://git-scm.org>`__ and `git-annex <git-annex>`__. Its core data 
+`Git <https://git-scm.org>`__ and `git-annex <https://git-annex.branchable.com>`__. Its core data 
 structure, DataLad datasets, can version control files of any size, and 
 streamline data sharing, updating, and collaboration. 
 
