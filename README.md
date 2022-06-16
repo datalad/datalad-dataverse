@@ -175,7 +175,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/likeajumprope"><img src="https://avatars.githubusercontent.com/u/23728822?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Johanna Bayer</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=likeajumprope" title="Documentation">📖</a></td>
-    <td align="center"><a href="https://github.com/nadinespy"><img src="https://avatars.githubusercontent.com/u/46372572?v=4?s=100" width="100px;" alt=""/><br /><sub><b>nadinespy</b></sub></a><br /><a href="#infra-nadinespy" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/nadinespy"><img src="https://avatars.githubusercontent.com/u/46372572?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nadine Spychala</b></sub></a><br /><a href="#infra-nadinespy" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
   </tr>
 </table>
 
