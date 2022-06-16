@@ -179,8 +179,9 @@ install:
 
 
 build_script:
+  - python -m pip install -r requirements.txt
   - python -m pip install -r requirements-devel.txt
-  - python -m pip install .
+  - python -m pip install ".[devel]"
 
 
 #after_build:
@@ -197,9 +198,10 @@ test_script:
   - cmd: md __testhome__
   - sh: mkdir __testhome__
   - cd __testhome__
-    # run test selecion (--traverse-namespace needed from Python 3.8 onwards)
-  - cmd: python -m nose --traverse-namespace -s -v -A "not (turtle)" --with-cov --cover-package datalad_dataverse %DTS%
-  - sh:  python -m nose --traverse-namespace -s -v -A "not (turtle)" --with-cov --cover-package datalad_dataverse ${DTS}
+    # run test selecion
+  - cmd: python -m pytest -s -v -m "not (turtle)" --cov=datalad_dataverse --pyargs %DTS%
+  - sh: PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v -m "not (turtle)" --cov=datalad_dataverse --pyargs ${DTS}
+
 
 
 after_test:

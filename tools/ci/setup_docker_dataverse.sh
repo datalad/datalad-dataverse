@@ -33,11 +33,11 @@ set +e
 # messages still show up.
 until [ "$(curl --silent --show-error "http://localhost:8080/api/search?q=whatever" | tee >(cat 1>&2) | jq .status)" == "\"OK\"" ]
 do
-  if [ $counter -gt 120 ]; then
+  if [ $counter -gt 60 ]; then
     echo "Dataverse API unresponsive after 10 minutes. Giving up."
     exit 1
   fi
-  sleep 5
+  sleep 10
   ((counter++))
 done
 set -e
