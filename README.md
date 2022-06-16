@@ -50,7 +50,6 @@ source ~/env/hacking/bin/activate
 # install datalad-dataverse in its development version
 cd datalad-dataverse
 pip install -e .
-pip install -r requirements.txt
 pip install -r requirements-devel.txt
 ```
 - Take a look at the section "Dataverse docker for running tests" to learn how to spin up your own dataverse instance (if you are on a Linux computer or Mac). Alternatively or in addition, checkout [demo.dataverse.org](https://demo.dataverse.org), a free dataverse installation for testing purposes that you can register, sign-up, and play in.
