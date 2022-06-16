@@ -55,8 +55,8 @@ pip install -r requirements-devel.txt
 ```
 - Take a look at the section "Dataverse docker for running tests" to learn how to spin up your own dataverse instance (if you are on a Linux computer or Mac). Alternatively or in addition, checkout [demo.dataverse.org](https://demo.dataverse.org), a free dataverse installation for testing purposes that you can register, sign-up, and play in.
 - Check out the [Dataverse Documentation](https://guides.dataverse.org/en/latest) for an overview of the software, and likewise, the [DataLad docs](http://docs.datalad.org/en/stable/). A few specialized dataverse doc links that may be of particular relevance are [this section of the API guide](https://guides.dataverse.org/en/5.10.1/api/intro.html#developers-of-integrations-external-tools-and-apps), which is about third party integrations. Among other things, it mentions https://pydataverse.readthedocs.io/en/latest, a Python library to access the Dataverse API’s and manipulating and using the Dataverse (meta)data - Dataverses, Datasets, Datafiles (it will likely become this extensions backend). For metadata, there also is [this guide](https://guides.dataverse.org/en/latest/admin/metadatacustomization.html).
-- In order to build the documentation, you should be able to run `make -C docs html` from the root of the repository. ``make -C docs clean`` wipes created documentation again, and might be necessary for a rebuild sometimes
-
+- In order to **build the documentation**, you should be able to run `make -C docs html` from the root of the repository. ``make -C docs clean`` wipes created documentation again, and might be necessary for a rebuild sometimes
+- In order to **run unit tests**, you should be able to run ``python -m pytest <path to test>``, for example ``python -m pytest datalad_dataverse/tests/test_register.py`` 
 
 ## Contact
 
