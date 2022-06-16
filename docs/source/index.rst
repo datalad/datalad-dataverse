@@ -15,7 +15,7 @@ High-level API commands
 .. autosummary::
    :toctree: generated
 
-   hello_cmd
+   create_sibling_dataverse
 
 
 Command line reference
@@ -24,7 +24,7 @@ Command line reference
 .. toctree::
    :maxdepth: 1
 
-   generated/man/datalad-hello-cmd
+   generated/man/datalad-create-sibling-dataverse
 
 
 Indices and tables
