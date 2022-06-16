@@ -1,3 +1,4 @@
 # requirements for a development environment
+-r requirements.txt
 sphinx
 sphinx_rtd_theme
