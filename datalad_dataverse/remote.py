@@ -38,7 +38,7 @@ class DataverseRemote(SpecialRemote):
         pass
 
     def checkpresent(self, key):
-        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_TOKEN', None))
+        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
         dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
 
         datafiles = dataset.json()['data']['latestVersion']['files']
@@ -48,12 +48,13 @@ class DataverseRemote(SpecialRemote):
             return False
 
     def transfer_store(self, key, local_file):
-        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_TOKEN', None))
+        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
         ds_pid = self.annex.getconfig('doi')
 
         datafile = Datafile()
         datafile.set({'pid': ds_pid, 'filename': local_file})
         resp = api.upload_datafile(ds_pid, local_file, datafile.json())
+        resp.raise_for_status()
 
     def transfer_retrieve(self, key, file):
         raise
