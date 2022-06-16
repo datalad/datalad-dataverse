@@ -30,7 +30,7 @@ class DataverseRemote(SpecialRemote):
 def main():
     """cmdline entry point"""
     super_main(
-        cls=SpecialRemote,
+        cls=DataverseRemote,
         remote_name='dataverse',
         description=\
         "transport file content to and from a Dataverse dataset",
