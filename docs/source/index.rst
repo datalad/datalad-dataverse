@@ -1,5 +1,5 @@
 DataLad Dataverse
-**************************
+*****************
 
 This is a template for creating a `DataLad <http://datalad.org>`__ extension
 that equips DataLad with additional functionality.
