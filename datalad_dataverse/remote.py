@@ -1,7 +1,10 @@
+from tkinter.messagebox import NO
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import NativeApi
 import os
+from requests import delete
+from requests.auth import HTTPBasicAuth
 
 
 class DataverseRemote(SpecialRemote):
@@ -50,8 +53,31 @@ class DataverseRemote(SpecialRemote):
         pass
 
     def remove(self, key):
-        raise
-        pass
+         # connect to dataverse instance
+        api = NativeApi(base_url=self.annex.getconfig('url'),
+                        api_token=os.environ["DATAVERSE_API_TOKEN"])
+        
+        # get the dataset and a list of all files
+        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        files_list = dataset.json()['data']['latestVersion']['files']
+
+        file_id = None
+
+        # find the file we want to delete
+        for file in files_list:
+            filename = file['dataFile']['filename']
+            if filename == key:
+                file_id = file['dataFile']['id']
+                break
+        
+        if file_id is None:
+            # todo: What to do if the file is not present?
+            raise
+        
+        # delete the file
+        delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
+               auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
+        # todo error handling?
 
 
 def main():
