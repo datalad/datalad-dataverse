@@ -18,3 +18,34 @@ streamline data sharing, updating, and collaboration.
 The aim of this project is to make DataLad interoperable with Dataverse to 
 support dataset transport from and to Dataverse instances. It originates 
 from `OHBM BrainHack 2022 <https://github.com/ohbm/hackathon2022/issues/43>`__.  
+
+API
+===
+
+High-level API commands
+-----------------------
+
+.. currentmodule:: datalad.api
+.. autosummary::
+   :toctree: generated
+
+   hello_cmd
+
+
+Command line reference
+----------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   generated/man/datalad-hello-cmd
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
+.. |---| unicode:: U+02014 .. em dash
