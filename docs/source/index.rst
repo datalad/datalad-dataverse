@@ -1,5 +1,5 @@
-DataLad extension template
-**************************
+DataLad Dataverse
+*****************
 
 .. image:: _static/logo.png
    :width: 400
