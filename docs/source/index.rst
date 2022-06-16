@@ -5,9 +5,6 @@ DataLad Dataverse
    :width: 400
    :alt: Datalad Dataverse extension logo
 
-This is a template for creating a `DataLad <http://datalad.org>`__ extension
-that equips DataLad with additional functionality.
-
 `Dataverse <https://dataverse.org>`__ is open source research data repository 
 software that is deployed all over the world in data or metadata repositories, 
 so called Dataverse collections. It supports sharing, preserving, citing, 
