@@ -67,10 +67,67 @@
       ]
     },
     {
+      "login": "enicolaisen",
+      "name": "enicolaisen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59887397?v=4",
+      "profile": "https://github.com/enicolaisen",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "rgbayrak",
+      "name": "Roza",
+      "avatar_url": "https://avatars.githubusercontent.com/u/26470013?v=4",
+      "profile": "https://rgbayrak.github.io/",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "ksarink",
+      "name": "Kelvin Sarink",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2464969?v=4",
+      "profile": "https://github.com/ksarink",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
       "login": "jernsting",
       "name": "Jan Ernsting",
       "avatar_url": "https://avatars.githubusercontent.com/u/7760472?v=4",
       "profile": "https://github.com/jernsting",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "effigies",
+      "name": "Chris Markiewicz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/83442?v=4",
+      "profile": "https://github.com/effigies",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "aqw",
+      "name": "Alex Waite",
+      "avatar_url": "https://avatars.githubusercontent.com/u/765557?v=4",
+      "profile": "https://github.com/aqw",
+      "contributions": [
+        "infra",
+        "code",
+        "maintenance",
+        "tool"
+      ]
+    },
+    {
+      "login": "Shammi270787",
+      "name": "Shammi270787",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23641510?v=4",
+      "profile": "https://github.com/Shammi270787",
       "contributions": [
         "code"
       ]
