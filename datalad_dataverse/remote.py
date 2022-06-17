@@ -117,7 +117,7 @@ class DataverseRemote(SpecialRemote):
             return
 
         # delete the file
-        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
+        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}', 
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
