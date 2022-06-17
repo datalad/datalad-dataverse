@@ -54,6 +54,10 @@ __docformat__ = "restructuredtext"
 lgr = logging.getLogger('datalad.distributed.create_sibling_dataverse')
 
 
+class InvalidDatasetMetadata(Exception):
+    pass
+
+
 @build_doc
 class CreateSiblingDataverse(Interface):
     """Create a sibling(-tandem) on a Dataverse server
@@ -218,7 +222,7 @@ class CreateSiblingDataverse(Interface):
                 return
 
         # 3. get API Token
-        token = _get_api_token(ds, credential, url)
+        credential_name, token = _get_api_token(ds, credential, url)
         api = NativeApi(url, token)
 
         # temporary; just make sure we can actually connect:
@@ -229,7 +233,7 @@ class CreateSiblingDataverse(Interface):
         # TODO: This may need a switch to either create one or just get an
         #       existing one for use with _create_sibling_dataverse;
         #       Either way, result is pydataverse.models.Dataverse
-        dv_collection = _get_collection(api, collection)
+        dv_collection = _get_dv_collection(api, collection)
 
         # 5. use datalad-foreach-dataset command with a wrapper function to
         #    operate in a singe dataset to address recursive behavior and yield
@@ -239,6 +243,7 @@ class CreateSiblingDataverse(Interface):
 
             return _create_sibling_dataverse(ds,
                                              api,
+                                             credential_name=credential_name,
                                              collection=dv_collection,
                                              mode=mode,
                                              name=name,
@@ -318,18 +323,51 @@ def _get_api_token(ds, credential, url):
     # Not a valid implementation! This just takes the admin token from the CI
     # environment!
     from os import environ
-    return environ["TESTS_TOKEN_TESTADMIN"]
+
+    # return the credential name as well as the token, since the name is needed
+    # for encoding in the datalad-annex URL and for potentially storing the
+    # credential later on.
+    credential_name = credential or "dummy"
+    return credential_name, environ["TESTS_TOKEN_TESTADMIN"]
 
 
-def _get_collection(api, alias):
+def _get_dv_collection(api, alias):
 
+    # TODO: this should be able to deal with different identifiers not just the
+    # alias, I guess
     response = api.get_dataverse(alias)
     response.raise_for_status()
-    return Dataverse().from_json(response.json())
+    return response.json()
 
 
-def _create_sibling_dataverse(ds, api, collection, *, mode='git-only', name=None,
-                              storage_name=None, existing='error'):
+def _create_dv_dataset(api, collection, dataset_meta):
+    """
+
+    Parameters
+    ----------
+    api: NativeApi
+    collection: Dataverse
+    dataset_meta: dict
+
+    Returns
+    -------
+    DvDataset
+    """
+    dv_dataset = DvDataset()
+    dv_dataset.set(dataset_meta)
+    if not dv_dataset.validate_json():
+        raise InvalidDatasetMetadata
+    dv_dataset = api.create_dataset(collection['data']['alias'],
+                                    dv_dataset.json())
+    dv_dataset.raise_for_status()
+    return dv_dataset
+
+
+def _create_sibling_dataverse(ds, api, credential_name, collection, *,
+                              mode='git-only',
+                              name=None,
+                              storage_name=None,
+                              existing='error'):
     """
 
     meant to be executed via foreach-dataset
@@ -362,19 +400,169 @@ def _create_sibling_dataverse(ds, api, collection, *, mode='git-only', name=None
         subject=['Medicine, Health and Life Sciences']
     )
 
-    # 2. create the actual dataset on dataverse
-    dv_dataset = DvDataset()
-    dv_dataset.set(dataset_meta)
-    if not dv_dataset.validate_json():
+    # 2. create the actual dataset on dataverse; we need one independently on
+    # `mode`.
+    try:
+        dv_dataset = _create_dv_dataset(api, collection, dataset_meta)
+    except InvalidDatasetMetadata:
         yield get_status_dict(status='error',
-                              message="dataset metadata invalid for {ds}"
-                                      "".format(ds=ds),
-                              ds=ds,
-                              )
-    # Note, that publishing the dataset should not be part of create-sibling,
-    # since stuff needs to pushed there first.
-
-    dv_dataset = api.create_dataset(collection.alias, dv_dataset.json())
-    dv_dataset.raise_for_status()
+                              message=f"Invalid metadata for dataset {ds}")
 
     # 3. Set up the actual remotes
+    # simplify downstream logic, export yes or no
+    export_storage = 'filetree' in mode
+
+    url = api.base_url
+    doi = dv_dataset.json()['data']['persistentId']
+
+    existing_siblings = [
+        r[1] for r in _yield_ds_w_matching_siblings(
+            ds,
+            (name, storage_name),
+            recursive=False)
+    ]
+
+    if mode != 'git-only':
+        yield from _create_storage_sibling(
+            ds=ds,
+            url=url,
+            doi=doi,
+            name=storage_name,
+            credential_name=credential_name,
+            export=export_storage,
+            existing=existing,
+            known=storage_name in existing_siblings,
+        )
+
+    if mode not in ('annex-only', 'filetree-only'):
+        yield from _create_git_sibling(
+            ds,
+            url,
+            name,
+            credential_name,
+            export=export_storage,
+            existing=existing,
+            known=name in existing_siblings,
+            publish_depends=storage_name if mode != 'git-only'
+            else None
+        )
+
+
+def _get_skip_sibling_result(name, ds, type_):
+    return get_status_dict(
+        action='create_sibling_dataverse{}'.format(
+            '.storage' if type_ == 'storage' else ''),
+        ds=ds,
+        status='notneeded',
+        message=("skipped creating %r sibling %r, already exists",
+                 type_, name),
+        name=name,
+        type='sibling',
+    )
+
+
+def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
+                        known, publish_depends=None):
+    """
+    Parameters
+    ----------
+    ds: Dataset
+    url: str
+    name: str
+    credential_name: str
+    export: bool
+    existing: {skip, error, reconfigure}
+    known: bool
+        Flag whether the sibling is a known remote (not implying
+        necessary existence of content on the remote).
+    publish_depends: str or None
+        publication dependency to set
+    """
+    if known and existing == 'skip':
+        yield _get_skip_sibling_result(name, ds, 'git')
+        return
+
+    remote_url = \
+        "datalad-annex::?type=dataverse&encryption=none" \
+        "&exporttree={export}&url={url}&doi={doi}".format(
+            export='yes' if export else 'no',
+            # urlquote, because it goes into the query part of another URL
+            url=urlquote(url),
+            doi=doi)
+    if credential_name:
+        # we need to quote the credential name too.
+        # e.g., it is not uncommon for credentials to be named after URLs
+        remote_url += f'&dlacredential={urlquote(credential_name)}'
+
+    # announce the sibling to not have an annex (we have a dedicated
+    # storage sibling for that) to avoid needless annex-related processing
+    # and speculative whining by `siblings()`
+    ds.config.set(f'remote.{name}.annex-ignore', 'true', scope='local')
+
+    for r in ds.siblings(
+            # action must always be 'configure' (not 'add'), because above we just
+            # made a remote {name} known, which is detected by `sibling()`. Any
+            # conflict detection must have taken place separately before this call
+            # https://github.com/datalad/datalad/issues/6649
+            action="configure",
+            name=name,
+            url=remote_url,
+            # this is presently the default, but it may change
+            fetch=False,
+            publish_depends=publish_depends,
+            return_type='generator',
+            result_renderer='disabled'):
+        if r.get('action') == 'configure-sibling':
+            r['action'] = 'reconfigure_sibling_dataverse' \
+                if known and existing == 'reconfigure' \
+                else 'create_sibling_dataverse'
+        yield r
+
+
+def _create_storage_sibling(
+        ds, url, doi, name, credential_name, export, existing, known=False):
+    """
+    Parameters
+    ----------
+    ds: Dataset
+    url: str
+    name: str
+    credential_name: str
+    export: bool
+    existing: {skip, error, reconfigure}
+        (Presently unused)
+    known: bool
+        Flag whether the sibling is a known remote (no implied
+        necessary existance of content on the remote).
+    """
+    if known and existing == 'skip':
+        yield _get_skip_sibling_result(name, ds, 'storage')
+        return
+
+    # TODO: How is the credential provided to the special remote?
+
+    cmd_args = [
+        'enableremote' if known and existing == 'reconfigure'
+        else 'initremote',
+        name,
+        "type=dataverse",
+        f"url={url}",
+        f"doi={doi}"
+        f"exporttree={'yes' if export else 'no'}",
+        "encryption=none",
+        # for now, no autoenable. It would result in unconditional
+        # error messages on clone
+        #https://github.com/datalad/datalad/issues/6634
+        #"autoenable=true"
+    ]
+    ds.repo.call_annex(cmd_args)
+    yield get_status_dict(
+        ds=ds,
+        status='ok',
+        action='reconfigure_sibling_dataverse.storage'
+               if known and existing == 'reconfigure' else
+        'create_sibling_dataverse.storage',
+        name=name,
+        type='sibling',
+        url=url,
+    )
