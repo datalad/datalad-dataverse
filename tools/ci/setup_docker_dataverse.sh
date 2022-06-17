@@ -17,6 +17,13 @@ set -e -u
 # We may want to use more of them.
 # Consider especially init-setup.sh, setup-dvs.sh
 
+# log into Dockerhub to pull more images if the required variables are passed
+if [[ ! -z "$1" ]] && [[ ! -z "$2" ]]; then
+  DOCKERHUB_TOKEN="$1"
+  DOCKERHUB_USERNAME="$2"
+  docker login --password ${DOCKERHUB_TOKEN} --username ${DOCKERHUB_USERNAME}
+fi
+
 ### Initial container setup
 git clone https://github.com/IQSS/dataverse-docker
 docker network create traefik
