@@ -73,7 +73,7 @@ class DataverseRemote(SpecialRemote):
         self.api
 
     def checkpresent(self, key):
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
 
         datafiles = dataset.json()['data']['latestVersion']['files']
         if next((item for item in datafiles if item['label'] == key), None):
@@ -82,7 +82,7 @@ class DataverseRemote(SpecialRemote):
             return False
 
     def transfer_store(self, key, local_file):
-        ds_pid = self.annex.getconfig('doi')
+        ds_pid = self.doi
 
         datafile = Datafile()
         datafile.set({'pid': ds_pid, 'filename': local_file, 'label': key})
@@ -91,10 +91,10 @@ class DataverseRemote(SpecialRemote):
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
-            base_url=self.annex.getconfig('url'),
+            base_url=self.url,
             api_token=os.environ["DATAVERSE_API_TOKEN"]
         )
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
 
         # http error handling
         dataset.raise_for_status()
@@ -121,7 +121,7 @@ class DataverseRemote(SpecialRemote):
 
     def remove(self, key):
         # get the dataset and a list of all files
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
         # http error handling
         dataset.raise_for_status()
         files_list = dataset.json()['data']['latestVersion']['files']
@@ -141,7 +141,7 @@ class DataverseRemote(SpecialRemote):
             return
 
         # delete the file
-        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}', 
+        status = delete(f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}',
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
