@@ -1,0 +1,49 @@
+cff-version: 1.1.0
+message: Please cite the following works when using this software.
+authors:
+  - family-names: Poldrack
+    given-names: Benjamin
+  - family-names: Wagner
+    given-names: Adina
+  - family-names: Ernsting
+    given-names: Jan 
+  - family-names: Hanke
+    given-names: Michael
+  - family-names: Roza
+    given-names: Bayrak
+  - family-names: Kelvin
+    given-names: Sarink
+  - family-names: Nicolaisen-Sobesky
+    given-names: Eliana
+  - family-names: More
+    given-names: Shammi
+  - family-names: Bayer
+    given-names: Johanna
+  - family-names: Markiewicz
+    given-names: Christopher
+  - family-names: Waite
+    given-names: Alex
+  - family-names: Spychala
+    given-names: Nadine
+  - family-names: Waite
+    given-names: Laura
+  - family-names: Eickhoff
+    given-names: Simon
+   
+doi: 10.21105/JOSS.03262
+identifiers:
+  - type: doi
+    value: 10.21105/JOSS.03262
+  - type: other
+    value: urn:issn:2475-9066
+keywords:
+  - Computational reproducibility
+  - reproducibility
+  - Python
+  - data management
+  - workflow
+title: >-
+  DataLad: distributed system for joint management of code, data, and their
+  relationship
+version: 0.14.6
+
