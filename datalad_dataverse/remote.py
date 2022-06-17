@@ -27,16 +27,13 @@ class DataverseRemote(SpecialRemote):
             Use this command to initialize a remote
             git annex initremote dv1 type=external externaltype=dataverse encryption=none
         """
-        if self.annex.getconfig('url') == '' or self.annex.getconfig('doi') == '':
-            raise ValueError('url and doi must be specified')
-
         # check if instance is readable and authenticated
         resp = self.api.get_info_version()
         if resp.json()['status'] != 'OK':
             raise RuntimeError(f'Cannot connect to dataverse instance (status: {resp.json()["status"]})')
 
         # check if project with specified doi exists
-        dv_ds = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dv_ds = self.api.get_dataset(identifier=self.doi)
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
 
@@ -44,8 +41,10 @@ class DataverseRemote(SpecialRemote):
     def url(self):
         if self._url is None:
             self._url = self.annex.getconfig('url')
+            if self._url == '':
+                raise ValueError('url must be specified')
             # remove trailing slash in URL
-            if self._url is not None and self._url.endswith('/'):
+            elif self._url.endswith('/'):
                 self._url = self._url[:-1]
         return self._url
 
@@ -53,6 +52,8 @@ class DataverseRemote(SpecialRemote):
     def doi(self):
         if self._doi is None:
             self._doi = self.annex.getconfig('doi')
+            if self._doi == '':
+                raise ValueError('doi must be specified')
             self._doi = _format_doi(self._doi)
         return self._doi
 
@@ -61,7 +62,7 @@ class DataverseRemote(SpecialRemote):
         if self._api is None:
             # connect to dataverse instance
             self._api = get_native_api(
-                baseurl=self.annex.getconfig('url'),
+                baseurl=self.url,
                 token=os.environ["DATAVERSE_API_TOKEN"],
             )
         return self._api
@@ -69,8 +70,6 @@ class DataverseRemote(SpecialRemote):
     def prepare(self):
         # trigger API instance in order to get possibly auth/connection errors
         # right away
-        self.url
-        self.doi
         self.api
 
     def checkpresent(self, key):
