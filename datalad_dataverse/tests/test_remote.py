@@ -31,6 +31,7 @@ def test_remote(path=None):
         with patch.dict('os.environ', {
                 'DATAVERSE_API_TOKEN': API_TOKENS['testadmin']}):
             _check_remote(ds, dspid)
+
     finally:
         admin_api.destroy_dataset(dspid)
 
@@ -42,6 +43,7 @@ def _check_remote(ds, dspid):
         'externaltype=dataverse', f'url={DATAVERSE_URL}',
         f'doi={dspid}',
     ])
+    # some smoke testing of the git-annex interface
     repo.call_annex([
         'copy', '--to', 'mydv', 'somefile.txt',
     ])
@@ -56,4 +58,8 @@ def _check_remote(ds, dspid):
     ])
     repo.call_annex([
         'drop', '--from', 'mydv', 'somefile.txt',
+    ])
+    # run git-annex own testsuite
+    ds.repo.call_annex([
+        'testremote', '--fast', 'mydv',
     ])
