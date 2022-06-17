@@ -3,8 +3,17 @@ name: crippled-filesystems
 on: [pull_request]
 
 jobs:
-  test:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+  test:
     runs-on: ubuntu-latest
 
     steps:

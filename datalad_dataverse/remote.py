@@ -61,7 +61,7 @@ class DataverseRemote(SpecialRemote):
         ds_pid = self.annex.getconfig('doi')
 
         datafile = Datafile()
-        datafile.set({'pid': ds_pid, 'filename': local_file})
+        datafile.set({'pid': ds_pid, 'filename': local_file, 'label': key})
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
