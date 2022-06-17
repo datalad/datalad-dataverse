@@ -1,12 +1,14 @@
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
-from pyDataverse.api import NativeApi, DataAccessApi
+from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
 import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
 from annexremote import ExportRemote
-
+from datalad_dataverse.utils import (
+    get_native_api,
+)
 
 class DataverseRemote(ExportRemote):
 
@@ -38,9 +40,9 @@ class DataverseRemote(ExportRemote):
     def api(self):
         if self._api is None:
             # connect to dataverse instance
-            self._api = NativeApi(
-                base_url=self.annex.getconfig('url'),
-                api_token=os.environ["DATAVERSE_API_TOKEN"],
+            self._api = get_native_api(
+                baseurl=self.annex.getconfig('url'),
+                token=os.environ["DATAVERSE_API_TOKEN"],
             )
         return self._api
 
@@ -65,7 +67,7 @@ class DataverseRemote(ExportRemote):
         ds_pid = self.annex.getconfig('doi')
 
         datafile = Datafile()
-        datafile.set({'pid': ds_pid, 'filename': local_file})
+        datafile.set({'pid': ds_pid, 'filename': local_file, 'label': key})
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
