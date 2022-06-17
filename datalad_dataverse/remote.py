@@ -110,11 +110,12 @@ class DataverseRemote(SpecialRemote):
             if filename == key:
                 file_id = file['dataFile']['id']
                 break
-        
+
         if file_id is None:
-            # todo: What to do if the file is not present?
-            raise ValueError(f"File {key} unknown to remote")
-        
+            # the key is not present, we can return, protocol
+            # declare this condition to be a successful removal
+            return
+
         # delete the file
         status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
