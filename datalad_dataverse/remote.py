@@ -9,6 +9,7 @@ from annexremote import ExportRemote
 from datalad_dataverse.utils import (
     get_native_api,
 )
+import os
 
 class DataverseRemote(ExportRemote):
 
@@ -55,7 +56,7 @@ class DataverseRemote(ExportRemote):
         dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
 
         datafiles = dataset.json()['data']['latestVersion']['files']
-        if next((item for item in datafiles if item['label'] == key), None):
+        if next((item for item in datafiles if item['dataFile']['filename'] == key), None):
             return True
         else:
             return False
@@ -67,7 +68,10 @@ class DataverseRemote(ExportRemote):
         ds_pid = self.annex.getconfig('doi')
 
         datafile = Datafile()
-        datafile.set({'pid': ds_pid, 'filename': local_file, 'label': key})
+        datafile.set({'pid': ds_pid, 
+                      'filename': key,
+                      'directoryLabel': os.path.dirname(key),
+                      'label': os.path.basename(key)})
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
