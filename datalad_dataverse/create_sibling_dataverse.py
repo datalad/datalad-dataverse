@@ -99,19 +99,14 @@ class CreateSiblingDataverse(Interface):
             args=("--credential",),
             metavar='NAME',
             doc="""
-            TODO: This doc needs to be adjusted as we need an API token, not a 
-            user/secret combination.
-            
-            name of the credential providing a user/password credential
-            to be used for authorization. The credential can be supplied via
-            configuration setting 'datalad.credential.<name>.user|secret', or
-            environment variable DATALAD_CREDENTIAL_<NAME>_USER|SECRET, or will
+            name of the credential providing an API token for the dataverse
+            installation of your choice, to be used for authorization.
+            The credential can be supplied via
+            configuration setting 'datalad.credential.<name>.token', or
+            environment variable DATALAD_CREDENTIAL_<NAME>_TOKEN, or will
             be queried from the active credential store using the provided
             name. If none is provided, the last-used credential for the
-            authentication realm associated with the WebDAV URL will be used.
-            Only if a credential name was given, it will be encoded in the
-            URL of the created WebDAV Git remote, credential auto-discovery
-            will be performed on each remote access.""",
+            dataverse url will be used.""",
         ),
         existing=Parameter(
             args=("--existing",),
