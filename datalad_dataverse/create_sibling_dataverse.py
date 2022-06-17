@@ -39,6 +39,7 @@ from datalad.support.constraints import (
     EnsureStr,
 )
 from datalad.support.exceptions import CapturedException
+from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
 
 
@@ -185,13 +186,17 @@ class CreateSiblingDataverse(Interface):
 
         # 2. check existing siblings upfront to fail early on --existing=error
         if existing == 'error':
-            yield from _fail_on_existing_sibling(
-                ds,
-                (name, storage_name),
-                recursive=recursive,
-                recursion_limit=recursion_limit,
-                **res_kwargs
-            )
+            failed = False
+            for r in _fail_on_existing_sibling(
+                    ds,
+                    (name, storage_name),
+                    recursive=recursive,
+                    recursion_limit=recursion_limit,
+                    **res_kwargs):
+                failed = True
+                yield r
+            if failed:
+                return
 
         # 3. get API Token
         token = _get_api_token(ds, credential, url)
@@ -242,8 +247,20 @@ def _validate_parameters(url: str,
 
 def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
                               **res_kwargs):
-    """yield error results whenever sibling(s) with `name` already exists"""
-    yield dict(status="error", **res_kwargs)
+    """yield error results whenever sibling(s) with one of `names` already
+    exists"""
+
+    for dpath, sname in _yield_ds_w_matching_siblings(
+            ds, names, recursive=recursive, recursion_limit=recursion_limit):
+
+        yield get_status_dict(
+            status='error',
+            message=("a sibling %r is already configured in dataset %r",
+                     sname, dpath),
+            type='sibling',
+            name=sname,
+            ds=ds,
+            **res_kwargs)
 
 
 def _get_api_token(ds, credential, url):
