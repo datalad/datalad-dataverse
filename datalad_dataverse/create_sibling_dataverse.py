@@ -4,6 +4,10 @@
 from functools import partial
 import logging
 from pyDataverse.api import NativeApi
+from pyDataverse.models import (
+    Dataset as DvDataset,
+    Dataverse,
+)
 from typing import (
     Optional,
     Union,
@@ -149,6 +153,16 @@ class CreateSiblingDataverse(Interface):
             together, a publication dependency on the storage sibling is
             configured for the regular sibling in the local dataset clone.
             """),
+        collection=Parameter(
+            args=("--collection",),
+            constraints=EnsureStr() | EnsureNone(),
+            doc="""TODO
+
+            I think this likely needs to become several options to specify a
+            mode of operation (at least 'use an existing' vs 'create one') and
+            the respective specification.
+            """
+        ),
     )
     # TODO: - This command needs to be pointed to an existing dataverse
     #         collection. Even if it creates one itself, that in turn is likely
@@ -167,7 +181,9 @@ class CreateSiblingDataverse(Interface):
             credential: Optional[str] = None,
             existing: str = 'error',
             recursive: bool = False,
-            recursion_limit: Optional[int] = None):
+            recursion_limit: Optional[int] = None,
+            collection: Optional[str] = None,
+    ):
 
         # Make sure we actually have a dataset to operate on
         ds = require_dataset(
@@ -184,7 +200,8 @@ class CreateSiblingDataverse(Interface):
 
         # 1. validate parameters
         _validate_parameters(url, dataset, name, storage_name, mode,
-                             credential, existing, recursive, recursion_limit)
+                             credential, existing, recursive, recursion_limit,
+                             collection)
 
         # 2. check existing siblings upfront to fail early on --existing=error
         if existing == 'error':
@@ -208,13 +225,21 @@ class CreateSiblingDataverse(Interface):
         response = api.get_info_version()
         response.raise_for_status()
 
-        # 4. use datalad-foreach-dataset command with a wrapper function to
+        # 4. Get the collection to put the dataset(s) in
+        # TODO: This may need a switch to either create one or just get an
+        #       existing one for use with _create_sibling_dataverse;
+        #       Either way, result is pydataverse.models.Dataverse
+        dv_collection = _get_collection(api, collection)
+
+        # 5. use datalad-foreach-dataset command with a wrapper function to
         #    operate in a singe dataset to address recursive behavior and yield
         #    results from there
         def _dummy(ds, refds, **kwargs):
-            "wrapper for use with foreach-dataset"
+            """wrapper for use with foreach-dataset"""
 
-            return _create_sibling_dataverse(ds, api,
+            return _create_sibling_dataverse(ds,
+                                             api,
+                                             collection=dv_collection,
                                              mode=mode,
                                              name=name,
                                              storage_name=storage_name,
@@ -232,9 +257,7 @@ class CreateSiblingDataverse(Interface):
             for partial_result in res.get('result', []):
                 yield dict(res_kwargs, **partial_result)
 
-
-
-        # 5. if everything went well, save credential?
+        # 6. if everything went well, save credential?
 
         # Dummy implementation:
         return get_status_dict(status='ok',
@@ -298,20 +321,60 @@ def _get_api_token(ds, credential, url):
     return environ["TESTS_TOKEN_TESTADMIN"]
 
 
-def _create_sibling_dataverse(ds, api, *, mode='git-only', name=None,
+def _get_collection(api, alias):
+
+    response = api.get_dataverse(alias)
+    response.raise_for_status()
+    return Dataverse().from_json(response.json())
+
+
+def _create_sibling_dataverse(ds, api, collection, *, mode='git-only', name=None,
                               storage_name=None, existing='error'):
     """
+
+    meant to be executed via foreach-dataset
+
     Parameters
     ----------
     ds: Dataset
     api: pydataverse.api.NativeApi
+    collection: pydataverse.models.Dataverse
     mode: str, optional
     name: str, optional
     storage_name: str, optional
     existing: str, optional
     """
-    # meant to be executed via foreach-dataset
-    pass
 
+    # 1. figure dataset metadata to use
 
+    # For now just take the dataset's dir name as name within the collection
+    dataset_name = ds.pathobj.parts[-1]
 
+    # The following needs to be broken up into several modes of operation. A
+    # JSON file to pass, an interactive query, a pointer to metalad
+    # (dedicated extractor?). In any case, the result should be a dict.
+    dataset_meta = dict(
+        title=dataset_name,
+        author=[dict(authorName='myname')],
+        datasetContact=[dict(datasetContactEmail='myemail@example.com',
+                             datasetContactName='myname')],
+        dsDescription=[dict(dsDescriptionValue='mydescription')],
+        subject=['Medicine, Health and Life Sciences']
+    )
+
+    # 2. create the actual dataset on dataverse
+    dv_dataset = DvDataset()
+    dv_dataset.set(dataset_meta)
+    if not dv_dataset.validate_json():
+        yield get_status_dict(status='error',
+                              message="dataset metadata invalid for {ds}"
+                                      "".format(ds=ds),
+                              ds=ds,
+                              )
+    # Note, that publishing the dataset should not be part of create-sibling,
+    # since stuff needs to pushed there first.
+
+    dv_dataset = api.create_dataset(collection.alias, dv_dataset.json())
+    dv_dataset.raise_for_status()
+
+    # 3. Set up the actual remotes
