@@ -1,8 +1,10 @@
+import os
+import re
+
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
-import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
 from datalad_dataverse.utils import (
@@ -16,6 +18,8 @@ class DataverseRemote(SpecialRemote):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
+        self._doi = None
+        self._url = None
         self._api = None
 
     def initremote(self):
@@ -23,7 +27,7 @@ class DataverseRemote(SpecialRemote):
             Use this command to initialize a remote
             git annex initremote dv1 type=external externaltype=dataverse encryption=none
         """
-        if self.annex.getconfig('url') is None or self.annex.getconfig('doi') is None:
+        if self.annex.getconfig('url') == '' or self.annex.getconfig('doi') == '':
             raise ValueError('url and doi must be specified')
 
         # check if instance is readable and authenticated
@@ -35,6 +39,22 @@ class DataverseRemote(SpecialRemote):
         dv_ds = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
+
+    @property
+    def url(self):
+        if self._url is None:
+            self._url = self.annex.getconfig('url')
+            # remove trailing slash in URL
+            if self._url is not None and self._url.endswith('/'):
+                self._url = self._url[:-1]
+        return self._url
+
+    @property
+    def doi(self):
+        if self._doi is None:
+            self._doi = self.annex.getconfig('doi')
+            self._doi = _format_doi(self._doi)
+        return self._doi
 
     @property
     def api(self):
@@ -49,6 +69,8 @@ class DataverseRemote(SpecialRemote):
     def prepare(self):
         # trigger API instance in order to get possibly auth/connection errors
         # right away
+        self.url
+        self.doi
         self.api
 
     def checkpresent(self, key):
@@ -124,6 +146,25 @@ class DataverseRemote(SpecialRemote):
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
+
+
+def _format_doi(doi_in: str) -> str:
+    """
+    Converts unformatted DOI strings into the format needed in the dataverse API. Compatible with DOIs starting
+    with "doi:", as URL or raw (i.e. 10.5072/FK2/WQCBX1).
+
+    :param doi_in: unformatted doi string provided by user
+    :returns: DOI string as needed for dataverse API, None if string is empty.
+    """
+    dataverse_doi_pattern = r'^doi:'
+    if re.match(pattern=dataverse_doi_pattern, string=doi_in):
+        return doi_in
+
+    url_doi_pattern = r'^https?:\/\/doi\.org\/'
+    if re.match(url_doi_pattern, doi_in):
+        return re.sub(pattern=url_doi_pattern, repl='doi:', string=doi_in)
+
+    return f'doi:{doi_in}'
 
 
 def main():
