@@ -74,8 +74,8 @@
       "contributions": [
         "doc"
       ]
-     },
-     {
+    },
+    {
       "login": "rgbayrak",
       "name": "Roza",
       "avatar_url": "https://avatars.githubusercontent.com/u/26470013?v=4",
@@ -101,6 +101,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "effigies",
+      "name": "Chris Markiewicz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/83442?v=4",
+      "profile": "https://github.com/effigies",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -110,4 +119,3 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
-
