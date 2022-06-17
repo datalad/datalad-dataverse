@@ -5,6 +5,7 @@
 # Comment to be posted to on first time issues
 newIssueWelcomeComment: >
   Hi! :wave: We are happy that you opened your first issue here! :smile:
+  If you haven't done so already, please make sure you check out our [Code of Conduct](https://github.com/datalad/datalad-dataverse/blob/main/CODE_OF_CONDUCT.md).
 
 # Configuration for new-pr-welcome - https://github.com/behaviorbot/new-pr-welcome
 
