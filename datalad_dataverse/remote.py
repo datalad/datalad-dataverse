@@ -1,6 +1,6 @@
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
-from pyDataverse.api import NativeApi
+from pyDataverse.api import NativeApi, DataAccessApi
 from pyDataverse.models import Datafile
 import os
 from requests import delete
@@ -59,8 +59,36 @@ class DataverseRemote(SpecialRemote):
         resp.raise_for_status()
 
     def transfer_retrieve(self, key, file):
-        raise
-        pass
+        api = NativeApi(base_url=self.annex.getconfig('url'),
+                        api_token=os.environ["DATAVERSE_API_TOKEN"])
+        data_api = DataAccessApi(base_url=self.annex.getconfig('url'),
+                        api_token=os.environ["DATAVERSE_API_TOKEN"])
+        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+
+        # http error handling
+        dataset.raise_for_status()
+
+        files_list = dataset.json()['data']['latestVersion']['files']
+
+        # find the file we want to download
+        file_id = None
+        for current_file in files_list:
+            filename = current_file['dataFile']['filename']
+            if filename == key:
+                file_id = current_file['dataFile']['id']
+                break
+        
+        # error handling if file was not found on remote
+        if file_id is None:
+            raise ValueError(f"File {key} is unknown to remote")
+        
+        response = data_api.get_datafile(file_id)
+        # http error handling
+        response.raise_for_status()
+        with open(file, "wb") as f:
+            f.write(response.content)
+
+        
 
     def remove(self, key):
          # connect to dataverse instance
