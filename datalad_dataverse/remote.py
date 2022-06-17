@@ -1,4 +1,3 @@
-from tkinter.messagebox import NO
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import NativeApi
