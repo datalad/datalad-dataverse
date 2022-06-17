@@ -65,6 +65,15 @@
         "review",
         "tool"
       ]
+    },
+    {
+      "login": "enicolaisen",
+      "name": "enicolaisen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59887397?v=4",
+      "profile": "https://github.com/enicolaisen",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -74,4 +83,3 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
-
