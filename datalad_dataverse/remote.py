@@ -1,10 +1,11 @@
-from datalad.customremotes import ExportRemote
+from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import NativeApi, DataAccessApi
 from pyDataverse.models import Datafile
 import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
+from annexremote import ExportRemote
 
 
 class DataverseRemote(ExportRemote):
