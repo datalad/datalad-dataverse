@@ -67,6 +67,15 @@
       ]
     },
     {
+      "login": "ksarink",
+      "name": "Kelvin Sarink",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2464969?v=4",
+      "profile": "https://github.com/ksarink",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
       "login": "jernsting",
       "name": "Jan Ernsting",
       "avatar_url": "https://avatars.githubusercontent.com/u/7760472?v=4",
@@ -83,3 +92,4 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
+
