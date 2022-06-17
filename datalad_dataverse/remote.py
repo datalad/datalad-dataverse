@@ -1,4 +1,4 @@
-from datalad.customremotes import SpecialRemote
+from datalad.customremotes import ExportRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import NativeApi, DataAccessApi
 from pyDataverse.models import Datafile
@@ -7,7 +7,7 @@ from requests import delete
 from requests.auth import HTTPBasicAuth
 
 
-class DataverseRemote(SpecialRemote):
+class DataverseRemote(ExportRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -57,6 +57,9 @@ class DataverseRemote(SpecialRemote):
         else:
             return False
 
+    def checkpresentexport(self, key, remote_file):
+        return self.checkpresent(remote_file)
+
     def transfer_store(self, key, local_file):
         ds_pid = self.annex.getconfig('doi')
 
@@ -64,6 +67,9 @@ class DataverseRemote(SpecialRemote):
         datafile.set({'pid': ds_pid, 'filename': local_file})
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
+
+    def transferexport_store(self, key, local_file, remote_file):
+        self.transfer_store(remote_file, local_file)
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
@@ -95,6 +101,9 @@ class DataverseRemote(SpecialRemote):
         with open(file, "wb") as f:
             f.write(response.content)
 
+    def transferexport_retrieve(self, key, local_file, remote_file):
+        self.transfer_retrieve(remote_file, local_file)
+
     def remove(self, key):
         # get the dataset and a list of all files
         dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
@@ -121,6 +130,9 @@ class DataverseRemote(SpecialRemote):
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
+    
+    def removeexport(self, key, remote_file):
+        return self.remove(remote_file)
 
 
 def main():
