@@ -24,6 +24,21 @@
       ]
     },
     {
+      "login": "bpoldrack",
+      "name": "Benjamin Poldrack",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10498301?v=4",
+      "profile": "https://github.com/bpoldrack",
+      "contributions": [
+        "infra",
+        "code",
+        "doc",
+        "maintenance",
+        "review",
+        "ideas",
+        "tool"
+      ]
+    },
+    {
       "login": "adswa",
       "name": "Adina Wagner",
       "avatar_url": "https://avatars.githubusercontent.com/u/29738718?v=4",
@@ -34,11 +49,10 @@
         "infra",
         "doc",
         "maintenance",
-        "review",
-        "tool"
-      ]
-    }
+        "review",    
   ],
+  }
+  ]
   "contributorsPerLine": 7,
   "projectName": "datalad-dataverse",
   "projectOwner": "datalad",
