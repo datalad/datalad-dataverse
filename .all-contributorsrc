@@ -65,6 +65,15 @@
         "review",
         "tool"
       ]
+    },
+    {
+      "login": "ksarink",
+      "name": "Kelvin Sarink",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2464969?v=4",
+      "profile": "https://github.com/ksarink",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -74,4 +83,3 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
-
