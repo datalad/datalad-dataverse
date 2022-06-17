@@ -45,16 +45,20 @@ from datalad.support.constraints import (
     EnsureStr,
 )
 from datalad.support.exceptions import CapturedException
+from datalad.support.json_py import (
+    jsonload,
+    json_loads,
+)
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
-
+from datalad.utils import Path
 
 __docformat__ = "restructuredtext"
 
 lgr = logging.getLogger('datalad.distributed.create_sibling_dataverse')
 
 
-class InvalidDatasetMetadata(Exception):
+class InvalidDatasetMetadata(ValueError):
     pass
 
 
@@ -167,6 +171,24 @@ class CreateSiblingDataverse(Interface):
             the respective specification.
             """
         ),
+        metadata=Parameter(
+            args=("--metadata",),
+            constraints=EnsureStr() | EnsureNone(),
+            doc="""TODO
+            
+            For now intended to be either a path or JSON dictionary or 
+            'interactive'. In python API could be an actual dict in CLI would be 
+            string to be interpreted as such. Not fully implemented yet.
+            
+            Re path:
+            - absolute only works in non-recursive operation, I suppose
+            - relative would be relative to the (sub-)dataset's root
+            
+            I guess it may be useful to have substitutions available for the 
+            path to be replaced by the command (dataset id, dataset basepath, 
+            whatever)
+            """
+        ),
     )
     # TODO: - This command needs to be pointed to an existing dataverse
     #         collection. Even if it creates one itself, that in turn is likely
@@ -177,6 +199,7 @@ class CreateSiblingDataverse(Interface):
     @eval_results
     def __call__(
             url: str,
+            metadata: str,  # Not yet optional. Would require an auto-guess.
             *,
             dataset: Optional[Union[str, Dataset]] = None,
             name: Optional[str] = None,
@@ -203,9 +226,28 @@ class CreateSiblingDataverse(Interface):
         )
 
         # 1. validate parameters
-        _validate_parameters(url, dataset, name, storage_name, mode,
+        _validate_parameters(url, metadata, dataset, name, storage_name, mode,
                              credential, existing, recursive, recursion_limit,
                              collection)
+
+        # Handle metadata option
+        if isinstance(metadata, dict):
+            # nothing to do here
+            pass
+        elif metadata == 'interactive':
+            raise NotImplementedError
+        else:
+            # Should be either a path to JSON file or a JSON string.
+            # Try to detect and pass on either as is or as a `Path` instance for
+            # the create_dataset function to consider (it may need some further
+            # resolution per dataset in recursive operation)
+            try:
+                meta_path = Path(metadata)
+                # delay assignment to not destroy original value prematurely:
+                metadata = meta_path
+            except Exception as e:
+                ce = CapturedException(e)
+                # Apparently not a path; try to interprete as JSON directly.
 
         # 2. check existing siblings upfront to fail early on --existing=error
         if existing == 'error':
@@ -246,14 +288,15 @@ class CreateSiblingDataverse(Interface):
         def _dummy(ds, refds, **kwargs):
             """wrapper for use with foreach-dataset"""
 
-            return _create_sibling_dataverse(ds,
-                                             api,
+            return _create_sibling_dataverse(ds=ds,
+                                             api=api,
                                              credential_name=credential_name,
                                              collection=dv_collection,
                                              mode=mode,
                                              name=name,
                                              storage_name=storage_name,
-                                             existing=existing)
+                                             existing=existing,
+                                             metadata=metadata)
         for res in ds.foreach_dataset(
                 _dummy,
                 return_type='generator',
@@ -290,6 +333,7 @@ class CreateSiblingDataverse(Interface):
 
 
 def _validate_parameters(url: str,
+                         metadata: str,
                          dataset: Optional[Union[str, Dataset]] = None,
                          name: Optional[str] = None,
                          storage_name: Optional[str] = None,
@@ -297,7 +341,8 @@ def _validate_parameters(url: str,
                          credential: Optional[str] = None,
                          existing: str = 'error',
                          recursive: bool = False,
-                         recursion_limit: Optional[int] = None):
+                         recursion_limit: Optional[int] = None,
+                         collection: Optional[str] = None):
     """This function is supposed to validate the given parameters of
     create_sibling_dataverse invocation"""
     pass
@@ -369,7 +414,7 @@ def _create_dv_dataset(api, collection, dataset_meta):
     return dv_dataset
 
 
-def _create_sibling_dataverse(ds, api, credential_name, collection, *,
+def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
                               mode='git-only',
                               name=None,
                               storage_name=None,
@@ -390,21 +435,7 @@ def _create_sibling_dataverse(ds, api, credential_name, collection, *,
     """
 
     # 1. figure dataset metadata to use
-
-    # For now just take the dataset's dir name as name within the collection
-    dataset_name = ds.pathobj.parts[-1]
-
-    # The following needs to be broken up into several modes of operation. A
-    # JSON file to pass, an interactive query, a pointer to metalad
-    # (dedicated extractor?). In any case, the result should be a dict.
-    dataset_meta = dict(
-        title=dataset_name,
-        author=[dict(authorName='myname')],
-        datasetContact=[dict(datasetContactEmail='myemail@example.com',
-                             datasetContactName='myname')],
-        dsDescription=[dict(dsDescriptionValue='mydescription')],
-        subject=['Medicine, Health and Life Sciences']
-    )
+    dataset_meta = _get_ds_metadata(ds, metadata)
 
     # 2. create the actual dataset on dataverse; we need one independently on
     # `mode`.
@@ -572,3 +603,26 @@ def _create_storage_sibling(
         type='sibling',
         url=url,
     )
+
+
+def _get_ds_metadata(ds, metadata):
+    """Determine metadata for a given datalad dataset
+
+    Parameters
+    ----------
+    ds: Dataset
+    metadata: str or Path or dict
+    """
+
+    if isinstance(metadata, dict):
+        # nothing to do here
+        mdata = metadata
+    elif isinstance(metadata, Path):
+        if not metadata.is_absolute():
+            metadata = ds.pathobj / metadata
+        with open(metadata, 'r') as f:
+            mdata = jsonload(f)
+    else:
+        mdata = json_loads(metadata)
+
+    return mdata
