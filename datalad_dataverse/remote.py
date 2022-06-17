@@ -1,6 +1,7 @@
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import NativeApi
+from pyDataverse.models import Datafile
 import os
 
 
@@ -34,16 +35,26 @@ class DataverseRemote(SpecialRemote):
             raise RuntimeError("Cannot find dataset")
 
     def prepare(self):
-        raise
         pass
 
     def checkpresent(self, key):
-        raise
-        pass
+        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
+        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+
+        datafiles = dataset.json()['data']['latestVersion']['files']
+        if next((item for item in datafiles if item['label'] == key), None):
+            return True
+        else:
+            return False
 
     def transfer_store(self, key, local_file):
-        raise
-        pass
+        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
+        ds_pid = self.annex.getconfig('doi')
+
+        datafile = Datafile()
+        datafile.set({'pid': ds_pid, 'filename': local_file})
+        resp = api.upload_datafile(ds_pid, local_file, datafile.json())
+        resp.raise_for_status()
 
     def transfer_retrieve(self, key, file):
         raise
