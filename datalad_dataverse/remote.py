@@ -64,19 +64,22 @@ class DataverseRemote(ExportRemote):
     def checkpresentexport(self, key, remote_file):
         return self.checkpresent(remote_file)
 
-    def transfer_store(self, key, local_file):
+    def transfer_store(self, key, local_file, datafile=None):
         ds_pid = self.annex.getconfig('doi')
-
-        datafile = Datafile()
-        datafile.set({'pid': ds_pid, 
-                      'filename': key,
-                      'directoryLabel': os.path.dirname(key),
-                      'label': os.path.basename(key)})
+        if datafile is None:
+            datafile = Datafile()
+            datafile.set('pid': ps_pid, 'filename': key, 'label': key)
+        
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
     def transferexport_store(self, key, local_file, remote_file):
-        self.transfer_store(remote_file, local_file)
+        datafile = Datafile()
+        datafile.set({'pid': ds_pid, 
+                      'filename': remote_file,
+                      'directoryLabel': os.path.dirname(remote_file),
+                      'label': os.path.basename(remote_file)})
+        self.transfer_store(remote_file, local_file, datafile=datafile)
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
