@@ -1,7 +1,7 @@
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
-from pyDataverse.api import NativeApi
-from pyDataverse.models import Datafile, DataAccessApi
+from pyDataverse.api import NativeApi, DataAccessApi
+from pyDataverse.models import Datafile
 import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
