@@ -55,4 +55,3 @@ def format_doi(doi_in: str) -> str:
         return re.sub(pattern=url_doi_pattern, repl='doi:', string=doi_in)
 
     return f'doi:{doi_in}'
->>>>>>> d580f55 (Promote format_doi() to a utility and add test shim)
