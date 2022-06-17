@@ -42,6 +42,9 @@ do
 done
 set -e
 
+# Dataverse is running, export base URL for test environment
+export TESTS_DATAVERSE_BASEURL="http://localhost:8080"
+
 ### Now, get users and there tokens for use with the tests
 docker_id="$(docker ps -qf name="^dataverse$")"
 echo "Dataverse container id: ${docker_id}"

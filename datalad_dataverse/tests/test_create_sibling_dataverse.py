@@ -2,6 +2,7 @@ from requests.exceptions import ConnectionError
 from datalad.tests.utils_pytest import (
     assert_raises,
     assert_result_count,
+    skip_if,
     with_tempfile,
 )
 from datalad.api import (
@@ -12,7 +13,13 @@ from datalad.distribution.dataset import (
 )
 from datalad.support.exceptions import IncompleteResultsError
 
+from datalad_dataverse.tests import (
+    API_TOKENS,
+    DATAVERSE_URL
+)
 
+
+@skip_if(cond=not DATAVERSE_URL)
 @with_tempfile
 def test_dummy(path=None):
 
