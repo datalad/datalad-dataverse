@@ -69,6 +69,8 @@ class DataverseRemote(SpecialRemote):
         
         # get the dataset and a list of all files
         dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        # http error handling
+        dataset.raise_for_status()
         files_list = dataset.json()['data']['latestVersion']['files']
 
         file_id = None
@@ -82,12 +84,13 @@ class DataverseRemote(SpecialRemote):
         
         if file_id is None:
             # todo: What to do if the file is not present?
-            raise
+            raise ValueError(f"File {key} unknown to remote")
         
         # delete the file
-        delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
-               auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
-        # todo error handling?
+        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
+                        auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
+        # http error handling
+        status.raise_for_status()
 
 
 def main():
