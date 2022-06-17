@@ -36,16 +36,30 @@ def format_doi(doi_in: str) -> str:
     Compatible with DOIs starting with "doi:", as URL or raw
     (e.g., 10.5072/FK2/WQCBX1).
 
+    Cannot be None or empty!
+
     Parameters
     ----------
-    doi_in:
-        Unformatted doi string provided by user
+    doi_in: str
+        Unformatted doi string provided by user which is checked for None of empty values
 
     Returns
     -------
     str
       DOI string as needed for dataverse API, None if string is empty.
+
+
+    Raises
+    ------
+    ValueError
+      If doi_in is None or empty
     """
+    if doi_in is None:
+        raise ValueError('DOI input cannot be None!')
+    if not isinstance(doi_in, str):
+        raise TypeError('DOI input must be a string!')
+    if len(doi_in) == 0:
+        raise ValueError('DOI input cannot be empty!')
     dataverse_doi_pattern = r'^doi:'
     if re.match(pattern=dataverse_doi_pattern, string=doi_in):
         return doi_in
