@@ -1,6 +1,6 @@
 # DataLad Dataverse extension
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
@@ -176,6 +176,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://github.com/likeajumprope"><img src="https://avatars.githubusercontent.com/u/23728822?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Johanna Bayer</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=likeajumprope" title="Documentation">📖</a></td>
     <td align="center"><a href="https://github.com/nadinespy"><img src="https://avatars.githubusercontent.com/u/46372572?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nadine Spychala</b></sub></a><br /><a href="#infra-nadinespy" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/bpoldrack"><img src="https://avatars.githubusercontent.com/u/10498301?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Benjamin Poldrack</b></sub></a><br /><a href="#infra-bpoldrack" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/datalad/datalad-dataverse/commits?author=bpoldrack" title="Code">💻</a> <a href="https://github.com/datalad/datalad-dataverse/commits?author=bpoldrack" title="Documentation">📖</a> <a href="#maintenance-bpoldrack" title="Maintenance">🚧</a> <a href="https://github.com/datalad/datalad-dataverse/pulls?q=is%3Apr+reviewed-by%3Abpoldrack" title="Reviewed Pull Requests">👀</a> <a href="#ideas-bpoldrack" title="Ideas, Planning, & Feedback">🤔</a> <a href="#tool-bpoldrack" title="Tools">🔧</a></td>
   </tr>
 </table>
 
