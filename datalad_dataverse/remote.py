@@ -1,8 +1,9 @@
+import os
+
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
-import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
 from annexremote import ExportRemote
@@ -11,12 +12,17 @@ from datalad_dataverse.utils import (
 )
 import os
 
+from datalad_dataverse.utils import format_doi
+
+
 class DataverseRemote(ExportRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
+        self._doi = None
+        self._url = None
         self._api = None
 
     def initremote(self):
@@ -24,25 +30,42 @@ class DataverseRemote(ExportRemote):
             Use this command to initialize a remote
             git annex initremote dv1 type=external externaltype=dataverse encryption=none
         """
-        if self.annex.getconfig('url') is None or self.annex.getconfig('doi') is None:
-            raise ValueError('url and doi must be specified')
-
         # check if instance is readable and authenticated
         resp = self.api.get_info_version()
         if resp.json()['status'] != 'OK':
             raise RuntimeError(f'Cannot connect to dataverse instance (status: {resp.json()["status"]})')
 
         # check if project with specified doi exists
-        dv_ds = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dv_ds = self.api.get_dataset(identifier=self.doi)
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
+
+    @property
+    def url(self):
+        if self._url is None:
+            self._url = self.annex.getconfig('url')
+            if self._url == '':
+                raise ValueError('url must be specified')
+            # remove trailing slash in URL
+            elif self._url.endswith('/'):
+                self._url = self._url[:-1]
+        return self._url
+
+    @property
+    def doi(self):
+        if self._doi is None:
+            self._doi = self.annex.getconfig('doi')
+            if self._doi == '':
+                raise ValueError('doi must be specified')
+            self._doi = format_doi(self._doi)
+        return self._doi
 
     @property
     def api(self):
         if self._api is None:
             # connect to dataverse instance
             self._api = get_native_api(
-                baseurl=self.annex.getconfig('url'),
+                baseurl=self.url,
                 token=os.environ["DATAVERSE_API_TOKEN"],
             )
         return self._api
@@ -53,7 +76,7 @@ class DataverseRemote(ExportRemote):
         self.api
 
     def checkpresent(self, key):
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
 
         datafiles = dataset.json()['data']['latestVersion']['files']
         if next((item for item in datafiles if item['dataFile']['filename'] == key), None):
@@ -62,10 +85,10 @@ class DataverseRemote(ExportRemote):
             return False
 
     def checkpresentexport(self, key, remote_file):
-        return self.checkpresent(remote_file)
+        return self.checkpresent(remote_file)        
 
     def transfer_store(self, key, local_file, datafile=None):
-        ds_pid = self.annex.getconfig('doi')
+        ds_pid = self.doi
         if datafile is None:
             datafile = Datafile()
             datafile.set({'filename': key, 'label': key})
@@ -83,10 +106,10 @@ class DataverseRemote(ExportRemote):
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
-            base_url=self.annex.getconfig('url'),
+            base_url=self.url,
             api_token=os.environ["DATAVERSE_API_TOKEN"]
         )
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
 
         # http error handling
         dataset.raise_for_status()
@@ -116,7 +139,7 @@ class DataverseRemote(ExportRemote):
 
     def remove(self, key):
         # get the dataset and a list of all files
-        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.doi)
         # http error handling
         dataset.raise_for_status()
         files_list = dataset.json()['data']['latestVersion']['files']
@@ -136,7 +159,7 @@ class DataverseRemote(ExportRemote):
             return
 
         # delete the file
-        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}', 
+        status = delete(f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}',
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
