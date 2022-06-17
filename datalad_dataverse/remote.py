@@ -13,6 +13,7 @@ class DataverseRemote(SpecialRemote):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
+        self._api = None
 
     def initremote(self):
         """
@@ -22,26 +23,33 @@ class DataverseRemote(SpecialRemote):
         if self.annex.getconfig('url') is None or self.annex.getconfig('doi') is None:
             raise ValueError('url and doi must be specified')
 
-        # connect to dataverse instance
-        api = NativeApi(base_url=self.annex.getconfig('url'),
-                        api_token=os.environ["DATAVERSE_API_TOKEN"])
-
         # check if instance is readable and authenticated
-        resp = api.get_info_version()
+        resp = self.api.get_info_version()
         if resp.json()['status'] != 'OK':
             raise RuntimeError(f'Cannot connect to dataverse instance (status: {resp.json()["status"]})')
 
         # check if project with specified doi exists
-        dv_ds = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dv_ds = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
 
+    @property
+    def api(self):
+        if self._api is None:
+            # connect to dataverse instance
+            self._api = NativeApi(
+                base_url=self.annex.getconfig('url'),
+                api_token=os.environ["DATAVERSE_API_TOKEN"],
+            )
+        return self._api
+
     def prepare(self):
-        pass
+        # trigger API instance in order to get possibly auth/connection errors
+        # right away
+        self.api
 
     def checkpresent(self, key):
-        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
-        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
 
         datafiles = dataset.json()['data']['latestVersion']['files']
         if next((item for item in datafiles if item['label'] == key), None):
@@ -50,12 +58,11 @@ class DataverseRemote(SpecialRemote):
             return False
 
     def transfer_store(self, key, local_file):
-        api = NativeApi(self.annex.getconfig('url'), os.environ.get('DATAVERSE_API_TOKEN', None))
         ds_pid = self.annex.getconfig('doi')
 
         datafile = Datafile()
         datafile.set({'pid': ds_pid, 'filename': local_file})
-        resp = api.upload_datafile(ds_pid, local_file, datafile.json())
+        resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
     def transfer_retrieve(self, key, file):
@@ -91,12 +98,8 @@ class DataverseRemote(SpecialRemote):
         
 
     def remove(self, key):
-         # connect to dataverse instance
-        api = NativeApi(base_url=self.annex.getconfig('url'),
-                        api_token=os.environ["DATAVERSE_API_TOKEN"])
-        
         # get the dataset and a list of all files
-        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
         # http error handling
         dataset.raise_for_status()
         files_list = dataset.json()['data']['latestVersion']['files']
