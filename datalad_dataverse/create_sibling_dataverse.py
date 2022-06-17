@@ -1,5 +1,7 @@
-"""High-level interface for creating a combi-target on a WebDAV capable server
+"""High-level interface for creating a combi-target on a Dataverse server
  """
+
+from functools import partial
 import logging
 from pyDataverse.api import NativeApi
 from typing import (
@@ -207,8 +209,31 @@ class CreateSiblingDataverse(Interface):
         response.raise_for_status()
 
         # 4. use datalad-foreach-dataset command with a wrapper function to
-        #    operates in a singe dataset to address recursive behavior and yield
+        #    operate in a singe dataset to address recursive behavior and yield
         #    results from there
+        def _dummy(ds, refds, **kwargs):
+            "wrapper for use with foreach-dataset"
+
+            return _create_sibling_dataverse(ds, api,
+                                             mode=mode,
+                                             name=name,
+                                             storage_name=storage_name,
+                                             existing=existing)
+        for res in ds.foreach_dataset(
+                _dummy,
+                return_type='generator',
+                result_renderer='disabled',
+                recursive=recursive,
+                # recursive False is not enough to disable recursion
+                # https://github.com/datalad/datalad/issues/6659
+                recursion_limit=0 if not recursive else recursion_limit,
+        ):
+            # unwind result generator
+            for partial_result in res.get('result', []):
+                yield dict(res_kwargs, **partial_result)
+
+
+
         # 5. if everything went well, save credential?
 
         # Dummy implementation:
@@ -273,7 +298,18 @@ def _get_api_token(ds, credential, url):
     return environ["TESTS_TOKEN_TESTADMIN"]
 
 
-def _create_sibling_dataverse(ds, api):
+def _create_sibling_dataverse(ds, api, *, mode='git-only', name=None,
+                              storage_name=None, existing='error'):
+    """
+    Parameters
+    ----------
+    ds: Dataset
+    api: pydataverse.api.NativeApi
+    mode: str, optional
+    name: str, optional
+    storage_name: str, optional
+    existing: str, optional
+    """
     # meant to be executed via foreach-dataset
     pass
 
