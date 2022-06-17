@@ -1,7 +1,7 @@
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
-from pyDataverse.api import NativeApi, DataAccessApi
-from pyDataverse.models import Datafile
+from pyDataverse.api import NativeApi
+from pyDataverse.models import Datafile, DataAccessApi
 import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
@@ -61,7 +61,7 @@ class DataverseRemote(SpecialRemote):
     def transfer_retrieve(self, key, file):
         api = NativeApi(base_url=self.annex.getconfig('url'),
                         api_token=os.environ["DATAVERSE_API_TOKEN"])
-        data_api = DataAccessApi(base_url=self.annes.getconfig('url'),
+        data_api = DataAccessApi(base_url=self.annex.getconfig('url'),
                         api_token=os.environ["DATAVERSE_API_TOKEN"])
         dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
 
@@ -82,7 +82,7 @@ class DataverseRemote(SpecialRemote):
         if file_id is None:
             raise ValueError(f"File {key} is unknown to remote")
         
-        response = data_api.get_datafile(key)
+        response = data_api.get_datafile(file_id)
         # http error handling
         response.raise_for_status()
         with open(file, "wb") as f:
