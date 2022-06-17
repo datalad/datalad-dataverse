@@ -19,6 +19,14 @@ The aim of this project is to make DataLad interoperable with Dataverse to
 support dataset transport from and to Dataverse instances. It originates 
 from `OHBM BrainHack 2022 <https://github.com/ohbm/hackathon2022/issues/43>`__.  
 
+Documentation overview
+======================
+
+.. toctree::
+   :maxdepth: 1
+
+   glossary
+
 API
 ===
 
