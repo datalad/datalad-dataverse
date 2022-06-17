@@ -68,15 +68,15 @@ class DataverseRemote(ExportRemote):
         ds_pid = self.annex.getconfig('doi')
         if datafile is None:
             datafile = Datafile()
-            datafile.set('pid': ps_pid, 'filename': key, 'label': key)
+            datafile.set({'filename': key, 'label': key})
+        datafile.set({'pid': ds_pid})
         
         resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
         resp.raise_for_status()
 
     def transferexport_store(self, key, local_file, remote_file):
         datafile = Datafile()
-        datafile.set({'pid': ds_pid, 
-                      'filename': remote_file,
+        datafile.set({'filename': remote_file,
                       'directoryLabel': os.path.dirname(remote_file),
                       'label': os.path.basename(remote_file)})
         self.transfer_store(remote_file, local_file, datafile=datafile)
