@@ -67,6 +67,15 @@
       ]
     },
     {
+      "login": "enicolaisen",
+      "name": "enicolaisen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59887397?v=4",
+      "profile": "https://github.com/enicolaisen",
+      "contributions": [
+        "doc"
+      ]
+     },
+     {
       "login": "rgbayrak",
       "name": "Roza",
       "avatar_url": "https://avatars.githubusercontent.com/u/26470013?v=4",
@@ -101,3 +110,4 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
+
