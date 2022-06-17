@@ -110,6 +110,18 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "aqw",
+      "name": "Alex Waite",
+      "avatar_url": "https://avatars.githubusercontent.com/u/765557?v=4",
+      "profile": "https://github.com/aqw",
+      "contributions": [
+        "infra",
+        "code",
+        "maintenance",
+        "tool"
+      ]
     }
   ],
   "contributorsPerLine": 7,
