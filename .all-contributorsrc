@@ -37,8 +37,22 @@
         "ideas",
         "tool"
       ]
-    }
+    },
+    {
+      "login": "adswa",
+      "name": "Adina Wagner",
+      "avatar_url": "https://avatars.githubusercontent.com/u/29738718?v=4",
+      "profile": "http://www.adina-wagner.com",
+      "contributions": [
+        "code",
+        "ideas",
+        "infra",
+        "doc",
+        "maintenance",
+        "review",    
   ],
+  }
+  ]
   "contributorsPerLine": 7,
   "projectName": "datalad-dataverse",
   "projectOwner": "datalad",
