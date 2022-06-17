@@ -19,7 +19,7 @@ from datalad_dataverse.tests import (
 )
 
 
-@skip_if(cond=not DATAVERSE_URL)
+@skip_if(cond=True)  # condition should become `not DATAVERSE_URL` or alike
 @with_tempfile
 def test_dummy(path=None):
 
