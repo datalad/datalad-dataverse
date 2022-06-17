@@ -222,7 +222,12 @@ class CreateSiblingDataverse(Interface):
                 return
 
         # 3. get API Token
-        credential_name, token = _get_api_token(ds, credential, url)
+        credman = CredentialManager(ds.config)
+        credential_name, token = _get_api_token(ds, credential, url, credman)
+        if not token:
+            raise ValueError(
+                f'No suitable credential for {url} found or specified'
+            )
         api = NativeApi(url, token)
 
         # temporary; just make sure we can actually connect:
@@ -316,19 +321,20 @@ def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
             **res_kwargs)
 
 
-def _get_api_token(ds, credential, url):
-    """get an API token"""
+def _get_api_token(ds, credential, url, credman):
+    """get an API token for a given dataverse url"""
+    # set properties based on what we know about Dataverses
+    kwargs = dict(
+        name=credential,
+        _prompt=f'A token is required for dataverse access at {url}',
+        type='token',
+        realm=url)
+    try:
+        cred = credman.get(**kwargs)
+    except Exception as e:
+        lgr.debug('Credential retrieval failed: %s', e)
 
-    # TODO:
-    # Not a valid implementation! This just takes the admin token from the CI
-    # environment!
-    from os import environ
-
-    # return the credential name as well as the token, since the name is needed
-    # for encoding in the datalad-annex URL and for potentially storing the
-    # credential later on.
-    credential_name = credential or "dummy"
-    return credential_name, environ["TESTS_TOKEN_TESTADMIN"]
+    return credential, cred
 
 
 def _get_dv_collection(api, alias):
