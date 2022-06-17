@@ -65,6 +65,15 @@
         "review",
         "tool"
       ]
+    },
+    {
+      "login": "rgbayrak",
+      "name": "Roza",
+      "avatar_url": "https://avatars.githubusercontent.com/u/26470013?v=4",
+      "profile": "https://rgbayrak.github.io/",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -74,4 +83,3 @@
   "repoHost": "https://github.com",
   "skipCi": true
 }
-
