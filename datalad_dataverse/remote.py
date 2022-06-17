@@ -66,11 +66,11 @@ class DataverseRemote(SpecialRemote):
         resp.raise_for_status()
 
     def transfer_retrieve(self, key, file):
-        api = NativeApi(base_url=self.annex.getconfig('url'),
-                        api_token=os.environ["DATAVERSE_API_TOKEN"])
-        data_api = DataAccessApi(base_url=self.annex.getconfig('url'),
-                        api_token=os.environ["DATAVERSE_API_TOKEN"])
-        dataset = api.get_dataset(identifier=self.annex.getconfig('doi'))
+        data_api = DataAccessApi(
+            base_url=self.annex.getconfig('url'),
+            api_token=os.environ["DATAVERSE_API_TOKEN"]
+        )
+        dataset = self.api.get_dataset(identifier=self.annex.getconfig('doi'))
 
         # http error handling
         dataset.raise_for_status()
@@ -84,18 +84,16 @@ class DataverseRemote(SpecialRemote):
             if filename == key:
                 file_id = current_file['dataFile']['id']
                 break
-        
+
         # error handling if file was not found on remote
         if file_id is None:
             raise ValueError(f"File {key} is unknown to remote")
-        
+
         response = data_api.get_datafile(file_id)
         # http error handling
         response.raise_for_status()
         with open(file, "wb") as f:
             f.write(response.content)
-
-        
 
     def remove(self, key):
         # get the dataset and a list of all files
@@ -112,13 +110,14 @@ class DataverseRemote(SpecialRemote):
             if filename == key:
                 file_id = file['dataFile']['id']
                 break
-        
+
         if file_id is None:
-            # todo: What to do if the file is not present?
-            raise ValueError(f"File {key} unknown to remote")
-        
+            # the key is not present, we can return, protocol
+            # declare this condition to be a successful removal
+            return
+
         # delete the file
-        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/4', 
+        status = delete(f'{self.annex.getconfig("url")}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}', 
                         auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
         # http error handling
         status.raise_for_status()
