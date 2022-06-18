@@ -396,7 +396,7 @@ def _get_api_token(ds, credential, url, credman):
     except Exception as e:
         lgr.debug('Credential retrieval failed: %s', e)
 
-    return credential, cred
+    return credential, cred['token']
 
 
 def _get_dv_collection(api, alias):
