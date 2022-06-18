@@ -11,6 +11,7 @@ from datalad_dataverse.utils import (
     get_native_api,
 )
 import os
+import re
 
 from datalad_dataverse.utils import format_doi
 
@@ -98,6 +99,10 @@ class DataverseRemote(ExportRemote):
         resp.raise_for_status()
 
     def transferexport_store(self, key, local_file, remote_file):
+        if re.search(pattern='[^a-z0-9_\-.\\/\ ]', string=os.path.dirname(remote_file), flags=re.ASCII | re.IGNORECASE):
+            self.annex.error(f"Invalid character in directory name of {remote_file}."
+                             f"Valid characters are a-Z, 0-9, '_', '-', '.', '\\', '/' and ' ' (white space).")
+
         datafile = Datafile()
         datafile.set({'filename': remote_file,
                       'directoryLabel': os.path.dirname(remote_file),
