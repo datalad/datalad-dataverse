@@ -64,10 +64,13 @@ class InvalidDatasetMetadata(ValueError):
 
 @build_doc
 class CreateSiblingDataverse(Interface):
-    """Create a sibling(-tandem) on a Dataverse server
-
+    """Create a dataset sibling(-tandem) on dataverse.org.
+    Dataverse is a web application to share and cite research data.
+    Research data published in Dataverse receives an academic citation which allows to grant full credit and increases visibility of your work.
+    
     TODO: command doc
     """
+
     _examples_ = []
 
     _params_ = dict(
