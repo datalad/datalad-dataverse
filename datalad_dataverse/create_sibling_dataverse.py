@@ -330,16 +330,7 @@ class CreateSiblingDataverse(Interface):
             for partial_result in res.get('result', []):
                 yield dict(res_kwargs, **partial_result)
 
-        # 6. if everything went well, save credential?
-
-        # Dummy implementation:
-        return get_status_dict(status='ok',
-                               message="This command is not yet implemented",
-                               type='sibling',
-                               name=storage_name,
-                               ds=ds,
-                               **res_kwargs,
-                               )
+        # 6. TODO: if everything went well, save credential?
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
@@ -347,9 +338,23 @@ class CreateSiblingDataverse(Interface):
         from os.path import relpath
         import datalad.support.ansi_colors as ac
 
-        # TODO: Actually nothing "custom" yet:
-        generic_result_renderer(res)
-        return
+        if res['status'] != 'ok' or 'sibling_dataverse' not in res['action'] or \
+                res['type'] != 'sibling':
+            # It's either 'notneeded' (not rendered), an `error`/`impossible` or
+            # something unspecific to this command. No special rendering
+            # needed.
+            generic_result_renderer(res)
+            return
+
+        ui.message('{action}({status}): {path} [{name}{url}{doi}]'.format(
+            action=ac.color_word(res['action'], ac.BOLD),
+            path=relpath(res['path'], res['refds'])
+            if 'refds' in res else res['path'],
+            name=ac.color_word(res.get('name', ''), ac.MAGENTA),
+            url=f": {res['url']}" if 'url' in res else '',
+            doi=f" (DOI: {res['doi']})" if 'doi' in res else '',
+            status=ac.color_status(res['status']),
+        ))
 
 
 def _validate_parameters(url: str,
