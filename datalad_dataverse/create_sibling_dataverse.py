@@ -245,6 +245,9 @@ class CreateSiblingDataverse(Interface):
                              credential, existing, recursive, recursion_limit,
                              collection)
 
+        if mode != 'git-only' and not storage_name:
+            storage_name = "{}-storage".format(name)
+
         # Handle metadata option
         if metadata:
             if isinstance(metadata, dict):
