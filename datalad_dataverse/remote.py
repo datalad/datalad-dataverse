@@ -85,7 +85,7 @@ class DataverseRemote(ExportRemote):
             return False
 
     def checkpresentexport(self, key, remote_file):
-        return self.checkpresent(remote_file)        
+        return self.checkpresent(key=remote_file)
 
     def transfer_store(self, key, local_file, datafile=None):
         ds_pid = self.doi
@@ -94,7 +94,7 @@ class DataverseRemote(ExportRemote):
             datafile.set({'filename': key, 'label': key})
         datafile.set({'pid': ds_pid})
         
-        resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
+        resp = self.api.upload_datafile(identifier=ds_pid, filename=local_file, json_str=datafile.json())
         resp.raise_for_status()
 
     def transferexport_store(self, key, local_file, remote_file):
@@ -102,7 +102,7 @@ class DataverseRemote(ExportRemote):
         datafile.set({'filename': remote_file,
                       'directoryLabel': os.path.dirname(remote_file),
                       'label': os.path.basename(remote_file)})
-        self.transfer_store(remote_file, local_file, datafile=datafile)
+        self.transfer_store(key=remote_file, local_file=local_file, datafile=datafile)
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
@@ -135,7 +135,7 @@ class DataverseRemote(ExportRemote):
             f.write(response.content)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
-        self.transfer_retrieve(remote_file, local_file)
+        self.transfer_retrieve(key=remote_file, file=local_file)
 
     def remove(self, key):
         # get the dataset and a list of all files
@@ -165,7 +165,7 @@ class DataverseRemote(ExportRemote):
         status.raise_for_status()
     
     def removeexport(self, key, remote_file):
-        return self.remove(remote_file)
+        return self.remove(key=remote_file)
 
 
 def main():
