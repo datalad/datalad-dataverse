@@ -282,12 +282,14 @@ class CreateSiblingDataverse(Interface):
 
         # 3. get API Token
         credman = CredentialManager(ds.config)
-        credential_name, token = _get_api_token(ds, credential, url, credman)
-        if not token:
+        cred = _get_api_token(ds, credential, url, credman)
+        # Note: Do not reuse the name `credential` - that's the originally given
+        # argument. We still need it.
+        if not cred or not cred.get('token', None):
             raise ValueError(
                 f'No suitable credential for {url} found or specified'
             )
-        api = NativeApi(url, token)
+        api = NativeApi(url, cred.get('token'))
 
         # temporary; just make sure we can actually connect:
         response = api.get_info_version()
@@ -307,7 +309,8 @@ class CreateSiblingDataverse(Interface):
 
             return _create_sibling_dataverse(ds=ds,
                                              api=api,
-                                             credential_name=credential_name,
+                                             credential_name=credential,
+                                             credential=cred,
                                              collection=dv_collection,
                                              mode=mode,
                                              name=name,
@@ -396,7 +399,7 @@ def _get_api_token(ds, credential, url, credman):
     except Exception as e:
         lgr.debug('Credential retrieval failed: %s', e)
 
-    return credential, cred['token']
+    return cred
 
 
 def _get_dv_collection(api, alias):
@@ -431,7 +434,8 @@ def _create_dv_dataset(api, collection, dataset_meta):
     return dv_dataset
 
 
-def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
+def _create_sibling_dataverse(ds, api, credential_name, credential, collection,
+                              metadata, *,
                               mode='git-only',
                               name=None,
                               storage_name=None,
@@ -488,7 +492,7 @@ def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
             url=url,
             doi=doi,
             name=storage_name,
-            credential_name=credential_name,
+            credential=credential,
             export=export_storage,
             existing=existing,
             known=storage_name in existing_siblings,
@@ -501,6 +505,7 @@ def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
             doi=doi,
             name=name,
             credential_name=credential_name,
+            credential=credential,
             export=export_storage,
             existing=existing,
             known=name in existing_siblings,
@@ -522,7 +527,8 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
+def _create_git_sibling(ds, url, doi, name, credential_name, credential, export,
+                        existing,
                         known, publish_depends=None):
     """
     Parameters
@@ -531,6 +537,10 @@ def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
     url: str
     name: str
     credential_name: str
+        originally given credential reference - needed to decide whether or not
+        to incude in datalad-annex URL
+    credential: dict
+        The actual credential object
     export: bool
     existing: {skip, error, reconfigure}
     known: bool
@@ -582,14 +592,14 @@ def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
 
 
 def _create_storage_sibling(
-        ds, url, doi, name, credential_name, export, existing, known=False):
+        ds, url, doi, name, credential, export, existing, known=False):
     """
     Parameters
     ----------
     ds: Dataset
     url: str
     name: str
-    credential_name: str
+    credential: dict
     export: bool
     existing: {skip, error, reconfigure}
         (Presently unused)
@@ -618,7 +628,11 @@ def _create_storage_sibling(
         #https://github.com/datalad/datalad/issues/6634
         #"autoenable=true"
     ]
-    ds.repo.call_annex(cmd_args)
+    # delayed heavy-ish import
+    from unittest.mock import patch
+    # For now pass the token via env var to the special remote:
+    with patch.dict('os.environ', {'DATAVERSE_API_TOKEN': credential.get('token')}):
+        ds.repo.call_annex(cmd_args)
     yield get_status_dict(
         ds=ds,
         status='ok',
