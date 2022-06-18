@@ -636,11 +636,7 @@ def _create_storage_sibling(
         #https://github.com/datalad/datalad/issues/6634
         #"autoenable=true"
     ]
-    # delayed heavy-ish import
-    from unittest.mock import patch
-    # For now pass the token via env var to the special remote:
-    with patch.dict('os.environ', {'DATAVERSE_API_TOKEN': credential.get('token')}):
-        ds.repo.call_annex(cmd_args)
+    ds.repo.call_annex(cmd_args)
     yield get_status_dict(
         ds=ds,
         status='ok',
