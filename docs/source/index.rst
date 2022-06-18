@@ -31,26 +31,15 @@ Documentation overview
    contributing
    glossary
 
-API
-===
-
-High-level API commands
------------------------
-
-.. currentmodule:: datalad.api
-.. autosummary::
-   :toctree: generated
-
-   create_sibling_dataverse
-
-
-Command line reference
-----------------------
+Commands and API
+================
 
 .. toctree::
    :maxdepth: 1
 
-   generated/man/datalad-create-sibling-dataverse
+   cmdline
+   modref
+
 
 
 Indices and tables
