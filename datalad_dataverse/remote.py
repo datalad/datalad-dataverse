@@ -20,7 +20,9 @@ import re
 from datalad_dataverse.utils import format_doi
 
 
-class DataverseRemote(ExportRemote):
+from datalad.customremotes import SpecialRemote
+
+class DataverseRemote(ExportRemote, SpecialRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
