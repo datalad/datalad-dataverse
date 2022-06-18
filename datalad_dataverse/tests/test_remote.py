@@ -9,6 +9,7 @@ from datalad.tests.utils_pytest import (
     skip_if,
     with_tempfile,
 )
+from datalad.utils import rmtree
 
 from datalad_dataverse.tests.utils import (
     create_test_dataverse_collection,
@@ -96,8 +97,17 @@ def _check_datalad_annex(ds, dspid, clonepath):
     repo.call_git(['remote', 'add', 'mydv', git_remote_url])
     repo.call_git(['push', 'mydv', '--all'])
 
-    dsclone = clone(git_remote_url, clonepath)
+    for url in (
+        # generic monster URL
+        git_remote_url,
+        # actual dataset landing page
+        f'{DATAVERSE_URL}/dataset.xhtml?persistentId={dspid}&version=DRAFT',
+    ):
+        dsclone = clone(git_remote_url, clonepath)
 
-    # we got the same thing
-    assert repo.get_hexsha(ds.repo.get_corresponding_branch()) == \
-        dsclone.repo.get_hexsha(ds.repo.get_corresponding_branch())
+        # we got the same thing
+        assert repo.get_hexsha(ds.repo.get_corresponding_branch()) == \
+            dsclone.repo.get_hexsha(ds.repo.get_corresponding_branch())
+
+        # cleanup for the next iteration
+        rmtree(clonepath)
