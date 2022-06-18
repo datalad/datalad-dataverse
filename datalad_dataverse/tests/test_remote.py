@@ -1,4 +1,3 @@
-from unittest.mock import patch
 from urllib.parse import quote as urlquote
 
 from datalad.api import (
@@ -11,6 +10,8 @@ from datalad.tests.utils_pytest import (
 )
 from datalad.utils import rmtree
 
+from datalad_next.tests.utils import with_credential
+
 from datalad_dataverse.tests.utils import (
     create_test_dataverse_collection,
     create_test_dataverse_dataset,
@@ -21,6 +22,8 @@ from . import (
     API_TOKENS,
     DATAVERSE_URL,
 )
+
+DATAVERSE_URL = DATAVERSE_URL or ''
 
 
 @skip_if(cond='testadmin' not in API_TOKENS)
@@ -33,14 +36,16 @@ def test_remote(path=None):
     create_test_dataverse_collection(admin_api, 'basetest')
     dspid = create_test_dataverse_dataset(admin_api, 'basetest', 'testds')
     try:
-        with patch.dict('os.environ', {
-                'DATAVERSE_API_TOKEN': API_TOKENS['testadmin']}):
-            _check_remote(ds, dspid)
-
+        _check_remote(ds, dspid)
     finally:
         admin_api.destroy_dataset(dspid)
 
 
+@with_credential(
+    'dataverse',
+    secret=API_TOKENS.get('testadmin'),
+    realm=f'{DATAVERSE_URL.rstrip("/")}/dataverse',
+)
 def _check_remote(ds, dspid):
     repo = ds.repo
     repo.call_annex([
@@ -79,14 +84,16 @@ def test_datalad_annex(dspath=None, clonepath=None):
     create_test_dataverse_collection(admin_api, 'basetest')
     dspid = create_test_dataverse_dataset(admin_api, 'basetest', 'testds')
     try:
-        with patch.dict('os.environ', {
-                'DATAVERSE_API_TOKEN': API_TOKENS['testadmin']}):
-            _check_datalad_annex(ds, dspid, clonepath)
-
+        _check_datalad_annex(ds, dspid, clonepath)
     finally:
         admin_api.destroy_dataset(dspid)
 
 
+@with_credential(
+    'dataverse',
+    secret=API_TOKENS.get('testadmin'),
+    realm=f'{DATAVERSE_URL.rstrip("/")}/dataverse',
+)
 def _check_datalad_annex(ds, dspid, clonepath):
     repo = ds.repo
     # this is the raw datalad-annex URL, convenience could be added on top
