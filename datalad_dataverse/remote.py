@@ -1,12 +1,11 @@
 import os
 
-from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
 from requests import delete
 from requests.auth import HTTPBasicAuth
-
+from annexremote import ExportRemote
 from datalad.support.annexrepo import AnnexRepo
 
 from datalad_next.credman import CredentialManager
@@ -16,9 +15,13 @@ from datalad_dataverse.utils import (
     get_native_api,
     format_doi,
 )
+import os
+import re
 
 
-class DataverseRemote(SpecialRemote):
+from datalad.customremotes import SpecialRemote
+
+class DataverseRemote(ExportRemote, SpecialRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -155,20 +158,37 @@ class DataverseRemote(SpecialRemote):
         dataset = self.api.get_dataset(identifier=self.doi)
 
         datafiles = dataset.json()['data']['latestVersion']['files']
-        if next((item for item in datafiles if item['label'] == key), None):
+        if next((item for item in datafiles if item['dataFile']['filename'] == key), None):
             return True
         else:
             return False
 
-    def transfer_store(self, key, local_file):
+    def checkpresentexport(self, key, remote_file):
+        return self.checkpresent(key=remote_file)
+
+    def transfer_store(self, key, local_file, datafile=None):
         if not self.dataset_version == ':latest':
             raise RuntimeError('Cannot store files if a specific version is checked out!')
         ds_pid = self.doi
+        if datafile is None:
+            datafile = Datafile()
+            datafile.set({'filename': key, 'label': key})
+        datafile.set({'pid': ds_pid})
+        
+        resp = self.api.upload_datafile(identifier=ds_pid, filename=local_file, json_str=datafile.json())
+        resp.raise_for_status()
+
+    def transferexport_store(self, key, local_file, remote_file):
+        remote_dir = os.path.dirname(remote_file)
+        if re.search(pattern='[^a-z0-9_\-.\\/\ ]', string=remote_dir, flags=re.ASCII | re.IGNORECASE):
+            self.annex.error(f"Invalid character in directory name of {remote_file}."
+                             f"Valid characters are a-Z, 0-9, '_', '-', '.', '\\', '/' and ' ' (white space).")
 
         datafile = Datafile()
-        datafile.set({'pid': ds_pid, 'filename': local_file, 'label': key})
-        resp = self.api.upload_datafile(ds_pid, local_file, datafile.json())
-        resp.raise_for_status()
+        datafile.set({'filename': remote_file,
+                      'directoryLabel': remote_dir,
+                      'label': os.path.basename(remote_file)})
+        self.transfer_store(key=remote_file, local_file=local_file, datafile=datafile)
 
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
@@ -201,6 +221,9 @@ class DataverseRemote(SpecialRemote):
         with open(file, "wb") as f:
             f.write(response.content)
 
+    def transferexport_retrieve(self, key, local_file, remote_file):
+        self.transfer_retrieve(key=remote_file, file=local_file)
+
     def remove(self, key):
         if not self.dataset_version == ':latest':
             raise RuntimeError('Cannot remove file if a specific version is checked out!')
@@ -232,6 +255,9 @@ class DataverseRemote(SpecialRemote):
             auth=HTTPBasicAuth(self._token, ''))
         # http error handling
         status.raise_for_status()
+    
+    def removeexport(self, key, remote_file):
+        return self.remove(key=remote_file)
 
 
 def main():
