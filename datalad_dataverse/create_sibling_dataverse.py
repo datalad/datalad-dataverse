@@ -698,27 +698,39 @@ def _get_title_from_ds(ds):
     # return string
     # TODO: Include relative path to superdataset?
     #       Would require to pass down refds
-    return f"{ds.id}"
+    return f"{ds.pathobj.name}: {ds.id}"
 
 
 def _get_author_from_ds(ds):
     # return list of dict
     # TODO: What other fields are valid?
     # Idea: Last committer's git identity?
-    return [dict(authorName='myname')]
+    return [dict(authorName=ds.config.get("user.name", "myname"))]
 
 
 def _get_contact_from_ds(ds):
     # return list of dict
     # Same as author or user running the command?
-    return [dict(datasetContactEmail='myemail@example.com',
-                 datasetContactName='myname')]
+    # Just take active git identity:
+    return [dict(datasetContactEmail=ds.config.get("user.email",
+                                                   "myemail@example.com"),
+                 datasetContactName=ds.config.get("user.name",
+                                                  "myname"))]
 
 
 def _get_description_from_ds(ds):
     # return list of dict
     # Should somehow get the datalad-annex:: clone URL
-    return [dict(dsDescriptionValue='mydescription')]
+    description = f"""This is a datalad dataset put here with the
+    datalad-dataverse extension (https://github.com/datalad/datalad-dataverse).
+    You can datalad clone this dataset directly from this landing page's URL,
+    provided you have the datalad-dataverse extension installed.
+    For this to work you need to set the `datalad.extensions.load=dataverse`
+    config globally. Then a simple `datalad clone` should work.
+
+    This dataset has the datalad ID {ds.id}.
+    """
+    return [dict(dsDescriptionValue=description)]
 
 
 def _get_subject_from_ds(ds):
