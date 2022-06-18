@@ -537,7 +537,7 @@ def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
         return
 
     remote_url = \
-        "datalad-annex::?type=dataverse&encryption=none" \
+        "datalad-annex::?type=external&externaltype=dataverse&encryption=none" \
         "&exporttree={export}&url={url}&doi={doi}".format(
             export='yes' if export else 'no',
             # urlquote, because it goes into the query part of another URL
@@ -599,7 +599,8 @@ def _create_storage_sibling(
         'enableremote' if known and existing == 'reconfigure'
         else 'initremote',
         name,
-        "type=dataverse",
+        "type=external",
+        "externaltype=dataverse",
         f"url={url}",
         f"doi={doi}"
         f"exporttree={'yes' if export else 'no'}",
