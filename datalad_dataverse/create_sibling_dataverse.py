@@ -74,8 +74,7 @@ class CreateSiblingDataverse(Interface):
     """
 
     _examples_ = [
-        dict(text="Use a new sibling on GIN as a common data source that is "
-                  "auto-available when cloning from GitHub",
+        dict(text="Create a dataset sibling in the form of a dataverse dataset",
              code_py="""\
                  > ds = Dataset('.')
 
