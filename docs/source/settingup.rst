@@ -21,6 +21,15 @@ The relevant requirements are listed below.
 Installation
 ^^^^^^^^^^^^
 
+.. attention:: **This extension is undergoing continous development and is in alpha stage!**
+
+   Nevertheless, thanks for your interest in this piece of software! If you want to work with it
+   productively, we recommend that you come back in a few weeks, when we had some post-hackathon
+   time to package it up properly and complete documentation and tutorials. We didn't quite make it
+   to the release during the Hackathon, so regard the instructions below as how it will work in the
+   future.
+
+
 ``datalad-dataverse`` is a Python package available on `pypi <https://pypi.org/project/datalad-dataverse/>`_ and installable via pip_.
 
 .. code-block:: bash
@@ -37,6 +46,9 @@ Getting started
 Here's the gist of some of this extension's functionality.
 Checkout the Tutorial for more detailed demonstrations.
 
+.. attention:: **This extension is undergoing continous development and is in alpha stage!**
+
+   Sadly, there is no gist and no tutorial yet - come back a bit later, or help us create one :)
 
 .. admonition:: HELP! I'm new to this!
 
