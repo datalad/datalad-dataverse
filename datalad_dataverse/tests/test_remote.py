@@ -23,6 +23,8 @@ from . import (
     DATAVERSE_URL,
 )
 
+DATAVERSE_URL = DATAVERSE_URL or ''
+
 
 @skip_if(cond='testadmin' not in API_TOKENS)
 @with_tempfile
