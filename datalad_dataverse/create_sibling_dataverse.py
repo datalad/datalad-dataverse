@@ -106,7 +106,9 @@ class CreateSiblingDataverse(Interface):
             environment variable DATALAD_CREDENTIAL_<NAME>_TOKEN, or will
             be queried from the active credential store using the provided
             name. If none is provided, the last-used credential for the
-            dataverse url will be used.""",
+            dataverse url will be used. Only if a credential name was given, it 
+            will be encoded in the URL of the created dataverse Git remote, 
+            credential auto-discovery will be performed on each remote access.""",
         ),
         existing=Parameter(
             args=("--existing",),
