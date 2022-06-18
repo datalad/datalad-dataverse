@@ -406,6 +406,7 @@ def _get_api_token(ds, credential, url, credman):
         cred = credman.get(**kwargs)
     except Exception as e:
         lgr.debug('Credential retrieval failed: %s', e)
+        cred = None
 
     return cred
 
@@ -568,10 +569,14 @@ def _create_git_sibling(ds, url, doi, name, credential_name, credential, export,
             # urlquote, because it goes into the query part of another URL
             url=urlquote(url),
             doi=doi)
-    if credential_name:
-        # we need to quote the credential name too.
-        # e.g., it is not uncommon for credentials to be named after URLs
-        remote_url += f'&dlacredential={urlquote(credential_name)}'
+
+    # TODO: This seems to depend on making the dataverse special remote known
+    #       to datalad-next's git rmeote helper. Or may be not, can'T quite
+    #       figure it right now:
+    # if credential_name:
+    #     # we need to quote the credential name too.
+    #     # e.g., it is not uncommon for credentials to be named after URLs
+    #     remote_url += f'&dlacredential={urlquote(credential_name)}'
 
     # announce the sibling to not have an annex (we have a dedicated
     # storage sibling for that) to avoid needless annex-related processing

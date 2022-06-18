@@ -14,7 +14,7 @@ from datalad.api import (
 from datalad.distribution.dataset import (
     Dataset,
 )
-from datalad.support.exceptions import IncompleteResultsError
+from datalad_next.tests.utils import with_credential
 
 from datalad_dataverse.tests import (
     API_TOKENS,
@@ -38,10 +38,16 @@ def test_basic(path=None, clone_path=None):
     _check_basic_creation(ds, 'basetest', 'testadmin', clone_path)
 
 
+@with_credential(
+    'dataverse',
+    secret=API_TOKENS.get('testadmin'),
+    realm=f'{DATAVERSE_URL.rstrip("/")}/dataverse',
+)
 def _check_basic_creation(ds, collection_alias, user, clone_path):
 
     with patch.dict('os.environ', {
-            'DATALAD_CREDENTIAL_TESTCRED_TOKEN': API_TOKENS[user]}):
+            'DATALAD_CREDENTIAL_TESTCRED_TOKEN': API_TOKENS[user],
+            'DATALAD_CREDENTIAL_TESTCRED_REALM': DATAVERSE_URL}):
 
         results = ds.create_sibling_dataverse(url=DATAVERSE_URL,
                                               collection=collection_alias,
@@ -75,5 +81,7 @@ def _check_basic_creation(ds, collection_alias, user, clone_path):
         ds.get("somefile.txt")
 
         # And we should be able to clone
-        clone = clone(source=clone_url, path=clone_path)
-        clone.get("somefile.txt")
+        cloned_ds = clone(source=clone_url, path=clone_path,
+                          result_xfm='datasets')
+        cloned_ds.repo.enable_remote('special_remote')
+        cloned_ds.get("somefile.txt")
