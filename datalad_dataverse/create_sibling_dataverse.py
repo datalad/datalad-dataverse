@@ -199,7 +199,6 @@ class CreateSiblingDataverse(Interface):
     @eval_results
     def __call__(
             url: str,
-            metadata: str,  # Not yet optional. Would require an auto-guess.
             *,
             dataset: Optional[Union[str, Dataset]] = None,
             name: Optional[str] = None,
@@ -210,6 +209,7 @@ class CreateSiblingDataverse(Interface):
             recursive: bool = False,
             recursion_limit: Optional[int] = None,
             collection: Optional[str] = None,
+            metadata: Optional[Union[str, dict]] = None
     ):
 
         # Make sure we actually have a dataset to operate on
@@ -231,23 +231,25 @@ class CreateSiblingDataverse(Interface):
                              collection)
 
         # Handle metadata option
-        if isinstance(metadata, dict):
-            # nothing to do here
-            pass
-        elif metadata == 'interactive':
-            raise NotImplementedError
-        else:
-            # Should be either a path to JSON file or a JSON string.
-            # Try to detect and pass on either as is or as a `Path` instance for
-            # the create_dataset function to consider (it may need some further
-            # resolution per dataset in recursive operation)
-            try:
-                meta_path = Path(metadata)
-                # delay assignment to not destroy original value prematurely:
-                metadata = meta_path
-            except Exception as e:
-                ce = CapturedException(e)
-                # Apparently not a path; try to interprete as JSON directly.
+        if metadata:
+            if isinstance(metadata, dict):
+                # nothing to do here
+                pass
+            elif metadata == 'interactive':
+                raise NotImplementedError
+            else:
+                # Should be either a path to JSON file or a JSON string.
+                # Try to detect and pass on either as is or as a `Path` instance
+                # for the create_dataset function to consider (it may need some
+                # further resolution per dataset in recursive operation)
+                try:
+                    meta_path = Path(metadata)
+                    # delay assignment to not destroy original value
+                    # prematurely:
+                    metadata = meta_path
+                except Exception as e:
+                    CapturedException(e)
+                    # Apparently not a path; try to interprete as JSON directly.
 
         # 2. check existing siblings upfront to fail early on --existing=error
         if existing == 'error':
@@ -333,7 +335,6 @@ class CreateSiblingDataverse(Interface):
 
 
 def _validate_parameters(url: str,
-                         metadata: str,
                          dataset: Optional[Union[str, Dataset]] = None,
                          name: Optional[str] = None,
                          storage_name: Optional[str] = None,
@@ -342,7 +343,8 @@ def _validate_parameters(url: str,
                          existing: str = 'error',
                          recursive: bool = False,
                          recursion_limit: Optional[int] = None,
-                         collection: Optional[str] = None):
+                         collection: Optional[str] = None,
+                         metadata: Optional[Union[str, dict]] = None):
     """This function is supposed to validate the given parameters of
     create_sibling_dataverse invocation"""
     pass
@@ -614,7 +616,9 @@ def _get_ds_metadata(ds, metadata):
     metadata: str or Path or dict
     """
 
-    if isinstance(metadata, dict):
+    if not metadata:
+        mdata = _get_default_metadata(ds)
+    elif isinstance(metadata, dict):
         # nothing to do here
         mdata = metadata
     elif isinstance(metadata, Path):
@@ -626,3 +630,52 @@ def _get_ds_metadata(ds, metadata):
         mdata = json_loads(metadata)
 
     return mdata
+
+
+def _get_default_metadata(ds):
+    """Generate a default metadata dict for a given datalad dataset"""
+
+    # Just delegate every aspect of required metadata to its own function
+    # to be able to address them independently; May want to fuse them back in
+    # later.
+    return dict(title=_get_title_from_ds(ds),
+                author=_get_author_from_ds(ds),
+                datasetContact=_get_contact_from_ds(ds),
+                dsDescription=_get_description_from_ds(ds),
+                subject=_get_subject_from_ds(ds)
+                )
+
+
+def _get_title_from_ds(ds):
+    # return string
+    # TODO: Include relative path to superdataset?
+    #       Would require to pass down refds
+    return f"{ds.id}"
+
+
+def _get_author_from_ds(ds):
+    # return list of dict
+    # TODO: What other fields are valid?
+    # Idea: Last committer's git identity?
+    return [dict(authorName='myname')]
+
+
+def _get_contact_from_ds(ds):
+    # return list of dict
+    # Same as author or user running the command?
+    return [dict(datasetContactEmail='myemail@example.com',
+                 datasetContactName='myname')]
+
+
+def _get_description_from_ds(ds):
+    # return list of dict
+    # Should somehow get the datalad-annex:: clone URL
+    return [dict(dsDescriptionValue='mydescription')]
+
+
+def _get_subject_from_ds(ds):
+    # return list of string
+    # See datalad_dataverse.utils.DATASET_SUBJECTS
+
+    # Nothing to derive that from for now, hence hardcoded:
+    return ['Other']
