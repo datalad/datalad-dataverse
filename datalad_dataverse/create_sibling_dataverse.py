@@ -68,10 +68,25 @@ class CreateSiblingDataverse(Interface):
     Dataverse is a web application to share and cite research data.
     Research data published in Dataverse receives an academic citation which allows to grant full credit and increases visibility of your work.
     
+    In order to be able to use this command, a personal access token has to be generated on the Dataverse platform. You can find it by clicking on your name at the top right corner, and then clicking on Api Token>Create Token.
+
     TODO: command doc
     """
 
-    _examples_ = []
+    _examples_ = [
+        dict(text="Create a dataset sibling in the form of a dataverse dataset",
+             code_py="""\
+                 > ds = Dataset('.')
+                 # the sibling on Dataverse will be used for data sharing and citing
+                 > ds.create_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
+
+                 """,
+             code_cmd="""\
+                 # the sibling on Dataverse will be used for data sharing and citing
+                 % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
+                 """,
+             ),
+    ]
 
     _params_ = dict(
         url=Parameter(
