@@ -1,6 +1,6 @@
 # DataLad Dataverse extension
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
@@ -188,6 +188,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/effigies"><img src="https://avatars.githubusercontent.com/u/83442?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Chris Markiewicz</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=effigies" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/aqw"><img src="https://avatars.githubusercontent.com/u/765557?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Alex Waite</b></sub></a><br /><a href="#infra-aqw" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/datalad/datalad-dataverse/commits?author=aqw" title="Code">💻</a> <a href="#maintenance-aqw" title="Maintenance">🚧</a> <a href="#tool-aqw" title="Tools">🔧</a></td>
     <td align="center"><a href="https://github.com/Shammi270787"><img src="https://avatars.githubusercontent.com/u/23641510?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Shammi270787</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=Shammi270787" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/jadecci"><img src="https://avatars.githubusercontent.com/u/14807815?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Wu Jianxiao</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=jadecci" title="Code">💻</a> <a href="https://github.com/datalad/datalad-dataverse/pulls?q=is%3Apr+reviewed-by%3Ajadecci" title="Reviewed Pull Requests">👀</a> <a href="#userTesting-jadecci" title="User Testing">📓</a></td>
   </tr>
 </table>
 
