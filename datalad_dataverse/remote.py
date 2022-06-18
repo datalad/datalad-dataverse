@@ -6,6 +6,12 @@ from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
 from requests import delete
 from requests.auth import HTTPBasicAuth
+
+from datalad.support.annexrepo import AnnexRepo
+
+from datalad_next.credman import CredentialManager
+from datalad_next.utils import update_specialremote_credential
+
 from datalad_dataverse.utils import (
     get_native_api,
 )
@@ -19,9 +25,13 @@ class DataverseRemote(SpecialRemote):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
+        self.configs['dlacredential'] = \
+            'Identifier used to retrieve an API token from a local ' \
+            'credential store'
         self._doi = None
         self._url = None
         self._api = None
+        self._token = None
 
     def initremote(self):
         """
@@ -61,11 +71,70 @@ class DataverseRemote(SpecialRemote):
     @property
     def api(self):
         if self._api is None:
+            # we know that we will need a token
+            repo = AnnexRepo(self.annex.getgitdir())
+            # TODO the below is almost literally taken from
+            # the datalad-annex:: implementation in datalad-next
+            # this could become a comming helper
+            credman = CredentialManager(repo.config)
+            credential_name = self.annex.getconfig('dlacredential')
+            credential_realm = self.url.rstrip('/') + '/dataverse'
+            cred = None
+            if credential_name:
+                # we can ask blindly first, caller seems to know what to do
+                cred = credman.get(
+                    name=credential_name,
+                    # give to make legacy credentials accessible
+                    _type_hint='token',
+                )
+            if not cred:
+                creds = credman.query(
+                    _sortby='last-used',
+                    realm=credential_realm,
+                )
+                if creds:
+                    credential_name, cred = creds[0]
+            if not cred:
+                # credential query failed too, enable manual entry
+                cred = credman.get(
+                    # this might still be None
+                    name=credential_name,
+                    _type_hint='token',
+                    _prompt=f'A dataverse API token is required for access',
+                    # inject anything we already know to make sure we store it
+                    # at the very end, and can use it for discovery next time
+                    realm=credential_realm,
+                )
+            if not 'secret' in cred:
+                self.message('No token available', type='error')
+
             # connect to dataverse instance
-            self._api = get_native_api(
+            api = get_native_api(
                 baseurl=self.url,
-                token=os.environ["DATAVERSE_API_TOKEN"],
+                token=cred['secret'],
             )
+            # make one cheap request to ensure that the token is
+            # in-principle working -- we won't be able to verify all necessary
+            # permissions for all possible operations anyways
+            api.get_info_version()
+
+            update_specialremote_credential(
+                'dataverse',
+                credman,
+                credential_name,
+                cred,
+                credtype_hint='token',
+                duplicate_hint=
+                'Specify a credential name via the dlacredential= '
+                'special remote parameter, and/or configure a credential '
+                'with the datalad-credentials command{}'.format(
+                    f' with a `realm={cred["realm"]}` property'
+                    if 'realm' in cred else ''),
+            )
+            # store for reuse with data access API
+            self._token = cred['secret']
+            self._api = api
+
         return self._api
 
     def prepare(self):
@@ -93,7 +162,8 @@ class DataverseRemote(SpecialRemote):
     def transfer_retrieve(self, key, file):
         data_api = DataAccessApi(
             base_url=self.url,
-            api_token=os.environ["DATAVERSE_API_TOKEN"]
+            # this relies on having established the NativeApi in prepare()
+            api_token=self._token,
         )
         dataset = self.api.get_dataset(identifier=self.doi)
 
@@ -142,8 +212,11 @@ class DataverseRemote(SpecialRemote):
             return
 
         # delete the file
-        status = delete(f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/edit-media/file/{file_id}',
-                        auth=HTTPBasicAuth(os.environ["DATAVERSE_API_TOKEN"], ''))
+        status = delete(
+            f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/'
+            f'edit-media/file/{file_id}',
+            # this relies on having established the NativeApi in prepare()
+            auth=HTTPBasicAuth(self._token, ''))
         # http error handling
         status.raise_for_status()
 
