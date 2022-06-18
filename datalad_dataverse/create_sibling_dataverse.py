@@ -461,6 +461,12 @@ def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
     except InvalidDatasetMetadata:
         yield get_status_dict(status='error',
                               message=f"Invalid metadata for dataset {ds}")
+    except Exception as exc:
+        ce = CapturedException(exc)
+        yield get_status_dict(status='error',
+                              message=f"Failed to create dataset on {api.base_url}."
+                                      f"Reason: {ce.message}")
+        return
 
     # 3. Set up the actual remotes
     # simplify downstream logic, export yes or no
@@ -490,10 +496,11 @@ def _create_sibling_dataverse(ds, api, credential_name, collection, metadata, *,
 
     if mode not in ('annex-only', 'filetree-only'):
         yield from _create_git_sibling(
-            ds,
-            url,
-            name,
-            credential_name,
+            ds=ds,
+            url=url,
+            doi=doi,
+            name=name,
+            credential_name=credential_name,
             export=export_storage,
             existing=existing,
             known=name in existing_siblings,
@@ -570,6 +577,7 @@ def _create_git_sibling(ds, url, doi, name, credential_name, export, existing,
             r['action'] = 'reconfigure_sibling_dataverse' \
                 if known and existing == 'reconfigure' \
                 else 'create_sibling_dataverse'
+            r['doi'] = doi
         yield r
 
 
@@ -620,6 +628,7 @@ def _create_storage_sibling(
         name=name,
         type='sibling',
         url=url,
+        doi=doi,
     )
 
 
