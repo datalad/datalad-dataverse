@@ -77,7 +77,6 @@ class CreateSiblingDataverse(Interface):
         dict(text="Create a dataset sibling in the form of a dataverse dataset",
              code_py="""\
                  > ds = Dataset('.')
-
                  # the sibling on Dataverse will be used for data sharing and citing
                  > ds.create_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
 
