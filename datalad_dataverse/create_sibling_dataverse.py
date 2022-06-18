@@ -83,11 +83,8 @@ class CreateSiblingDataverse(Interface):
 
                  """,
              code_cmd="""\
-                 % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
-
                  # the sibling on Dataverse will be used for data sharing and citing
                  % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
-
                  """,
              ),
     ]
