@@ -76,17 +76,17 @@ class CreateSiblingDataverse(Interface):
     _examples_ = [
         dict(text="Create a dataset sibling in the form of a dataverse dataset",
              code_py="""\
-                 > ds = Dataset('.')
+                 > ds = Dataset(url='https://demo.dataverse.org')
 
                  # the sibling on Dataverse will be used for data sharing and citing
-                 > ds.create_sibling_dataverse('myrepo', name='dataverse')
+                 > ds.create_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
 
                  """,
              code_cmd="""\
-                 % datalad create-sibling-dataverse myrepo -s dataverse
+                 % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
 
                  # the sibling on Dataverse will be used for data sharing and citing
-                 % datalad create-sibling-dataverse myrepo -s dataverse
+                 % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
 
                  """,
              ),
