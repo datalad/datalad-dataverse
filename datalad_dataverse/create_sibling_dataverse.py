@@ -620,7 +620,7 @@ def _create_storage_sibling(
         "type=external",
         "externaltype=dataverse",
         f"url={url}",
-        f"doi={doi}"
+        f"doi={doi}",
         f"exporttree={'yes' if export else 'no'}",
         "encryption=none",
         # for now, no autoenable. It would result in unconditional
