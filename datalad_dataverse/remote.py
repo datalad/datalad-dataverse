@@ -14,9 +14,8 @@ from datalad_next.utils import update_specialremote_credential
 
 from datalad_dataverse.utils import (
     get_native_api,
+    format_doi,
 )
-
-from datalad_dataverse.utils import format_doi
 
 
 class DataverseRemote(SpecialRemote):
@@ -28,10 +27,12 @@ class DataverseRemote(SpecialRemote):
         self.configs['dlacredential'] = \
             'Identifier used to retrieve an API token from a local ' \
             'credential store'
+        self.configs['version'] = 'Dataverse dataset version'
         self._doi = None
         self._url = None
         self._api = None
         self._token = None
+        self._dataset_version = None
 
     def initremote(self):
         """
@@ -137,6 +138,14 @@ class DataverseRemote(SpecialRemote):
 
         return self._api
 
+    @property
+    def dataset_version(self):
+        if self._dataset_version is None:
+            self._dataset_version = self.annex.getconfig('version')
+            if len(self._dataset_version) == 0:
+                self._dataset_version = ":latest"
+        return self._dataset_version
+
     def prepare(self):
         # trigger API instance in order to get possibly auth/connection errors
         # right away
@@ -152,6 +161,8 @@ class DataverseRemote(SpecialRemote):
             return False
 
     def transfer_store(self, key, local_file):
+        if not self.dataset_version == ':latest':
+            raise RuntimeError('Cannot store files if a specific version is checked out!')
         ds_pid = self.doi
 
         datafile = Datafile()
@@ -165,12 +176,12 @@ class DataverseRemote(SpecialRemote):
             # this relies on having established the NativeApi in prepare()
             api_token=self._token,
         )
-        dataset = self.api.get_dataset(identifier=self.doi)
+        dataset = self.api.get_dataset_version(identifier=self.doi, version=self.dataset_version)
 
         # http error handling
         dataset.raise_for_status()
 
-        files_list = dataset.json()['data']['latestVersion']['files']
+        files_list = dataset.json()['data']['files']
 
         # find the file we want to download
         file_id = None
@@ -191,6 +202,8 @@ class DataverseRemote(SpecialRemote):
             f.write(response.content)
 
     def remove(self, key):
+        if not self.dataset_version == ':latest':
+            raise RuntimeError('Cannot remove file if a specific version is checked out!')
         # get the dataset and a list of all files
         dataset = self.api.get_dataset(identifier=self.doi)
         # http error handling
