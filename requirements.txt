@@ -1,3 +1,4 @@
 # we need datalad from the future with pytest for now (will be a datalad-next
 # that depends on datalad 0.17)
 git+https://github.com/datalad/datalad
+git+https://github.com/datalad/datalad-next@pytest

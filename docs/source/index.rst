@@ -17,7 +17,9 @@ streamline data sharing, updating, and collaboration.
 
 The aim of this project is to make DataLad interoperable with Dataverse to 
 support dataset transport from and to Dataverse instances. It originates 
-from `OHBM BrainHack 2022 <https://github.com/ohbm/hackathon2022/issues/43>`__.  
+from `OHBM BrainHack 2022 <https://github.com/ohbm/hackathon2022/issues/43>`__,
+and is the result of a wonderful collaboration between `many awesome people <https://github.com/datalad/datalad-dataverse#contributors->`__.
+If you want to get in touch or on board as well, please see our :ref:`contributing guidelines <contribute>`.
 
 Documentation overview
 ======================
@@ -25,28 +27,19 @@ Documentation overview
 .. toctree::
    :maxdepth: 1
 
+   settingup
+   contributing
    glossary
 
-API
-===
-
-High-level API commands
------------------------
-
-.. currentmodule:: datalad.api
-.. autosummary::
-   :toctree: generated
-
-   create_sibling_dataverse
-
-
-Command line reference
-----------------------
+Commands and API
+================
 
 .. toctree::
    :maxdepth: 1
 
-   generated/man/datalad-create-sibling-dataverse
+   cmdline
+   modref
+
 
 
 Indices and tables
