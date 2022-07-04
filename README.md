@@ -1,38 +1,48 @@
-# DataLad Dataverse extension
+# DataLad extension for working Dataverse
 
+[![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
 [![Documentation Status](https://readthedocs.org/projects/datalad-dataverse/badge/?version=latest)](http://docs.datalad.org/projects/datalad-dataverse/en/latest/?badge=latest)
-
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-14-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-[![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
-
-
-Welcome to the DataLad-Dataverse project of the OHBM 2022 Brainhack!
-
-What do we want to do during this Brainhack?
-[Dataverse](https://dataverse.org) is open source research data repository software that is deployed all over the world in data or metadata repositories.
+[Dataverse](https://dataverse.org) is open source research data repository software that is deployed all over the world as data or metadata repositories.
 It supports sharing, preserving, citing, exploring, and analyzing research data with descriptive metadata, and thus contributes greatly to open, reproducible, and FAIR science.
 [DataLad](https://www.datalad.org), on the other hand, is a data management and data publication tool build on Git and git-annex.
 Its core data structure, DataLad datasets, can version control files of any size, and streamline data sharing, updating, and collaboration.
-In this hackathon project, we aim to make DataLad interoperable with Dataverse to support dataset transport from and to Dataverse instances.
-To this end, we will build a new DataLad extension datalad-dataverse, and would be delighted to welcome you onboard of the contributor team.
+This DataLad extension package provides interoperablity with Dataverse to support dataset transport to and from Dataverse instances.
 
-SKILLS
+## Installation
 
-We plan to start from zero with this project, and welcome all kinds of contributions from various skills at any level.
-From setting up and writing documentation, discussing relevant functionality, or user-experience-testing, to Python-based implementation of the desired functionality and creating real-world use cases and workflows.
-Here is a non-exhaustive list of skills that can be beneficial in this project:
-- You have used a Dataverse instance before and/or have access to one, or you are interested in using one in the future
-- You know technical details about Dataverse, such as its API, or would have fun finding out about them
-- You know Python
-- You have experience with the Unix command line
-- You are interested in creating accessible documentation
-- You are interested in learning about the DataLad ecosystem or the process of creating a DataLad extension
-- Your secret hobby is Git plumbing
-- You know git-annex, and/or about its backends
-- You want to help create metadata extractors for Dataverse to generate dataset metadata automatically
+```
+# create and enter a new virtual environment (optional)
+$ virtualenv --python=python3 ~/env/dl-dataverse
+$ . ~/env/dl-dataverse/bin/activate
+# install from PyPi
+$ python -m pip install datalad-dataverse
+```
+
+## How to use
+
+Additional commands provided by this extension are immediately available
+after installation. However, in order to fully benefit from all improvements,
+the extension has to be enabled for auto-loading by executing:
+
+    git config --global --add datalad.extensions.load dataverse
+
+Doing so will enable the extension to also alter the behavior the core DataLad
+package and its commands, from example to be able to directly clone from
+a Dataverse dataset landing page.
+
+
+## Summary of functionality provided by this extension
+
+- Interoperability between DataLad and Dataverse version 5 (or later).
+- A `create-sibling-dataverse` command to initialize matching Dataverse datasets
+  for individual DataLad datasets.
+- A `git-annex-remote-dataverse` special remote implementation for storage and retrieval of data in Dataverse dataset via git-annex.
+- These two features combined enable the deposition and retrieveal of complete DataLad dataset on Dataverse, including version history and metadata. A direct `datalad clone` from a Dataverse dataset landing page is supported, and yields a fully functional DataLad dataset clone (Git repository).
+
 
 ## Contributors ✨
 
@@ -68,3 +78,11 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+
+
+## Acknowledgements
+
+This DataLad extension was developed with support from the German Federal
+Ministry of Education and Research (BMBF 01GQ1905), the US National Science
+Foundation (NSF 1912266), and the Helmholtz research center Jülich (RDM
+challenge 2022).
