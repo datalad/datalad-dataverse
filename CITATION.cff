@@ -1,50 +1,62 @@
-cff-version: 1.1.0
-message: Please cite the following works when using this software.
+cff-version: 1.2.0
+title: datalad-dataverse
+message: If you use this software, please cite it using these metadata.
 authors:
   - family-names: Poldrack
     given-names: Benjamin
+    orcid: "https://orcid.org/0000-0001-7628-0801"
   - family-names: Wagner
     given-names: Adina
+    orcid: "https://orcid.org/0000-0003-2917-3450"
   - family-names: Ernsting
-    given-names: Jan 
+    given-names: Jan
+    affiliation: >-
+      University of Münster, Institute for Translational Psychiatry, Münster, Germany;
+      University of Münster, Faculty of Mathematics and Computer Science, Münster, Germany
+    orcid: "https://orcid.org/0000-0003-4649-2111"
   - family-names: Hanke
     given-names: Michael
-  - family-names: Roza
+    orcid: "https://orcid.org/0000-0001-6398-6370"
+  - family-names: Roza Gunes
     given-names: Bayrak
+    affiliation: Vanderbilt University, Nashville, TN USA
+    orcid: "https://orcid.org/0000-0002-7197-1248"
   - family-names: Sarink
     given-names: Kelvin
+    affiliation: University of Münster, Institute for Translational Psychiatry, Münster, Germany
+    orcid: "https://orcid.org/0000-0002-4840-5619"
   - family-names: Nicolaisen-Sobesky
     given-names: Eliana
+    affiliation: "Institute of Neuroscience and Medicine (INM-7: Brain and Behaviour), Research Centre Jülich, Jülich, Germany."
+    orcid: "https://orcid.org/0000-0002-4806-2863"
   - family-names: More
     given-names: Shammi
+    orcid: "https://orcid.org/0000-0002-1272-217X"
   - family-names: Bayer
     given-names: Johanna
-    orcid: https://orcid.org/0000-0003-4891-6256
+    affiliation: >-
+      The University of Melbourne, Melbourne, Australia;
+      Orygen Youth Health, Melbourne, Australia
+    orcid: "https://orcid.org/0000-0003-4891-6256"
   - family-names: Markiewicz
-    given-names: Christopher
+    given-names: Christopher J
+    affiliation: Stanford University
+    orcid: "https://orcid.org/0000-0002-6533-164X"
   - family-names: Waite
     given-names: Alex
+    orcid: "https://orcid.org/0000-0002-8402-6173"
   - family-names: Spychala
     given-names: Nadine
+    orcid: "https://orcid.org/0000-0003-2582-9758"
   - family-names: Waite
     given-names: Laura
-  - family-names: Eickhoff
-    given-names: Simon
-   
-doi: 10.21105/JOSS.03262
-identifiers:
-  - type: doi
-    value: 10.21105/JOSS.03262
-  - type: other
-    value: urn:issn:2475-9066
+    orcid: "https://orcid.org/0000-0003-2213-7465"
+  - family-names: Wu
+    given-names: Jianxiao
+    orcid: "https://orcid.org/0000-0002-4866-272X"
 keywords:
   - Computational reproducibility
   - reproducibility
   - Python
   - data management
   - workflow
-title: >-
-  DataLad: distributed system for joint management of code, data, and their
-  relationship
-version: 0.14.6
-
