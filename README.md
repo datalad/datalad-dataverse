@@ -3,7 +3,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/master) [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-dataverse?branch=master) [![crippled-filesystems](https://github.com/datalad/datalad-dataverse/workflows/crippled-filesystems/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Acrippled-filesystems) [![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
 [![Documentation Status](https://readthedocs.org/projects/datalad-dataverse/badge/?version=latest)](http://docs.datalad.org/projects/datalad-dataverse/en/latest/?badge=latest)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-14-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-15-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [Dataverse](https://dataverse.org) is open source research data repository software that is deployed all over the world as data or metadata repositories.
@@ -69,6 +69,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/Shammi270787"><img src="https://avatars.githubusercontent.com/u/23641510?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Shammi270787</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=Shammi270787" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/jadecci"><img src="https://avatars.githubusercontent.com/u/14807815?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Wu Jianxiao</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=jadecci" title="Code">💻</a> <a href="https://github.com/datalad/datalad-dataverse/pulls?q=is%3Apr+reviewed-by%3Ajadecci" title="Reviewed Pull Requests">👀</a> <a href="#userTesting-jadecci" title="User Testing">📓</a></td>
     <td align="center"><a href="https://github.com/loj"><img src="https://avatars.githubusercontent.com/u/15157717?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Laura Waite</b></sub></a><br /><a href="https://github.com/datalad/datalad-dataverse/commits?author=loj" title="Documentation">📖</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/mslw"><img src="https://avatars.githubusercontent.com/u/11985212?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Michał Szczepanik</b></sub></a><br /><a href="#infra-mslw" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
   </tr>
 </table>
 
