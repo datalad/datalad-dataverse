@@ -69,7 +69,10 @@ def _check_remote(ds, dspid):
     ])
     # run git-annex own testsuite
     ds.repo.call_annex([
-        'testremote', '--fast', 'mydv',
+        'testremote',
+        '--backend=MD5E',
+        '--fast',
+        'mydv',
     ])
 
 
