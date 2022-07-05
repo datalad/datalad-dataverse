@@ -3,9 +3,9 @@ set -e -u
 # This is setting up and launching a docker container with everything needed for
 # our tests to run against this instance.
 # Most importantly with respect to the CI builds, it deposits the API tokens
-# for the users `pete` and `uma` in environment variabes TEST_TOKEN_PETE and
-# TEST_TOKEN_UMA respectively for use from within unit tests. Therefore this
-# script is supposed to be sourced.
+# for the users `pete` and `uma` in environment variabes
+# DATAVERSE_TEST_APITOKEN_PETE and DATAVERSE_TEST_APITOKEN_UMA respectively for use
+# from within unit tests. Therefore this script is supposed to be sourced.
 
 # For administrative tasks at the beginning, we need to execute request from
 # within the container, since the respective API endpoints are only accessible
@@ -50,7 +50,7 @@ done
 set -e
 
 # Dataverse is running, export base URL for test environment
-export TESTS_DATAVERSE_BASEURL="http://localhost:8080"
+export DATAVERSE_TEST_BASEURL="http://localhost:8080"
 
 ### Now, get users and there tokens for use with the tests
 docker_id="$(docker ps -qf name="^dataverse$")"
@@ -78,7 +78,7 @@ if [ -n "${token_admin}" ] && [ "${token_userone}" != "null" ]; then
   adminResp=$(curl -H "X-Dataverse-key:${token_admin}" "http://localhost:8080/api/users/:me")
   if [ $(echo "${adminResp}" | jq .status) == "\"OK\"" ] && [ $(echo "${adminResp}" | jq .data.firstName) == "\"Datalad\"" ]; then
     echo "Token confirmed."
-    export TESTS_TOKEN_TESTADMIN=${token_admin}
+    export DATAVERSE_TEST_APITOKEN_TESTADMIN=${token_admin}
   else
     echo "Failed to use token. User query response: ${adminResp}"
     exit 1
@@ -93,7 +93,7 @@ if [ -n "${token_userone}" ] && [ "${token_userone}" != "null" ]; then
   useroneResp=$(curl -H "X-Dataverse-key:${token_userone}" "http://localhost:8080/api/users/:me")
   if [ $(echo "${useroneResp}" | jq .status) == "\"OK\"" ] && [ $(echo "${useroneResp}" | jq .data.firstName) == "\"Regular\"" ]; then
     echo "Token confirmed."
-    export TESTS_TOKEN_USER1=${token_userone}
+    export DATAVERSE_TEST_APITOKEN_USER1=${token_userone}
   else
     echo "Failed to use token. User query response: ${useroneResp}"
     exit 1

@@ -362,10 +362,10 @@ Several additional notes:
   you'll need `sudo` for `rm`'ing it as well as to see it reported untracked 
   by `git status`.
 
-The CI setup results in two users and a root dataverse being created. A 
-superuser 'testadmin' and a regular user 'user1'. Their API tokens are 
-acccessible for the tests via the environment variables `TESTS_TOKEN_TESTADMIN`
-and `TESTS_TOKEN_USER1` respectively.
+The CI setup results in two users and a root dataverse being created. A
+superuser 'testadmin' and a regular user 'user1'. Their API tokens are
+acccessible for the tests via the environment variables
+`DATAVERSE_TEST_APITOKEN_TESTADMIN` and `DATAVERSE_TEST_APITOKEN_USER1` respectively.
 If you want to see how that is done, so you can reproduce it locally check 
 `setup_docker_dataverse.sh` for how it calls `docker cp` to 
 copy several JSON files and `init_dataverse.sh` into the container and then 

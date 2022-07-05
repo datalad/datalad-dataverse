@@ -171,9 +171,9 @@ install:
   - sh: echo "$DOCKERHUB_TOKEN $DOCKERHUB_USERNAME"
   - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then source tools/ci/setup_docker_dataverse.sh $DOCKERHUB_TOKEN $DOCKERHUB_USERNAME; else true; fi;"
   # Show what we got after setup in case something is going wrong:
-  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then echo \"Received tokens: $TESTS_TOKEN_TESTADMIN $TESTS_TOKEN_USER1\"; else true; fi;"
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then echo \"Received tokens: $DATAVERSE_TEST_APITOKEN_TESTADMIN $DATAVERSE_TEST_APITOKEN_USER1\"; else true; fi;"
   # Check we got a our dataverse and it's accessible with the admin token:
-  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${TESTS_TOKEN_TESTADMIN}\"; else true; fi;"
+  - sh: "if [ \"${APPVEYOR_BUILD_WORKER_IMAGE}\" != \"macOS\" ]; then curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${DATAVERSE_TEST_APITOKEN_TESTADMIN}\"; else true; fi;"
 
 #before_build:
 #

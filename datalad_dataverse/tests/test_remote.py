@@ -19,22 +19,20 @@ from datalad_dataverse.tests.utils import (
 from datalad_dataverse.utils import get_native_api
 
 from . import (
-    API_TOKENS,
-    DATAVERSE_URL,
+    DATAVERSE_TEST_APITOKENS,
+    DATAVERSE_TEST_URL,
 )
 
-DATAVERSE_URL = DATAVERSE_URL or ''
 
-
-@skip_if(cond='testadmin' not in API_TOKENS)
+@skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
 @with_tempfile
 def test_remote(path=None):
     ds = Dataset(path).create()
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save()
-    admin_api = get_native_api(DATAVERSE_URL, API_TOKENS['testadmin'])
-    create_test_dataverse_collection(admin_api, 'basetest')
-    dspid = create_test_dataverse_dataset(admin_api, 'basetest', 'testds')
+    admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
+    create_test_dataverse_collection(admin_api, 'dataladtester')
+    dspid = create_test_dataverse_dataset(admin_api, 'dataladtester', 'testds')
     try:
         _check_remote(ds, dspid)
     finally:
@@ -43,14 +41,14 @@ def test_remote(path=None):
 
 @with_credential(
     'dataverse',
-    secret=API_TOKENS.get('testadmin'),
-    realm=f'{DATAVERSE_URL.rstrip("/")}/dataverse',
+    secret=DATAVERSE_TEST_APITOKENS.get('testadmin'),
+    realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse',
 )
 def _check_remote(ds, dspid):
     repo = ds.repo
     repo.call_annex([
         'initremote', 'mydv', 'encryption=none', 'type=external',
-        'externaltype=dataverse', f'url={DATAVERSE_URL}',
+        'externaltype=dataverse', f'url={DATAVERSE_TEST_URL}',
         f'doi={dspid}',
     ])
     # some smoke testing of the git-annex interface
@@ -75,12 +73,12 @@ def _check_remote(ds, dspid):
     ])
 
 
-@skip_if(cond='testadmin' not in API_TOKENS)
+@skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
 @with_tempfile
 @with_tempfile
 def test_datalad_annex(dspath=None, clonepath=None):
     ds = Dataset(dspath).create()
-    admin_api = get_native_api(DATAVERSE_URL, API_TOKENS['testadmin'])
+    admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
     create_test_dataverse_collection(admin_api, 'basetest')
     dspid = create_test_dataverse_dataset(admin_api, 'basetest', 'testds')
     try:
@@ -91,14 +89,14 @@ def test_datalad_annex(dspath=None, clonepath=None):
 
 @with_credential(
     'dataverse',
-    secret=API_TOKENS.get('testadmin'),
-    realm=f'{DATAVERSE_URL.rstrip("/")}/dataverse',
+    secret=DATAVERSE_TEST_APITOKENS.get('testadmin'),
+    realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse',
 )
 def _check_datalad_annex(ds, dspid, clonepath):
     repo = ds.repo
     # this is the raw datalad-annex URL, convenience could be added on top
     git_remote_url = 'datalad-annex::?type=external&externaltype=dataverse&' \
-                     f'url={urlquote(DATAVERSE_URL)}&doi={urlquote(dspid)}&' \
+                     f'url={urlquote(DATAVERSE_TEST_URL)}&doi={urlquote(dspid)}&' \
                      'encryption=none'
 
     repo.call_git(['remote', 'add', 'mydv', git_remote_url])
@@ -108,7 +106,7 @@ def _check_datalad_annex(ds, dspid, clonepath):
         # generic monster URL
         git_remote_url,
         # actual dataset landing page
-        f'{DATAVERSE_URL}/dataset.xhtml?persistentId={dspid}&version=DRAFT',
+        f'{DATAVERSE_TEST_URL}/dataset.xhtml?persistentId={dspid}&version=DRAFT',
     ):
         dsclone = clone(git_remote_url, clonepath)
 
