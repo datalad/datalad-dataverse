@@ -61,4 +61,4 @@ jobs:
         echo "== mount >>"
         mount
         echo "<< mount =="
-        PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v --doctest-modules --cov=datalad_dataverse --pyargs datalad_dataverse
+        DATAVERSE_TEST_APITOKEN_TESTADMIN=${{ secrets.DEMO_DATAVERSE_TOKEN }} PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v --doctest-modules --cov=datalad_dataverse --pyargs datalad_dataverse
