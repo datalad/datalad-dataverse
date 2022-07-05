@@ -3,9 +3,10 @@ set -e -u
 # This is setting up and launching a docker container with everything needed for
 # our tests to run against this instance.
 # Most importantly with respect to the CI builds, it deposits the API tokens
-# for the users `pete` and `uma` in environment variabes
-# DATAVERSE_TEST_APITOKEN_PETE and DATAVERSE_TEST_APITOKEN_UMA respectively for use
-# from within unit tests. Therefore this script is supposed to be sourced.
+# for the users `testadmin` and `user1` in environment variables
+# DATAVERSE_TEST_APITOKEN_TESTADMIN and DATAVERSE_TEST_APITOKEN_USER1
+# respectively for use from within unit tests. Therefore this script is supposed
+# to be sourced.
 
 # For administrative tasks at the beginning, we need to execute request from
 # within the container, since the respective API endpoints are only accessible
@@ -65,7 +66,7 @@ docker cp tools/ci/init_dataverse.sh "${docker_id}:/opt/payara/dvinstall/init_da
 
 
 # setup-users.sh comes with installation. Its output is some text, some JSON and
-# finally two lines giving the tokens for users 'pete' and 'uma'
+# finally two lines giving the tokens for users 'testadmin' and 'user1'
 initresponse=$(docker exec "${docker_id}" /opt/payara/dvinstall/init_dataverse.sh)
 tokens=$(echo "$initresponse" | grep "Token for" | awk '{print $4}')
 
