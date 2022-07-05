@@ -4,14 +4,16 @@ from ..create_sibling_dataverse import (
     _create_dv_dataset,
     _get_dv_collection,
 )
+from . import DATAVERSE_TEST_BASECOLLECTION
 
 
-def create_test_dataverse_collection(api, alias, collection='root'):
+def create_test_dataverse_collection(
+        api, alias, collection=DATAVERSE_TEST_BASECOLLECTION):
     dvmeta = Dataverse(dict(
         name="DataLad Test Dataverse",
         alias=alias,
         dataverseContacts=[dict(
-            contactEmail='tester@datalad.org',
+            contactEmail='team@datalad.org',
         )]
     ))
     # create under the 'root' collection
@@ -36,7 +38,7 @@ def create_test_dataverse_dataset(api, collection, name):
         title=name,
         author=[dict(authorName='DataLad')],
         datasetContact=[dict(
-            datasetContactEmail='tester@datalad.org',
+            datasetContactEmail='team@datalad.org',
             datasetContactName='DataLad')],
         dsDescription=[dict(dsDescriptionValue='no description')],
         subject=['Medicine, Health and Life Sciences']
@@ -45,4 +47,3 @@ def create_test_dataverse_dataset(api, collection, name):
     req = _create_dv_dataset(api, col, meta)
     req.raise_for_status()
     return req.json()['data']['persistentId']
-
