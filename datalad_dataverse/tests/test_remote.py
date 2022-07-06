@@ -8,7 +8,10 @@ from datalad.tests.utils_pytest import (
     skip_if,
     with_tempfile,
 )
-from datalad.utils import rmtree
+from datalad.utils import (
+    on_windows,
+    rmtree,
+)
 
 from datalad_next.tests.utils import with_credential
 
@@ -67,10 +70,15 @@ def _check_remote(ds, dspid):
     repo.call_annex([
         'drop', '--from', 'mydv', 'somefile.txt',
     ])
-    # run git-annex own testsuite
-    ds.repo.call_annex([
-        'testremote', '--fast', 'mydv',
-    ])
+    # Temporarily disable this until
+    # https://github.com/datalad/datalad-dataverse/issues/127
+    # is sorted out. Possibly via
+    # https://git-annex.branchable.com/bugs/testremote_is_not_honoring_--backend
+    if not on_windows:
+        # run git-annex own testsuite
+        ds.repo.call_annex([
+            'testremote', '--fast', 'mydv',
+        ])
 
 
 @skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
