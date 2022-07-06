@@ -139,7 +139,7 @@ Thank you!
 
 You're awesome. :wave::smiley:
 
-If you want to dive deeping into DataLad's features for aiding development, take a look at 
+If you want to dive deep into DataLad's features for aiding development, take a look at 
 https://github.com/datalad/datalad/blob/master/CONTRIBUTING.md
 
 
