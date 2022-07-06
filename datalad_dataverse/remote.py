@@ -1,26 +1,25 @@
 import os
+import re
 
-from datalad.customremotes.main import main as super_main
+from annexremote import ExportRemote
+
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
+
 from requests import delete
 from requests.auth import HTTPBasicAuth
-from annexremote import ExportRemote
+
+from datalad.customremotes import SpecialRemote
+from datalad.customremotes.main import main as super_main
 from datalad.support.annexrepo import AnnexRepo
 
 from datalad_next.credman import CredentialManager
-from datalad_next.utils import update_specialremote_credential
 
 from datalad_dataverse.utils import (
-    get_native_api,
+    get_api,
+    format_doi,
 )
-import os
-import re
 
-from datalad_dataverse.utils import format_doi
-
-
-from datalad.customremotes import SpecialRemote
 
 class DataverseRemote(ExportRemote, SpecialRemote):
 
@@ -81,61 +80,14 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # this could become a comming helper
             credman = CredentialManager(repo.config)
             credential_name = self.annex.getconfig('dlacredential')
-            credential_realm = self.url.rstrip('/') + '/dataverse'
-            cred = None
-            if credential_name:
-                # we can ask blindly first, caller seems to know what to do
-                cred = credman.get(
-                    name=credential_name,
-                    # give to make legacy credentials accessible
-                    _type_hint='token',
-                )
-            if not cred:
-                creds = credman.query(
-                    _sortby='last-used',
-                    realm=credential_realm,
-                )
-                if creds:
-                    credential_name, cred = creds[0]
-            if not cred:
-                # credential query failed too, enable manual entry
-                cred = credman.get(
-                    # this might still be None
-                    name=credential_name,
-                    _type_hint='token',
-                    _prompt=f'A dataverse API token is required for access',
-                    # inject anything we already know to make sure we store it
-                    # at the very end, and can use it for discovery next time
-                    realm=credential_realm,
-                )
-            if not 'secret' in cred:
-                self.message('No token available', type='error')
-
-            # connect to dataverse instance
-            api = get_native_api(
-                baseurl=self.url,
-                token=cred['secret'],
-            )
-            # make one cheap request to ensure that the token is
-            # in-principle working -- we won't be able to verify all necessary
-            # permissions for all possible operations anyways
-            api.get_info_version()
-
-            update_specialremote_credential(
-                'dataverse',
+            api = get_api(
+                self.url,
                 credman,
-                credential_name,
-                cred,
-                credtype_hint='token',
-                duplicate_hint=
-                'Specify a credential name via the dlacredential= '
-                'special remote parameter, and/or configure a credential '
-                'with the datalad-credentials command{}'.format(
-                    f' with a `realm={cred["realm"]}` property'
-                    if 'realm' in cred else ''),
+                credential_name=credential_name,
             )
+
             # store for reuse with data access API
-            self._token = cred['secret']
+            self._token = api.api_token
             self._api = api
 
         return self._api

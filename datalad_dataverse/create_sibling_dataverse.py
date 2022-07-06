@@ -1,12 +1,9 @@
 """High-level interface for creating a combi-target on a Dataverse server
  """
 
-from functools import partial
 import logging
-from pyDataverse.api import NativeApi
 from pyDataverse.models import (
     Dataset as DvDataset,
-    Dataverse,
 )
 from typing import (
     Optional,
@@ -14,8 +11,6 @@ from typing import (
 )
 from urllib.parse import (
     quote as urlquote,
-    urlparse,
-    urlunparse,
 )
 
 from datalad.distribution.dataset import (
@@ -37,7 +32,6 @@ from datalad.interface.utils import (
     generic_result_renderer,
     eval_results,
 )
-from datalad.log import log_progress
 from datalad.support.param import Parameter
 from datalad.support.constraints import (
     EnsureChoice,
@@ -52,6 +46,10 @@ from datalad.support.json_py import (
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
 from datalad.utils import Path
+
+from datalad_dataverse.utils import (
+    get_api as get_dataverse_api,
+)
 
 __docformat__ = "restructuredtext"
 
@@ -285,18 +283,11 @@ class CreateSiblingDataverse(Interface):
 
         # 3. get API Token
         credman = CredentialManager(ds.config)
-        cred = _get_api_token(ds, credential, url, credman)
-        # Note: Do not reuse the name `credential` - that's the originally given
-        # argument. We still need it.
-        if not cred or not cred.get('token', None):
-            raise ValueError(
-                f'No suitable credential for {url} found or specified'
-            )
-        api = NativeApi(url, cred.get('token'))
-
-        # temporary; just make sure we can actually connect:
-        response = api.get_info_version()
-        response.raise_for_status()
+        api = get_dataverse_api(
+            url,
+            credman,
+            credential_name=credential,
+        )
 
         # 4. Get the collection to put the dataset(s) in
         # TODO: This may need a switch to either create one or just get an
@@ -313,7 +304,6 @@ class CreateSiblingDataverse(Interface):
             return _create_sibling_dataverse(ds=ds,
                                              api=api,
                                              credential_name=credential,
-                                             credential=cred,
                                              collection=dv_collection,
                                              mode=mode,
                                              name=name,
@@ -394,23 +384,6 @@ def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
             **res_kwargs)
 
 
-def _get_api_token(ds, credential, url, credman):
-    """get an API token for a given dataverse url"""
-    # set properties based on what we know about Dataverses
-    kwargs = dict(
-        name=credential,
-        _prompt=f'A token is required for dataverse access at {url}',
-        type='token',
-        realm=url)
-    try:
-        cred = credman.get(**kwargs)
-    except Exception as e:
-        lgr.debug('Credential retrieval failed: %s', e)
-        cred = None
-
-    return cred
-
-
 def _get_dv_collection(api, alias):
 
     # TODO: this should be able to deal with different identifiers not just the
@@ -443,7 +416,7 @@ def _create_dv_dataset(api, collection, dataset_meta):
     return dv_dataset
 
 
-def _create_sibling_dataverse(ds, api, credential_name, credential, collection,
+def _create_sibling_dataverse(ds, api, credential_name, collection,
                               metadata, *,
                               mode='git-only',
                               name=None,
@@ -501,7 +474,6 @@ def _create_sibling_dataverse(ds, api, credential_name, credential, collection,
             url=url,
             doi=doi,
             name=storage_name,
-            credential=credential,
             export=export_storage,
             existing=existing,
             known=storage_name in existing_siblings,
@@ -514,7 +486,6 @@ def _create_sibling_dataverse(ds, api, credential_name, credential, collection,
             doi=doi,
             name=name,
             credential_name=credential_name,
-            credential=credential,
             export=export_storage,
             existing=existing,
             known=name in existing_siblings,
@@ -536,7 +507,7 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _create_git_sibling(ds, url, doi, name, credential_name, credential, export,
+def _create_git_sibling(ds, url, doi, name, credential_name, export,
                         existing,
                         known, publish_depends=None):
     """
@@ -548,8 +519,6 @@ def _create_git_sibling(ds, url, doi, name, credential_name, credential, export,
     credential_name: str
         originally given credential reference - needed to decide whether or not
         to incude in datalad-annex URL
-    credential: dict
-        The actual credential object
     export: bool
     existing: {skip, error, reconfigure}
     known: bool
@@ -605,14 +574,13 @@ def _create_git_sibling(ds, url, doi, name, credential_name, credential, export,
 
 
 def _create_storage_sibling(
-        ds, url, doi, name, credential, export, existing, known=False):
+        ds, url, doi, name, export, existing, known=False):
     """
     Parameters
     ----------
     ds: Dataset
     url: str
     name: str
-    credential: dict
     export: bool
     existing: {skip, error, reconfigure}
         (Presently unused)
@@ -623,8 +591,6 @@ def _create_storage_sibling(
     if known and existing == 'skip':
         yield _get_skip_sibling_result(name, ds, 'storage')
         return
-
-    # TODO: How is the credential provided to the special remote?
 
     cmd_args = [
         'enableremote' if known and existing == 'reconfigure'
