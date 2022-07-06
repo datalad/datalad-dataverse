@@ -71,6 +71,7 @@ environment:
       # setting critically needed for launching the dataverse container
       DEPLOY_DATAVERSE: 1
       traefikhost: localhost
+      KNOWN2FAIL: 1
     - ID: Ubu20
       DTS: datalad_dataverse
       APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
