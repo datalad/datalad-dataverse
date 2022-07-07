@@ -62,28 +62,26 @@ class InvalidDatasetMetadata(ValueError):
 
 @build_doc
 class CreateSiblingDataverse(Interface):
-    """Create a dataset sibling(-tandem) on dataverse.org.
-    Dataverse is a web application to share and cite research data.
-    Research data published in Dataverse receives an academic citation which allows to grant full credit and increases visibility of your work.
-    
-    In order to be able to use this command, a personal access token has to be generated on the Dataverse platform. You can find it by clicking on your name at the top right corner, and then clicking on Api Token>Create Token.
+    """Create a dataset sibling(-tandem) on a Dataverse instance.
 
-    TODO: command doc
+    Dataverse is a web application to share and cite research data.
+
+    Research data published in Dataverse receives an academic citation which
+    allows to grant full credit and increases visibility of your work.
+
+    In order to be able to use this command, a personal access token has to be
+    generated on the Dataverse platform. You can find it by clicking on your
+    name at the top right corner, and then clicking on Api Token>Create Token.
     """
 
     _examples_ = [
-        dict(text="Create a dataset sibling in the form of a dataverse dataset",
+        dict(text="Create a dataverse dataset sibling for sharing and citing",
              code_py="""\
                  > ds = Dataset('.')
-                 # the sibling on Dataverse will be used for data sharing and citing
                  > ds.create_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
-
-                 """,
-             code_cmd="""\
-                 # the sibling on Dataverse will be used for data sharing and citing
-                 % datalad create-sibling-dataverse demo.dataverse.org -s dataverse
-                 """,
-             ),
+             """,
+             code_cmd="datalad create-sibling-dataverse demo.dataverse.org -s dataverse",
+        ),
     ]
 
     _params_ = dict(
