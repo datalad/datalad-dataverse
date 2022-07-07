@@ -23,6 +23,7 @@ from datalad_dataverse.utils import get_native_api
 
 from . import (
     DATAVERSE_TEST_APITOKENS,
+    DATAVERSE_TEST_COLLECTION_NAME,
     DATAVERSE_TEST_URL,
 )
 
@@ -34,8 +35,9 @@ def test_remote(path=None):
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save()
     admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
-    create_test_dataverse_collection(admin_api, 'dataladtester')
-    dspid = create_test_dataverse_dataset(admin_api, 'dataladtester', 'testds')
+    create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
+    dspid = create_test_dataverse_dataset(
+        admin_api, DATAVERSE_TEST_COLLECTION_NAME, 'testds')
     try:
         _check_remote(ds, dspid)
     finally:
@@ -87,8 +89,9 @@ def _check_remote(ds, dspid):
 def test_datalad_annex(dspath=None, clonepath=None):
     ds = Dataset(dspath).create()
     admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
-    create_test_dataverse_collection(admin_api, 'basetest')
-    dspid = create_test_dataverse_dataset(admin_api, 'basetest', 'testds')
+    create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
+    dspid = create_test_dataverse_dataset(
+        admin_api, DATAVERSE_TEST_COLLECTION_NAME, 'testds')
     try:
         _check_datalad_annex(ds, dspid, clonepath)
     finally:

@@ -15,6 +15,7 @@ from datalad_next.tests.utils import with_credential
 
 from datalad_dataverse.tests import (
     DATAVERSE_TEST_APITOKENS,
+    DATAVERSE_TEST_COLLECTION_NAME,
     DATAVERSE_TEST_URL,
 )
 from datalad_dataverse.tests.utils import (
@@ -34,8 +35,9 @@ def test_basic(path=None, clone_path=None):
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save(**ckwa)
     admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
-    create_test_dataverse_collection(admin_api, 'basetest')
-    _check_basic_creation(ds, 'basetest', 'testadmin', clone_path)
+    create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
+    _check_basic_creation(
+        ds, DATAVERSE_TEST_COLLECTION_NAME, 'testadmin', clone_path)
 
 
 @with_credential(
@@ -97,8 +99,9 @@ def test_basic_export(path=None, clone_path=None):
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save(**ckwa)
     admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
-    create_test_dataverse_collection(admin_api, 'basetest')
-    _check_basic_creation(ds, 'basetest', 'testadmin', clone_path)
+    create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
+    _check_basic_creation(
+        ds, DATAVERSE_TEST_COLLECTION_NAME, 'testadmin', clone_path)
 
 
 @with_credential(
