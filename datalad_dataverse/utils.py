@@ -104,10 +104,7 @@ def get_api(url, credman, credential_name=None):
     # make one cheap request to ensure that the token is
     # in-principle working -- we won't be able to verify all necessary
     # permissions for all possible operations anyways
-    try:
-        api.get_info_version().raise_for_status()
-    except Exception as e:
-        raise ValueError from e
+    api.get_info_version().raise_for_status()
 
     update_specialremote_credential(
         'dataverse',
