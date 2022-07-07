@@ -51,6 +51,10 @@ def test_basic(path=None, clone_path=None):
     )
 
 
+
+# Disable for now. Export mode is broken by
+# https://github.com/datalad/datalad-dataverse/issues/143
+@skip_if(True)
 @skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
 @with_tempfile
 @with_tempfile
