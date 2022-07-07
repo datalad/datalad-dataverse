@@ -2,6 +2,9 @@
  """
 
 import logging
+from pyDataverse.exceptions import (
+    OperationFailedError,
+)
 from pyDataverse.models import (
     Dataset as DvDataset,
 )
@@ -383,10 +386,37 @@ def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
 
 
 def _get_dv_collection(api, alias):
-
     # TODO: this should be able to deal with different identifiers not just the
     # alias, I guess
-    response = api.get_dataverse(alias)
+    try:
+        response = api.get_dataverse(alias)
+    except OperationFailedError as e:
+        try:
+            # fetch all collection IDs and titles in the root collection
+            # to give people an immediate choice
+            # how long do we want an individual collection title to be
+            # in the exception message
+            max_title = 15
+            collections = [
+                f"{d['title'][:max_title]}"
+                f"{'…' if len(d['title']) > max_title else ''} "
+                f"({d['id']})"
+                for d in api.get_dataverse_contents(':root').json().get(
+                    'data', [])
+                if d.get('type') == 'dataverse'
+            ]
+            raise ValueError(
+                f'No collection {alias!r} found among existing: '
+                f"{', '.join(collections) if collections else 'none'}") from e
+        except ValueError:
+            raise
+        except Exception as unexpected_exc:
+            # our best effort failed
+            CapturedException(unexpected_exc)
+            raise e
+
+    # we are only catching the pyDataverse error above
+    # be safe and error for any request failure too
     response.raise_for_status()
     return response.json()
 
