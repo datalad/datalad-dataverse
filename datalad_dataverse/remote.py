@@ -12,6 +12,7 @@ from requests.auth import HTTPBasicAuth
 from datalad.customremotes import SpecialRemote
 from datalad.customremotes.main import main as super_main
 from datalad.support.annexrepo import AnnexRepo
+from datalad.utils import Path
 
 from datalad_next.credman import CredentialManager
 
@@ -19,6 +20,40 @@ from datalad_dataverse.utils import (
     get_api,
     format_doi,
 )
+
+
+LEADING_DOT_REPLACEMENT = "_._"
+
+
+def mangle_directory_names(path):
+    """Replace leading dot in directory names of a path
+
+    Dataverse currently auto-removes a leading dot from directory names.
+    Thus, map `.` -> `_._`
+    """
+
+    local_path = Path(path)
+
+    # only directories are treated this way:
+    if not local_path.is_dir():
+        filename = local_path.name
+        local_path = local_path.parent
+    else:
+        filename = None
+
+    dataverse_path = \
+        Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
+             if local_path.parts[0].startswith('.') else local_path.parts[0]
+             )
+    for pt in local_path.parts[1:]:
+        dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
+            if pt.startswith('.') else pt
+
+    # re-append file if necessary
+    if filename:
+        dataverse_path /= filename
+
+    return dataverse_path
 
 
 class DataverseRemote(ExportRemote, SpecialRemote):
@@ -107,6 +142,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             return False
 
     def checkpresentexport(self, key, remote_file):
+        remote_file = str(mangle_directory_names(remote_file))
         return self.checkpresent(key=remote_file)
 
     def transfer_store(self, key, local_file, datafile=None):
@@ -120,7 +156,11 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         resp.raise_for_status()
 
     def transferexport_store(self, key, local_file, remote_file):
+        remote_file = str(mangle_directory_names(remote_file))
+
         remote_dir = os.path.dirname(remote_file)
+        # TODO: Pretty sure there's similar or identical restrictions to
+        # filenames; Double-check and be clear here.
         if re.search(pattern='[^a-z0-9_\-.\\/\ ]', string=remote_dir, flags=re.ASCII | re.IGNORECASE):
             self.annex.error(f"Invalid character in directory name of {remote_file}."
                              f"Valid characters are a-Z, 0-9, '_', '-', '.', '\\', '/' and ' ' (white space).")
@@ -163,6 +203,8 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             f.write(response.content)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
+        remote_file = str(mangle_directory_names(remote_file))
+
         self.transfer_retrieve(key=remote_file, file=local_file)
 
     def remove(self, key):
@@ -196,6 +238,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         status.raise_for_status()
     
     def removeexport(self, key, remote_file):
+        remote_file = str(mangle_directory_names(remote_file))
         return self.remove(key=remote_file)
 
 
