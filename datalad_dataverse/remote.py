@@ -142,8 +142,21 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             return False
 
     def checkpresentexport(self, key, remote_file):
-        remote_file = str(mangle_directory_names(remote_file))
-        return self.checkpresent(key=remote_file)
+        remote_file = mangle_directory_names(remote_file)
+        remote_dir = str(remote_file.parent)
+        dataset = self.api.get_dataset(identifier=self.doi)
+        datafiles = dataset.json()['data']['latestVersion']['files']
+
+        for item in datafiles:
+            if 'directoryLabel' in item:
+                hit_dir = item['directoryLabel'] == remote_dir
+            else:
+                hit_dir = True
+
+            hit_file = item['dataFile']['filename'] == remote_file.name
+            if hit_file and hit_dir:
+                return True
+        return False
 
     def transfer_store(self, key, local_file, datafile=None):
         ds_pid = self.doi
