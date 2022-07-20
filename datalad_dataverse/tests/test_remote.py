@@ -1,3 +1,4 @@
+import pytest
 from urllib.parse import quote as urlquote
 
 from datalad.api import (
@@ -29,8 +30,9 @@ from . import (
 
 
 @skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
+@pytest.mark.parametrize("exporttree", ["yes", "no"])
 @with_tempfile
-def test_remote(path=None):
+def test_remote(path=None, *, exporttree):
     ds = Dataset(path).create()
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save()
@@ -39,7 +41,7 @@ def test_remote(path=None):
     dspid = create_test_dataverse_dataset(
         admin_api, DATAVERSE_TEST_COLLECTION_NAME, 'testds')
     try:
-        _check_remote(ds, dspid)
+        _check_remote(ds, dspid, exporttree)
     finally:
         admin_api.destroy_dataset(dspid)
 
@@ -49,17 +51,22 @@ def test_remote(path=None):
     secret=DATAVERSE_TEST_APITOKENS.get('testadmin'),
     realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse',
 )
-def _check_remote(ds, dspid):
+def _check_remote(ds, dspid, exporttree):
     repo = ds.repo
     repo.call_annex([
         'initremote', 'mydv', 'encryption=none', 'type=external',
         'externaltype=dataverse', f'url={DATAVERSE_TEST_URL}',
-        f'doi={dspid}',
+        f'doi={dspid}', f'exporttree={exporttree}'
     ])
     # some smoke testing of the git-annex interface
-    repo.call_annex([
-        'copy', '--to', 'mydv', 'somefile.txt',
-    ])
+    if exporttree == "yes":
+        repo.call_annex([
+            'export', 'HEAD', '--to', 'mydv'
+        ])
+    else:
+        repo.call_annex([
+            'copy', '--to', 'mydv', 'somefile.txt',
+        ])
     repo.call_annex([
         'fsck', '-f', 'mydv',
     ])
@@ -69,9 +76,12 @@ def _check_remote(ds, dspid):
     repo.call_annex([
         'get', '-f', 'mydv', 'somefile.txt',
     ])
-    repo.call_annex([
-        'drop', '--from', 'mydv', 'somefile.txt',
-    ])
+    if exporttree == "no":
+        # One cannot drop from an export remote - annex will complain and
+        # suggest exporting a tree w/o the file instead.
+        repo.call_annex([
+            'drop', '--from', 'mydv', 'somefile.txt',
+        ])
     # Temporarily disable this until
     # https://github.com/datalad/datalad-dataverse/issues/127
     # is sorted out. Possibly via
