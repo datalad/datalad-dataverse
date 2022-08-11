@@ -120,10 +120,11 @@ def _check_datalad_annex(ds, dspid, clonepath):
         f'{DATAVERSE_TEST_URL}/dataset.xhtml?persistentId={dspid}&version=DRAFT',
     ):
         dsclone = clone(git_remote_url, clonepath)
+        cloned_repo = dsclone.repo
 
         # we got the same thing
-        assert repo.get_hexsha(ds.repo.get_corresponding_branch()) == \
-            dsclone.repo.get_hexsha(ds.repo.get_corresponding_branch())
+        assert repo.get_hexsha(repo.get_corresponding_branch()) == \
+            cloned_repo.get_hexsha(cloned_repo.get_corresponding_branch())
 
         # cleanup for the next iteration
         rmtree(clonepath)
