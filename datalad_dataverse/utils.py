@@ -93,7 +93,7 @@ def get_api(url, credman, credential_name=None):
             # at the very end, and can use it for discovery next time
             realm=credential_realm,
         )
-    if 'secret' not in cred:
+    if cred is None or 'secret' not in cred:
         raise LookupError('No suitable credential found')
 
     # connect to dataverse instance
