@@ -81,6 +81,15 @@ def test_workflow(path=None, clone_path=None, *, mode):
 )
 def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
 
+    with assert_raises(ValueError) as ve:
+        ds.create_sibling_dataverse(
+            url=DATAVERSE_TEST_URL,
+            collection='no-ffing-datalad-way-this-exists',
+            credential="dataverse",
+            **ckwa
+        )
+    assert 'among existing' in str(ve)
+
     ds_repo = ds.repo
     dspid = None
     try:
@@ -93,6 +102,7 @@ def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
                                               recursive=False,
                                               recursion_limit=None,
                                               metadata=None,
+                                              credential="dataverse",
                                               **ckwa)
         # make dataset removal work in `finally`
         # no being careful and get(), we really require it
