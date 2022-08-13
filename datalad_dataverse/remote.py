@@ -174,7 +174,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         remote_dir = os.path.dirname(remote_file)
         # TODO: Pretty sure there's similar or identical restrictions to
         # filenames; Double-check and be clear here.
-        if re.search(pattern='[^a-z0-9_\-.\\/\ ]', string=remote_dir, flags=re.ASCII | re.IGNORECASE):
+        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]', string=remote_dir, flags=re.ASCII | re.IGNORECASE):
             self.annex.error(f"Invalid character in directory name of {remote_file}."
                              f"Valid characters are a-Z, 0-9, '_', '-', '.', '\\', '/' and ' ' (white space).")
 
@@ -249,7 +249,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             auth=HTTPBasicAuth(self._token, ''))
         # http error handling
         status.raise_for_status()
-    
+
     def removeexport(self, key, remote_file):
         remote_file = str(mangle_directory_names(remote_file))
         return self.remove(key=remote_file)
