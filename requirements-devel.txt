@@ -1,4 +1,5 @@
 # requirements for a development environment
+git+http://github.com/bpoldrack/datalad-next@fix-push-patch
 sphinx
 sphinx_rtd_theme
 .[full]
