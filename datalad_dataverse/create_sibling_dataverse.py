@@ -215,7 +215,7 @@ class CreateSiblingDataverse(Interface):
             url: str,
             *,
             dataset: Optional[Union[str, Dataset]] = None,
-            name: Optional[str] = None,
+            name: Optional[str] = 'dataverse',
             storage_name: Optional[str] = None,
             mode: str = 'annex',
             credential: Optional[str] = None,
