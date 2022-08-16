@@ -60,7 +60,7 @@ Here is some inspiration on what you could do:
 
 
 ``datalad-dataverse`` comes with a range of hidden convenience functions for Dataverse interactions.
-Importantly, you will not need to create OSF projects via the Dataverse web interface -- given appropriate credentials, ``datalad create-sibling-dataverse`` will create new datasets under your user account and specified Dataverse collected, and report back what it generated.
+Importantly, you will not need to create Dataverse datasets via the Dataverse web interface -- given appropriate credentials, ``datalad create-sibling-dataverse`` will create new datasets under your user account and specified Dataverse collection, and report back what it generated.
 
 
 What can I **not** use this extension for?
