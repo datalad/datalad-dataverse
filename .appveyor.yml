@@ -90,6 +90,13 @@ matrix:
     - KNOWN2FAIL: 1
 
 
+# do not run the CI if only documentation changes were made
+# documentation builds are tested elsewhere and cheaper
+skip_commits:
+  files:
+    - docs/
+
+
 # it is OK to specify paths that may not exist for a particular test run
 cache:
   # pip cache
