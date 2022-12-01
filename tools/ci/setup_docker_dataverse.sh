@@ -88,7 +88,7 @@ else
   echo "Failed to receive token for 'testadmin'. Got: ${token_admin}"
   exit 1
 fi
-# Check validity of received token for 'uma'
+# Check validity of received token for 'user1'
 if [ -n "${token_userone}" ] && [ "${token_userone}" != "null" ]; then
   echo "Token for 'user1' received: ${token_userone}"
   useroneResp=$(curl -H "X-Dataverse-key:${token_userone}" "http://localhost:8080/api/users/:me")
@@ -103,3 +103,6 @@ else
   echo "Failed to receive token for 'user1'. Got: ${token_userone}"
   exit 1
 fi
+
+# Publish root dataverse to allow publishing things underneath:
+curl -H "X-Dataverse-key:${token_admin}" "http://localhost:8080/api/dataverses/science/actions/:publish"
