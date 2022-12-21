@@ -49,3 +49,8 @@ to acknowledge contributors and describe the publication record that is created 
 by archiving it using [zenodo.org](https://zenodo.org/). You may also want to
 consider acknowledging contributors with the
 [allcontributors bot](https://allcontributors.org/docs/en/bot/overview).
+
+# Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in internals or
+contributing to the project.
