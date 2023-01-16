@@ -43,8 +43,8 @@ from datalad.support.constraints import (
 )
 from datalad.support.exceptions import CapturedException
 from datalad.support.json_py import (
-    jsonload,
-    json_loads,
+    load as jsonload,
+    loads as json_loads,
 )
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
