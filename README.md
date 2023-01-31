@@ -37,6 +37,10 @@ adjust as necessary. A good approach is to
 - Adjust the documentation in `docs/source/index.rst`. Refer to [`docs/README.md`](docs/README.md) for more information on documentation building, testing and publishing.
 - Replace this README, and/or update the links in the badges at the top.
 - Update `setup.cfg` with appropriate metadata on the new extension.
+- Generate GitHub labels for use by the "Add changelog.d snippet" and
+  "Auto-release on PR merge" workflows by using the code in the
+  `datalad/release-action` repository [as described in its
+  README](https://github.com/datalad/release-action#command-labels).
 
 You can consider filling in the provided [.zenodo.json](.zenodo.json) file with
 contributor information and [meta data](https://developers.zenodo.org/#representation)
@@ -45,3 +49,8 @@ to acknowledge contributors and describe the publication record that is created 
 by archiving it using [zenodo.org](https://zenodo.org/). You may also want to
 consider acknowledging contributors with the
 [allcontributors bot](https://allcontributors.org/docs/en/bot/overview).
+
+# Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in internals or
+contributing to the project.
