@@ -9,7 +9,7 @@ from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.support.param import Parameter
 from datalad.distribution.dataset import datasetmethod
-from datalad.interface.utils import eval_results
+from datalad.interface.base import eval_results
 from datalad.support.constraints import EnsureChoice
 
 from datalad.interface.results import get_status_dict
