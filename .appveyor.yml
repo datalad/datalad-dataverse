@@ -60,18 +60,19 @@ environment:
     # List a CI run for each platform first, to have immediate access when there
     # is a need for debugging
 
+    # The docker setup is broken
+    #- ID: Ubu20docker
+    #  DTS: datalad_dataverse
+    #  APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
+    #  INSTALL_SYSPKGS: python3-virtualenv jq
+    #  # system git-annex is way too old, use better one
+    #  INSTALL_GITANNEX: git-annex -m datalad/git-annex:release
+    #  CODECOV_BINARY: https://uploader.codecov.io/latest/linux/codecov
+    #  # setting critically needed for launching the dataverse container
+    #  DEPLOY_DATAVERSE: 1
+    #  traefikhost: localhost
+    #  KNOWN2FAIL: 1
     # Ubuntu core tests
-    - ID: Ubu20docker
-      DTS: datalad_dataverse
-      APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
-      INSTALL_SYSPKGS: python3-virtualenv jq
-      # system git-annex is way too old, use better one
-      INSTALL_GITANNEX: git-annex -m datalad/git-annex:release
-      CODECOV_BINARY: https://uploader.codecov.io/latest/linux/codecov
-      # setting critically needed for launching the dataverse container
-      DEPLOY_DATAVERSE: 1
-      traefikhost: localhost
-      KNOWN2FAIL: 1
     - ID: Ubu20
       DTS: datalad_dataverse
       APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
