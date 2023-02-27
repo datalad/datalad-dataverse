@@ -1,6 +1,7 @@
 """High-level interface for creating a combi-target on a Dataverse server
  """
 
+import json
 import logging
 from pyDataverse.exceptions import (
     OperationFailedError,
@@ -42,10 +43,6 @@ from datalad.support.constraints import (
     EnsureStr,
 )
 from datalad.support.exceptions import CapturedException
-from datalad.support.json_py import (
-    jsonload,
-    json_loads,
-)
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
 from datalad.utils import Path
@@ -667,9 +664,9 @@ def _get_ds_metadata(ds, metadata):
         if not metadata.is_absolute():
             metadata = ds.pathobj / metadata
         with open(metadata, 'r') as f:
-            mdata = jsonload(f)
+            mdata = json.load(f)
     else:
-        mdata = json_loads(metadata)
+        mdata = json.loads(metadata)
 
     return mdata
 
