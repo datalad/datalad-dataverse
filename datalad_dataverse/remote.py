@@ -25,9 +25,9 @@ from datalad_next.credman import CredentialManager
 from datalad_dataverse.utils import (
     get_api,
     format_doi,
+    mangle_directory_names,
 )
 
-LEADING_DOT_REPLACEMENT = "_._"
 DATALAD_ANNEX_SPECIAL_KEYS = ["XDLRA--refs", "XDLRA--repo-export"]
 
 # Object to hold what's on dataverse's end for a given database id.
@@ -44,42 +44,6 @@ FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 CURL_EXISTS = which('curl') is not None
 
 
-def mangle_directory_names(path):
-    """Replace leading dot in directory names of a path
-
-    Dataverse currently auto-removes a leading dot from directory names.
-    Thus, map `.` -> `_._`
-    """
-
-    local_path = Path(path)
-
-    # only directories are treated this way:
-    if not local_path.is_dir():
-        filename = local_path.name
-        local_path = local_path.parent
-    else:
-        filename = None
-
-    if local_path == Path("."):
-        # `path` either is '.' or a file in '.'.
-        # Nothing to do: '.' has no representation on dataverse anyway.
-        # Note also, that Path(".").parts is an empty tuple for some reason,
-        # hence the code block below must be protected against this case.
-        dataverse_path = local_path
-    else:
-        dataverse_path = \
-            Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
-                 if local_path.parts[0].startswith('.') else local_path.parts[0]
-                 )
-        for pt in local_path.parts[1:]:
-            dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
-                if pt.startswith('.') else pt
-
-    # re-append file if necessary
-    if filename:
-        dataverse_path /= filename
-
-    return dataverse_path
 
 
 class DataverseRemote(ExportRemote, SpecialRemote):
