@@ -1,15 +1,10 @@
 import pytest
 
-from datalad.tests.utils_pytest import (
-    assert_result_count,
-)
-from datalad.api import (
-    clone,
-)
-from datalad.distribution.dataset import (
-    Dataset,
-)
-from datalad.support.exceptions import CommandError
+from datalad.api import clone
+
+from datalad_next.tests.utils import assert_result_count
+from datalad_next.datasets import Dataset
+from datalad_next.exceptions import CommandError
 
 
 ckwa = dict(result_renderer='disabled')

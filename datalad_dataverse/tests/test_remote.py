@@ -1,11 +1,10 @@
 import pytest
 from urllib.parse import quote as urlquote
 
-from datalad.api import (
-    Dataset,
-    clone,
-)
-from datalad.utils import (
+from datalad.api import clone
+
+from datalad_next.datasets import Dataset
+from datalad_next.utils import (
     on_windows,
     rmtree,
 )
