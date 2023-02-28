@@ -1,10 +1,8 @@
+from pathlib import Path
 import re
 import sys
 
-from annexremote import (
-    ExportRemote,
-    UnsupportedRequest,
-)
+from annexremote import ExportRemote
 from collections import namedtuple
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
@@ -12,15 +10,16 @@ from requests import delete
 from requests.auth import HTTPBasicAuth
 from shutil import which
 
-from datalad.customremotes import (
+from datalad_next.annexremotes import (
     RemoteError,
-    SpecialRemote
+    SpecialRemote,
+    UnsupportedRequest,
+    super_main,
 )
-from datalad.customremotes.main import main as super_main
-from datalad.support.annexrepo import AnnexRepo
-from datalad.utils import Path
-
 from datalad_next.credman import CredentialManager
+# this important is a vast overstatement, we only need
+# `AnnexRepo.config`, nothing else
+from datalad_next.datasets import LegacyAnnexRepo as AnnexRepo
 
 from datalad_dataverse.utils import (
     get_api,
