@@ -27,8 +27,6 @@ from datalad_dataverse.utils import (
     mangle_directory_names,
 )
 
-DATALAD_ANNEX_SPECIAL_KEYS = ["XDLRA--refs", "XDLRA--repo-export"]
-
 # Object to hold what's on dataverse's end for a given database id.
 # We need the paths in the latest version (if the id is part of that) in order
 # to know whether we need to replace rather than just upload a file, and we need
@@ -104,22 +102,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     remote path in general. In order to be able to access versions of a file
     that are not part of the latest version (draft or not) of the dataverse
     dataset, reliance on recorded database IDs is crucial.
-
-    datalad-annex special keys
-    --------------------------
-
-    The datalad-next extension provides a git-remote-helper to utilize cloning
-    from and pushing to any special remote via a "hidden", intermediate
-    repository. This approach comes with special annex keys representing a
-    packed git repository ("XDLRA--refs", "XDLRA--repo-export"). In opposition
-    to regular annex keys, those are not content specific. Their location in the
-    dataverse dataset will always be the same (meaning path matching is fine -
-    there's no notion of a previous version), and in some sense more
-    importantly: The git-remote-helper using them can not have any knowledge of
-    their database IDs, since they are recorded in the repository (in its
-    git-annex branch) that this helper is only about to retrieve. Hence, the
-    implementation of this special remote treats those keys as special cases
-    solely relying on path matching.
 
     Implementation note
     -------------------
@@ -277,23 +259,16 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_directory_names(remote_file)
 
-        # In opposition to checkpresent (annex mode), we fall back to path
-        # matching for the special keys of the datalad-annex
-        # git-remote-helper only. For accessing other files w/o an id record,
-        # that are present on dataverse, importtree is the way to go.
-        if key in DATALAD_ANNEX_SPECIAL_KEYS:
-            return remote_file in [f.path for f in self.files_latest.values()]
+        stored_id = self.get_stored_id(key)
+        if stored_id is not None:
+            # Only check latest version in export mode. Doesn't currently
+            # work for keys from older versions, since annex fails to even
+            # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
+            return stored_id in self.files_latest.keys()
         else:
-            stored_id = self.get_stored_id(key)
-            if stored_id is not None:
-                # Only check latest version in export mode. Doesn't currently
-                # work for keys from older versions, since annex fails to even
-                # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-                return stored_id in self.files_latest.keys()
-            else:
-                # We do not have an ID on record for this key and we can't trust
-                # matching paths in export mode in the general case.
-                return False
+            # We do not have an ID on record for this key and we can't trust
+            # matching paths in export mode in the general case.
+            return False
 
     def transferexport_store(self, key, local_file, remote_file):
         remote_file = mangle_directory_names(remote_file)
@@ -323,10 +298,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         if stored_id is not None:
             file_id = stored_id
         else:
-            # Like in `self.checkpresentexport`, we fall back to path matching
-            # for special keys only in export mode.
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(remote_file)
             if file_id is None:
                 raise RemoteError(f"Key {key} unavailable")
 
@@ -359,8 +330,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         stored_id = self.get_stored_id(key)
         file_id = None
         if stored_id is None:
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(filename)
+            pass
         else:
             file_id = stored_id
         if file_id is None:
@@ -679,15 +649,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             if rm_id not in self.files_latest.keys():
                 # We can't remove from older (hence published) versions.
                 return
-        elif key in DATALAD_ANNEX_SPECIAL_KEYS:
-            # In opposition to `checkpresent` and `transfer_retrieve`, we only
-            # use path matching for the datalad-annex special keys in `remove`
-            # in both modes ("regular annex" and export).
-            # While it's fine to try to use remote files named for an annex key
-            # despite not having its id on record, we have to assume it's been
-            # put there by other means and a destructive operation should be
-            # taken care of by those same means.
-            rm_id = self.get_id_by_path(remote_file)
 
         if rm_id is None:
             # We didn't find anything to remove. That should be fine and
