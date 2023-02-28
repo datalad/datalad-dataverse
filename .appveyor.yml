@@ -91,7 +91,7 @@ environment:
     ## MacOS core tests
     #- ID: MacP38core
     #  DTS: datalad_dataverse
-    #  APPVEYOR_BUILD_WORKER_IMAGE: macOS
+    #  APPVEYOR_BUILD_WORKER_IMAGE: macos-monterey
     #  PY: 3.8
     #  INSTALL_GITANNEX: git-annex
     #  DATALAD_LOCATIONS_SOCKETS: /Users/appveyor/DLTMP/sockets
@@ -100,6 +100,13 @@ environment:
 matrix:
   allow_failures:
     - KNOWN2FAIL: 1
+
+
+# do not run the CI if only documentation changes were made
+# documentation builds are tested elsewhere and cheaper
+skip_commits:
+  files:
+    - docs/
 
 
 # it is OK to specify paths that may not exist for a particular test run
@@ -184,13 +191,14 @@ install:
   # Check we got a our dataverse and it's accessible with the admin token:
   - sh: "[ i-n \"${DEPLOY_DATAVERSE}\" ] && curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${DATAVERSE_TEST_APITOKEN_TESTADMIN}\" || true"
 
+
 #before_build:
 #
 
 
 build_script:
   - python -m pip install -r requirements-devel.txt
-  - python -m pip install ".[devel]"
+  - python -m pip install .
 
 
 #after_build:
@@ -207,10 +215,8 @@ test_script:
   - cmd: md __testhome__
   - sh: mkdir __testhome__
   - cd __testhome__
-    # run test selecion
-  - cmd: python -m pytest -s -v -m "not (turtle)" --cov=datalad_dataverse --pyargs %DTS%
-  - sh: PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v -m "not (turtle)" --cov=datalad_dataverse --pyargs ${DTS}
-
+  - cmd: python -m pytest -s -v -m "not (turtle)" --doctest-modules --cov=datalad_dataverse --pyargs %DTS%
+  - sh: PATH=$PWD/../tools/coverage-bin:$PATH python -m pytest -s -v -m "not (turtle)" --doctest-modules --cov=datalad_dataverse --pyargs ${DTS}
 
 
 after_test:
