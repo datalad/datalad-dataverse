@@ -1,15 +1,10 @@
-try:
-    from datalad.conftest import setup_package
-except ImportError:
-    # assume old datalad without pytest support introduced in
-    # https://github.com/datalad/datalad/pull/6273
-    import pytest
-    from datalad import setup_package as _setup_package
-    from datalad import teardown_package as _teardown_package
+# we are not using datalad's directly, because we are practically
+# requiring whatever setup datalad_next prefers, because we employ
+# its tooling
+from datalad_next.conftest import setup_package
 
+pytest_plugins = "datalad_next.tests.fixtures"
 
-    @pytest.fixture(autouse=True, scope="session")
-    def setup_package():
-        _setup_package()
-        yield
-        _teardown_package()
+from datalad_dataverse.tests.fixtures import (
+    dataverse_admin_token,
+)

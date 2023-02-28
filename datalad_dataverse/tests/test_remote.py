@@ -29,14 +29,14 @@ from . import (
 )
 
 
-@skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
 @pytest.mark.parametrize("exporttree", ["yes", "no"])
-@with_tempfile
-def test_remote(path=None, *, exporttree):
-    ds = Dataset(path).create()
+def test_remote(dataverse_admin_token, tmp_path, credman, *, exporttree):
+    credman.set('dataverse', secret=dataverse_admin_token,
+                realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse')
+    ds = Dataset(tmp_path).create()
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save()
-    admin_api = get_native_api(DATAVERSE_TEST_URL, DATAVERSE_TEST_APITOKENS['testadmin'])
+    admin_api = get_native_api(DATAVERSE_TEST_URL, dataverse_admin_token)
     create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
     dspid = create_test_dataverse_dataset(
         admin_api, DATAVERSE_TEST_COLLECTION_NAME, 'testds')
@@ -46,11 +46,6 @@ def test_remote(path=None, *, exporttree):
         admin_api.destroy_dataset(dspid)
 
 
-@with_credential(
-    'dataverse',
-    secret=DATAVERSE_TEST_APITOKENS.get('testadmin'),
-    realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse',
-)
 def _check_remote(ds, dspid, exporttree):
     repo = ds.repo
     repo.call_annex([
