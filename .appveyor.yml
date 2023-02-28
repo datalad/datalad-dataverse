@@ -77,8 +77,7 @@ environment:
       DTS: datalad_dataverse
       APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
       INSTALL_SYSPKGS: python3-virtualenv jq
-      # system git-annex is way too old, use better one
-      INSTALL_GITANNEX: git-annex -m datalad/git-annex:release
+      INSTALL_GITANNEX: git-annex -m snapshot
       CODECOV_BINARY: https://uploader.codecov.io/latest/linux/codecov
     ## Windows core tests
     #- ID: WinP39core
@@ -178,12 +177,9 @@ install:
   # Install git-annex on windows, otherwise INSTALL_SYSPKGS can be used
   # deploy git-annex, if desired
   - cmd: IF DEFINED INSTALL_GITANNEX datalad-installer --sudo ok %INSTALL_GITANNEX%
-  - sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer --sudo ok ${INSTALL_GITANNEX}"
-  # in case of a snapshot installation, use the following approach to adjust
-  # the PATH as necessary
-  #- sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer -E ${HOME}/dlinstaller_env.sh --sudo ok ${INSTALL_GITANNEX}"
-  # add location of datalad installer results to PATH
-  #- sh: "[ -f ${HOME}/dlinstaller_env.sh ] && . ${HOME}/dlinstaller_env.sh || true"
+  - sh: tools/appveyor/install-git-annex ${INSTALL_GITANNEX}
+  # enable the git-annex provisioned by the installer
+  - "[ -f ${HOME}/dlinstaller_env.sh ] && . ${HOME}/dlinstaller_env.sh || true"
   # Set up dataverse docker; sourced since it's exporting the API tokens:
   - sh: "[ -n \"${DEPLOY_DATAVERSE}\" ] && source tools/ci/setup_docker_dataverse.sh $DOCKERHUB_TOKEN $DOCKERHUB_USERNAME || true"
   # Show what we got after setup in case something is going wrong:

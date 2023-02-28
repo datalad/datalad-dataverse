@@ -4,11 +4,9 @@ from ..create_sibling_dataverse import (
     _create_dv_dataset,
     _get_dv_collection,
 )
-from . import DATAVERSE_TEST_BASECOLLECTION
 
 
-def create_test_dataverse_collection(
-        api, alias, collection=DATAVERSE_TEST_BASECOLLECTION):
+def create_test_dataverse_collection(api, alias, collection):
     dvmeta = Dataverse(dict(
         name="DataLad Test Dataverse",
         alias=alias,
