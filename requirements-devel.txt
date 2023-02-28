@@ -5,3 +5,4 @@ coverage
 sphinx
 sphinx_rtd_theme
 .[full]
+git+https://github.com/datalad/datalad-next#egg=datalad_next
