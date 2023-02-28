@@ -153,8 +153,11 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         self.configs['dlacredential'] = \
             'Identifier used to retrieve an API token from a local ' \
             'credential store'
+        # dataverse dataset identifier
         self._doi = None
+        # dataverse instance URL
         self._url = None
+        # dataverse native API handle
         self._api = None
         self._data_access_api = None
         self._token = None
@@ -168,23 +171,52 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     # Essential API
     #
     def prepare(self):
-        # trigger API instance in order to get possibly auth/connection errors
-        # right away
-        self.api
+        # remove any trailing slash from URL
+        url = self.annex.getconfig('url').rstrip('/')
+        if not url:
+            raise ValueError('url must be specified')
+        doi = self.annex.getconfig('doi')
+        if not doi:
+            raise ValueError('doi must be specified')
+        # standardize formating to minimize complexity downstream
+        self._doi = format_doi(doi)
+        self._url = url
+        # we need an acces token, use the repo's configmanager to
+        # query for one
+        repo = AnnexRepo(self.annex.getgitdir())
+        # TODO the below is almost literally taken from
+        # the datalad-annex:: implementation in datalad-next
+        # this could become a comming helper
+        # TODO https://github.com/datalad/datalad-dataverse/issues/171
+        credman = CredentialManager(repo.config)
+        credential_name = self.annex.getconfig('dlacredential')
+        api = get_api(
+            self._url,
+            credman,
+            credential_name=credential_name,
+        )
+        # store for reuse with data access API.
+        # we do not initialize that one here, because it is only used
+        # for file downloads
+        self._token = api.api_token
+        self._api = api
 
     def initremote(self):
         """
             Use this command to initialize a remote
             git annex initremote dv1 type=external externaltype=dataverse encryption=none
         """
+        # we also need an active API connection for initremote,
+        # simply run prepare()
+        self.prepare()
         # check if instance is readable and authenticated
-        resp = self.api.get_info_version()
+        resp = self._api.get_info_version()
         if resp.json()['status'] != 'OK':
             raise RuntimeError(f'Cannot connect to dataverse instance '
                                f'(status: {resp.json()["status"]})')
 
         # check if project with specified doi exists
-        dv_ds = self.api.get_dataset(identifier=self.doi)
+        dv_ds = self._api.get_dataset(identifier=self._doi)
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
 
@@ -214,7 +246,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     def transfer_store(self, key, local_file):
         datafile = Datafile()
         datafile.set({'filename': key, 'label': key})
-        datafile.set({'pid': self.doi})
+        datafile.set({'pid': self._doi})
 
         self._upload_file(datafile=datafile,
                           key=key,
@@ -279,7 +311,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         datafile.set({'filename': remote_file.name,
                       'directoryLabel': str(remote_file.parent),
                       'label': remote_file.name,
-                      'pid': self.doi})
+                      'pid': self._doi})
 
         self._upload_file(datafile, key, local_file, remote_file)
 
@@ -338,67 +370,27 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         datafile.set({'filename': new_filename.name,
                       'directoryLabel': str(new_filename.parent),
                       'label': new_filename.name,
-                      'pid': self.doi})
+                      'pid': self._doi})
 
-        proc = self.api.update_datafile_metadata(file_id,
-                                                 json_str=datafile.json(),
-                                                 is_filepid=False)
+        proc = self._api.update_datafile_metadata(
+            file_id,
+            json_str=datafile.json(),
+            is_filepid=False,
+        )
         if proc.returncode:
             raise RemoteError(f"Renaming failed: {proc.stderr}")
 
     #
-    # Export API
+    # Helpers
     #
-    @property
-    def url(self):
-        if self._url is None:
-            self._url = self.annex.getconfig('url')
-            if self._url == '':
-                raise ValueError('url must be specified')
-            # remove trailing slash in URL
-            elif self._url.endswith('/'):
-                self._url = self._url[:-1]
-        return self._url
-
-    @property
-    def doi(self):
-        if self._doi is None:
-            self._doi = self.annex.getconfig('doi')
-            if self._doi == '':
-                raise ValueError('doi must be specified')
-            self._doi = format_doi(self._doi)
-        return self._doi
-
-    @property
-    def api(self):
-        if self._api is None:
-            # we know that we will need a token
-            repo = AnnexRepo(self.annex.getgitdir())
-            # TODO the below is almost literally taken from
-            # the datalad-annex:: implementation in datalad-next
-            # this could become a comming helper
-            credman = CredentialManager(repo.config)
-            credential_name = self.annex.getconfig('dlacredential')
-            api = get_api(
-                self.url,
-                credman,
-                credential_name=credential_name,
-            )
-
-            # store for reuse with data access API
-            self._token = api.api_token
-            self._api = api
-
-        return self._api
-
     @property
     def data_access_api(self):
         if self._data_access_api is None:
             self._data_access_api = DataAccessApi(
-                base_url=self.url,
+                base_url=self._url,
                 # this relies on having established the NativeApi in prepare()
                 api_token=self._token,
-                )
+            )
         return self._data_access_api
 
     @property
@@ -415,7 +407,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # Hence, the file lists in the version entries may contain
             # duplicates (unchanged files across versions).
             self.message("Request all dataset versions", type='debug')
-            versions = self.api.get_dataset_versions(self.doi)
+            versions = self._api.get_dataset_versions(self._doi)
             versions.raise_for_status()
 
             self._old_dataset_versions = versions.json()['data']
@@ -466,8 +458,10 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
         if self._dataset_latest is None:
             self.message("Request latest dataset version", type='debug')
-            dataset = self.api.get_dataset(identifier=self.doi,
-                                           version=":latest")
+            dataset = self._api.get_dataset(
+                identifier=self._doi,
+                version=":latest",
+            )
             dataset.raise_for_status()
             self._dataset_latest = dataset.json()['data']['latestVersion']
         return self._dataset_latest
@@ -480,13 +474,17 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         """
 
         if self._files_old is None:
-            self._files_old = {f['dataFile']['id']: FileIdRecord(
-                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                True  # older versions are always released
+            self._files_old = {
+                f['dataFile']['id']: FileIdRecord(
+                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                    True  # older versions are always released
                 )
-                for file_lists in [(version['files'], version['versionState'])
-                                   for version in self.old_dataset_versions]
-                for f in file_lists[0]}
+                for file_lists in [
+                    (version['files'], version['versionState'])
+                    for version in self.old_dataset_versions
+                ]
+                for f in file_lists[0]
+            }
 
         return self._files_old
 
@@ -507,11 +505,13 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
         if self._files_latest is None:
             # Latest version in self.dataset is first entry.
-            self._files_latest = {f['dataFile']['id']: FileIdRecord(
-                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                self.dataset_latest['versionState'] == "RELEASED"
+            self._files_latest = {
+                f['dataFile']['id']: FileIdRecord(
+                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                    self.dataset_latest['versionState'] == "RELEASED",
                 )
-                for f in self.dataset_latest['files']}
+                for f in self.dataset_latest['files']
+            }
 
         return self._files_latest
 
@@ -606,15 +606,19 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         replace_id = self.get_id_by_path(remote_file)
         if replace_id is not None:
             self.message(f"Replacing {remote_file} ...", type='debug')
-            response = self.api.replace_datafile(identifier=replace_id,
-                                                 filename=local_file,
-                                                 json_str=datafile.json(),
-                                                 is_filepid=False)
+            response = self._api.replace_datafile(
+                identifier=replace_id,
+                filename=local_file,
+                json_str=datafile.json(),
+                is_filepid=False,
+            )
         else:
             self.message(f"Uploading {remote_file} ...", type='debug')
-            response = self.api.upload_datafile(identifier=self.doi,
-                                                filename=local_file,
-                                                json_str=datafile.json())
+            response = self._api.upload_datafile(
+                identifier=self._doi,
+                filename=local_file,
+                json_str=datafile.json(),
+            )
 
         if response.status_code == 400 and \
                 response.json()['status'] == "ERROR" and \
@@ -628,8 +632,10 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # git-remote-helper).
             # Hence, having the key on the remote end, doesn't mean it's
             # identical. So, we can't catch it beforehand this way.
-            self.message(f"Failed to upload {key}, since dataverse says we are "
-                         f"replacing with duplicate content.", type='debug')
+            self.message(
+                f"Failed to upload {key}, since dataverse says we are "
+                f"replacing with duplicate content.", type='debug'
+            )
             return  # nothing changed and nothing needs to be done
         else:
             response.raise_for_status()
@@ -689,7 +695,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             return
 
         status = delete(
-            f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/'
+            f'{self._url}/dvn/api/data-deposit/v1.1/swordv2/'
             f'edit-media/file/{rm_id}',
             # this relies on having established the NativeApi in prepare()
             auth=HTTPBasicAuth(self._token, ''))
