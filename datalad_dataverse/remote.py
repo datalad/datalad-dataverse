@@ -44,8 +44,6 @@ FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 CURL_EXISTS = which('curl') is not None
 
 
-
-
 class DataverseRemote(ExportRemote, SpecialRemote):
     """Special remote to interface dataverse datasets.
 
@@ -167,6 +165,14 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         self._files_latest = None
         self.is_draft = None
 
+    #
+    # Essential API
+    #
+    def prepare(self):
+        # trigger API instance in order to get possibly auth/connection errors
+        # right away
+        self.api
+
     def initremote(self):
         """
             Use this command to initialize a remote
@@ -183,6 +189,167 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
 
+    def checkpresent(self, key):
+        stored_id = self.get_stored_id(key)
+        if stored_id is not None:
+            # First, check latest version. Second, check older versions.
+            # This is to avoid requesting the full file list unless necessary.
+            return stored_id in self.files_latest.keys() or \
+                   stored_id in self.files_old.keys()
+        else:
+            # We do not have an ID on record for this key.
+            # Fall back to filename matching for two reasons:
+            # 1. We have to deal with the special keys of the datalad-annex
+            #    git-remote-helper. They must be matched by name, since the
+            #    throwaway repo using them doesn't have a relevant git-annex
+            #    branch with an ID record (especially when cloning via the
+            #    git-remote-helper)
+            # 2. We are in "regular annex mode" here - keys are stored under
+            #    their name. Falling back to name matching allows to recover
+            #    data, despite a lost or not generated id record for it. For
+            #    example on could have uploaded lots of data via git-annex-copy,
+            #    but failed to push the git-annex branch somewhere.
+            return Path(key) in [f.path for f in self.files_latest.values()] or \
+                   Path(key) in [f.path for f in self.files_old.values()]
+
+    def transfer_store(self, key, local_file):
+        datafile = Datafile()
+        datafile.set({'filename': key, 'label': key})
+        datafile.set({'pid': self.doi})
+
+        self._upload_file(datafile=datafile,
+                          key=key,
+                          local_file=local_file,
+                          remote_file=Path(key))
+
+    def transfer_retrieve(self, key, file):
+        stored_id = self.get_stored_id(key)
+        if stored_id is not None:
+            file_id = stored_id
+        else:
+            # Like in `self.checkpresent`, we fall back to path matching.
+            # Delayed checking for availability from old versions is included.
+            file_id = self.get_id_by_path(Path(key), latest_only=False)
+            if file_id is None:
+                raise RemoteError(f"Key {key} unavailable")
+
+        self._download_file(file_id, file)
+
+    def remove(self, key):
+        remote_file = Path(key)
+        self._remove_file(key, remote_file)
+
+    #
+    # Export API
+    #
+    def checkpresentexport(self, key, remote_file):
+        # In export mode, we need to fix remote paths:
+        remote_file = mangle_directory_names(remote_file)
+
+        # In opposition to checkpresent (annex mode), we fall back to path
+        # matching for the special keys of the datalad-annex
+        # git-remote-helper only. For accessing other files w/o an id record,
+        # that are present on dataverse, importtree is the way to go.
+        if key in DATALAD_ANNEX_SPECIAL_KEYS:
+            return remote_file in [f.path for f in self.files_latest.values()]
+        else:
+            stored_id = self.get_stored_id(key)
+            if stored_id is not None:
+                # Only check latest version in export mode. Doesn't currently
+                # work for keys from older versions, since annex fails to even
+                # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
+                return stored_id in self.files_latest.keys()
+            else:
+                # We do not have an ID on record for this key and we can't trust
+                # matching paths in export mode in the general case.
+                return False
+
+    def transferexport_store(self, key, local_file, remote_file):
+        remote_file = mangle_directory_names(remote_file)
+        # TODO: See
+        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
+        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
+                     string=str(remote_file.parent),
+                     flags=re.ASCII | re.IGNORECASE):
+            self.annex.error(f"Invalid character in directory name of "
+                             f"{str(remote_file)}. Valid characters are a-Z, "
+                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
+                             f"(white space).")
+
+        datafile = Datafile()
+        datafile.set({'filename': remote_file.name,
+                      'directoryLabel': str(remote_file.parent),
+                      'label': remote_file.name,
+                      'pid': self.doi})
+
+        self._upload_file(datafile, key, local_file, remote_file)
+
+    def transferexport_retrieve(self, key, local_file, remote_file):
+        # In export mode, we need to fix remote paths:
+        remote_file = mangle_directory_names(remote_file)
+        stored_id = self.get_stored_id(key)
+        file_id = None
+        if stored_id is not None:
+            file_id = stored_id
+        else:
+            # Like in `self.checkpresentexport`, we fall back to path matching
+            # for special keys only in export mode.
+            if key in DATALAD_ANNEX_SPECIAL_KEYS:
+                file_id = self.get_id_by_path(remote_file)
+            if file_id is None:
+                raise RemoteError(f"Key {key} unavailable")
+
+        self._download_file(file_id, local_file)
+
+    def removeexport(self, key, remote_file):
+        remote_file = mangle_directory_names(remote_file)
+        self._remove_file(key, remote_file)
+
+    def renameexport(self, key, filename, new_filename):
+        """Moves an exported file.
+
+        If implemented, this is called by annex-export when a file was moved.
+        Otherwise annex calls removeexport + transferexport_store, which doesn't
+        scale well performance-wise.
+        """
+        # Note: In opposition to other API methods, `update_datafile_metadata`
+        # is running `curl` in a subprocess. No idea why. As a consequence, this
+        # depends on the availability of curl and the return value is not (as in
+        # all other cases) a `requests.Response` object, but a
+        # `subprocess.CompletedProcess`.
+        # This apparently is planned to be changed in pydataverse 0.4.0:
+        # https://github.com/gdcc/pyDataverse/issues/88
+        if not CURL_EXISTS:
+            raise UnsupportedRequest()
+
+        filename = mangle_directory_names(filename)
+        new_filename = mangle_directory_names(new_filename)
+
+        stored_id = self.get_stored_id(key)
+        file_id = None
+        if stored_id is None:
+            if key in DATALAD_ANNEX_SPECIAL_KEYS:
+                file_id = self.get_id_by_path(filename)
+        else:
+            file_id = stored_id
+        if file_id is None:
+            raise RemoteError(f"{key} not available for renaming")
+
+        datafile = Datafile()
+        datafile.set({'filename': new_filename.name,
+                      'directoryLabel': str(new_filename.parent),
+                      'label': new_filename.name,
+                      'pid': self.doi})
+
+        proc = self.api.update_datafile_metadata(file_id,
+                                                 json_str=datafile.json(),
+                                                 is_filepid=False)
+        if proc.returncode:
+            raise RemoteError(f"Renaming failed: {proc.stderr}")
+
+    #
+    # Export API
+    #
     @property
     def url(self):
         if self._url is None:
@@ -431,56 +598,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
                            if f.path == path]
         return existing_id[0] if existing_id else None
 
-    def prepare(self):
-        # trigger API instance in order to get possibly auth/connection errors
-        # right away
-        self.api
-
-    def checkpresent(self, key):
-        stored_id = self.get_stored_id(key)
-        if stored_id is not None:
-            # First, check latest version. Second, check older versions.
-            # This is to avoid requesting the full file list unless necessary.
-            return stored_id in self.files_latest.keys() or \
-                   stored_id in self.files_old.keys()
-        else:
-            # We do not have an ID on record for this key.
-            # Fall back to filename matching for two reasons:
-            # 1. We have to deal with the special keys of the datalad-annex
-            #    git-remote-helper. They must be matched by name, since the
-            #    throwaway repo using them doesn't have a relevant git-annex
-            #    branch with an ID record (especially when cloning via the
-            #    git-remote-helper)
-            # 2. We are in "regular annex mode" here - keys are stored under
-            #    their name. Falling back to name matching allows to recover
-            #    data, despite a lost or not generated id record for it. For
-            #    example on could have uploaded lots of data via git-annex-copy,
-            #    but failed to push the git-annex branch somewhere.
-            return Path(key) in [f.path for f in self.files_latest.values()] or \
-                   Path(key) in [f.path for f in self.files_old.values()]
-
-    def checkpresentexport(self, key, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
-
-        # In opposition to checkpresent (annex mode), we fall back to path
-        # matching for the special keys of the datalad-annex
-        # git-remote-helper only. For accessing other files w/o an id record,
-        # that are present on dataverse, importtree is the way to go.
-        if key in DATALAD_ANNEX_SPECIAL_KEYS:
-            return remote_file in [f.path for f in self.files_latest.values()]
-        else:
-            stored_id = self.get_stored_id(key)
-            if stored_id is not None:
-                # Only check latest version in export mode. Doesn't currently
-                # work for keys from older versions, since annex fails to even
-                # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-                return stored_id in self.files_latest.keys()
-            else:
-                # We do not have an ID on record for this key and we can't trust
-                # matching paths in export mode in the general case.
-                return False
-
     def _upload_file(self, datafile, key, local_file, remote_file):
         """helper for both transfer-store methods"""
         # If the remote path already exists, we need to replace rather than
@@ -604,116 +721,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             pass
         # This ID is not part of the latest version anymore.
         self.remove_from_filelist(rm_id)
-
-    def transfer_store(self, key, local_file):
-        datafile = Datafile()
-        datafile.set({'filename': key, 'label': key})
-        datafile.set({'pid': self.doi})
-
-        self._upload_file(datafile=datafile,
-                          key=key,
-                          local_file=local_file,
-                          remote_file=Path(key))
-
-    def transferexport_store(self, key, local_file, remote_file):
-        remote_file = mangle_directory_names(remote_file)
-        # TODO: See
-        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
-        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
-                     string=str(remote_file.parent),
-                     flags=re.ASCII | re.IGNORECASE):
-            self.annex.error(f"Invalid character in directory name of "
-                             f"{str(remote_file)}. Valid characters are a-Z, "
-                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
-                             f"(white space).")
-
-        datafile = Datafile()
-        datafile.set({'filename': remote_file.name,
-                      'directoryLabel': str(remote_file.parent),
-                      'label': remote_file.name,
-                      'pid': self.doi})
-
-        self._upload_file(datafile, key, local_file, remote_file)
-
-    def transfer_retrieve(self, key, file):
-        stored_id = self.get_stored_id(key)
-        if stored_id is not None:
-            file_id = stored_id
-        else:
-            # Like in `self.checkpresent`, we fall back to path matching.
-            # Delayed checking for availability from old versions is included.
-            file_id = self.get_id_by_path(Path(key), latest_only=False)
-            if file_id is None:
-                raise RemoteError(f"Key {key} unavailable")
-
-        self._download_file(file_id, file)
-
-    def transferexport_retrieve(self, key, local_file, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is not None:
-            file_id = stored_id
-        else:
-            # Like in `self.checkpresentexport`, we fall back to path matching
-            # for special keys only in export mode.
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(remote_file)
-            if file_id is None:
-                raise RemoteError(f"Key {key} unavailable")
-
-        self._download_file(file_id, local_file)
-
-    def remove(self, key):
-        remote_file = Path(key)
-        self._remove_file(key, remote_file)
-
-    def removeexport(self, key, remote_file):
-        remote_file = mangle_directory_names(remote_file)
-        self._remove_file(key, remote_file)
-
-    def renameexport(self, key, filename, new_filename):
-        """Moves an exported file.
-
-        If implemented, this is called by annex-export when a file was moved.
-        Otherwise annex calls removeexport + transferexport_store, which doesn't
-        scale well performance-wise.
-        """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise UnsupportedRequest()
-
-        filename = mangle_directory_names(filename)
-        new_filename = mangle_directory_names(new_filename)
-
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is None:
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(filename)
-        else:
-            file_id = stored_id
-        if file_id is None:
-            raise RemoteError(f"{key} not available for renaming")
-
-        datafile = Datafile()
-        datafile.set({'filename': new_filename.name,
-                      'directoryLabel': str(new_filename.parent),
-                      'label': new_filename.name,
-                      'pid': self.doi})
-
-        proc = self.api.update_datafile_metadata(file_id,
-                                                 json_str=datafile.json(),
-                                                 is_filepid=False)
-        if proc.returncode:
-            raise RemoteError(f"Renaming failed: {proc.stderr}")
 
 
 def main():
