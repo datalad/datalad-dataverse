@@ -1,10 +1,8 @@
+from pathlib import Path
 import re
 import sys
 
-from annexremote import (
-    ExportRemote,
-    UnsupportedRequest,
-)
+from annexremote import ExportRemote
 from collections import namedtuple
 from pyDataverse.api import DataAccessApi
 from pyDataverse.models import Datafile
@@ -12,22 +10,23 @@ from requests import delete
 from requests.auth import HTTPBasicAuth
 from shutil import which
 
-from datalad.customremotes import (
+from datalad_next.annexremotes import (
     RemoteError,
-    SpecialRemote
+    SpecialRemote,
+    UnsupportedRequest,
+    super_main,
 )
-from datalad.customremotes.main import main as super_main
-from datalad.support.annexrepo import AnnexRepo
-from datalad.utils import Path
-
 from datalad_next.credman import CredentialManager
+# this important is a vast overstatement, we only need
+# `AnnexRepo.config`, nothing else
+from datalad_next.datasets import LegacyAnnexRepo as AnnexRepo
 
 from datalad_dataverse.utils import (
     get_api,
     format_doi,
+    mangle_directory_names,
 )
 
-LEADING_DOT_REPLACEMENT = "_._"
 DATALAD_ANNEX_SPECIAL_KEYS = ["XDLRA--refs", "XDLRA--repo-export"]
 
 # Object to hold what's on dataverse's end for a given database id.
@@ -42,44 +41,6 @@ FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 
 # Needed to determine whether RENAMEEXPORT can be considered implemented.
 CURL_EXISTS = which('curl') is not None
-
-
-def mangle_directory_names(path):
-    """Replace leading dot in directory names of a path
-
-    Dataverse currently auto-removes a leading dot from directory names.
-    Thus, map `.` -> `_._`
-    """
-
-    local_path = Path(path)
-
-    # only directories are treated this way:
-    if not local_path.is_dir():
-        filename = local_path.name
-        local_path = local_path.parent
-    else:
-        filename = None
-
-    if local_path == Path("."):
-        # `path` either is '.' or a file in '.'.
-        # Nothing to do: '.' has no representation on dataverse anyway.
-        # Note also, that Path(".").parts is an empty tuple for some reason,
-        # hence the code block below must be protected against this case.
-        dataverse_path = local_path
-    else:
-        dataverse_path = \
-            Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
-                 if local_path.parts[0].startswith('.') else local_path.parts[0]
-                 )
-        for pt in local_path.parts[1:]:
-            dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
-                if pt.startswith('.') else pt
-
-    # re-append file if necessary
-    if filename:
-        dataverse_path /= filename
-
-    return dataverse_path
 
 
 class DataverseRemote(ExportRemote, SpecialRemote):
@@ -192,8 +153,11 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         self.configs['dlacredential'] = \
             'Identifier used to retrieve an API token from a local ' \
             'credential store'
+        # dataverse dataset identifier
         self._doi = None
+        # dataverse instance URL
         self._url = None
+        # dataverse native API handle
         self._api = None
         self._data_access_api = None
         self._token = None
@@ -203,72 +167,230 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         self._files_latest = None
         self.is_draft = None
 
+    #
+    # Essential API
+    #
+    def prepare(self):
+        # remove any trailing slash from URL
+        url = self.annex.getconfig('url').rstrip('/')
+        if not url:
+            raise ValueError('url must be specified')
+        doi = self.annex.getconfig('doi')
+        if not doi:
+            raise ValueError('doi must be specified')
+        # standardize formating to minimize complexity downstream
+        self._doi = format_doi(doi)
+        self._url = url
+        # we need an acces token, use the repo's configmanager to
+        # query for one
+        repo = AnnexRepo(self.annex.getgitdir())
+        # TODO the below is almost literally taken from
+        # the datalad-annex:: implementation in datalad-next
+        # this could become a comming helper
+        # TODO https://github.com/datalad/datalad-dataverse/issues/171
+        credman = CredentialManager(repo.config)
+        credential_name = self.annex.getconfig('dlacredential')
+        api = get_api(
+            self._url,
+            credman,
+            credential_name=credential_name,
+        )
+        # store for reuse with data access API.
+        # we do not initialize that one here, because it is only used
+        # for file downloads
+        self._token = api.api_token
+        self._api = api
+
     def initremote(self):
         """
             Use this command to initialize a remote
             git annex initremote dv1 type=external externaltype=dataverse encryption=none
         """
+        # we also need an active API connection for initremote,
+        # simply run prepare()
+        self.prepare()
         # check if instance is readable and authenticated
-        resp = self.api.get_info_version()
+        resp = self._api.get_info_version()
         if resp.json()['status'] != 'OK':
             raise RuntimeError(f'Cannot connect to dataverse instance '
                                f'(status: {resp.json()["status"]})')
 
         # check if project with specified doi exists
-        dv_ds = self.api.get_dataset(identifier=self.doi)
+        dv_ds = self._api.get_dataset(identifier=self._doi)
         if not dv_ds.ok:
             raise RuntimeError("Cannot find dataset")
 
-    @property
-    def url(self):
-        if self._url is None:
-            self._url = self.annex.getconfig('url')
-            if self._url == '':
-                raise ValueError('url must be specified')
-            # remove trailing slash in URL
-            elif self._url.endswith('/'):
-                self._url = self._url[:-1]
-        return self._url
+    def checkpresent(self, key):
+        stored_id = self.get_stored_id(key)
+        if stored_id is not None:
+            # First, check latest version. Second, check older versions.
+            # This is to avoid requesting the full file list unless necessary.
+            return stored_id in self.files_latest.keys() or \
+                   stored_id in self.files_old.keys()
+        else:
+            # We do not have an ID on record for this key.
+            # Fall back to filename matching for two reasons:
+            # 1. We have to deal with the special keys of the datalad-annex
+            #    git-remote-helper. They must be matched by name, since the
+            #    throwaway repo using them doesn't have a relevant git-annex
+            #    branch with an ID record (especially when cloning via the
+            #    git-remote-helper)
+            # 2. We are in "regular annex mode" here - keys are stored under
+            #    their name. Falling back to name matching allows to recover
+            #    data, despite a lost or not generated id record for it. For
+            #    example on could have uploaded lots of data via git-annex-copy,
+            #    but failed to push the git-annex branch somewhere.
+            return Path(key) in [f.path for f in self.files_latest.values()] or \
+                   Path(key) in [f.path for f in self.files_old.values()]
 
-    @property
-    def doi(self):
-        if self._doi is None:
-            self._doi = self.annex.getconfig('doi')
-            if self._doi == '':
-                raise ValueError('doi must be specified')
-            self._doi = format_doi(self._doi)
-        return self._doi
+    def transfer_store(self, key, local_file):
+        datafile = Datafile()
+        datafile.set({'filename': key, 'label': key})
+        datafile.set({'pid': self._doi})
 
-    @property
-    def api(self):
-        if self._api is None:
-            # we know that we will need a token
-            repo = AnnexRepo(self.annex.getgitdir())
-            # TODO the below is almost literally taken from
-            # the datalad-annex:: implementation in datalad-next
-            # this could become a comming helper
-            credman = CredentialManager(repo.config)
-            credential_name = self.annex.getconfig('dlacredential')
-            api = get_api(
-                self.url,
-                credman,
-                credential_name=credential_name,
-            )
+        self._upload_file(datafile=datafile,
+                          key=key,
+                          local_file=local_file,
+                          remote_file=Path(key))
 
-            # store for reuse with data access API
-            self._token = api.api_token
-            self._api = api
+    def transfer_retrieve(self, key, file):
+        stored_id = self.get_stored_id(key)
+        if stored_id is not None:
+            file_id = stored_id
+        else:
+            # Like in `self.checkpresent`, we fall back to path matching.
+            # Delayed checking for availability from old versions is included.
+            file_id = self.get_id_by_path(Path(key), latest_only=False)
+            if file_id is None:
+                raise RemoteError(f"Key {key} unavailable")
 
-        return self._api
+        self._download_file(file_id, file)
 
+    def remove(self, key):
+        remote_file = Path(key)
+        self._remove_file(key, remote_file)
+
+    #
+    # Export API
+    #
+    def checkpresentexport(self, key, remote_file):
+        # In export mode, we need to fix remote paths:
+        remote_file = mangle_directory_names(remote_file)
+
+        # In opposition to checkpresent (annex mode), we fall back to path
+        # matching for the special keys of the datalad-annex
+        # git-remote-helper only. For accessing other files w/o an id record,
+        # that are present on dataverse, importtree is the way to go.
+        if key in DATALAD_ANNEX_SPECIAL_KEYS:
+            return remote_file in [f.path for f in self.files_latest.values()]
+        else:
+            stored_id = self.get_stored_id(key)
+            if stored_id is not None:
+                # Only check latest version in export mode. Doesn't currently
+                # work for keys from older versions, since annex fails to even
+                # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
+                return stored_id in self.files_latest.keys()
+            else:
+                # We do not have an ID on record for this key and we can't trust
+                # matching paths in export mode in the general case.
+                return False
+
+    def transferexport_store(self, key, local_file, remote_file):
+        remote_file = mangle_directory_names(remote_file)
+        # TODO: See
+        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
+        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
+                     string=str(remote_file.parent),
+                     flags=re.ASCII | re.IGNORECASE):
+            self.annex.error(f"Invalid character in directory name of "
+                             f"{str(remote_file)}. Valid characters are a-Z, "
+                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
+                             f"(white space).")
+
+        datafile = Datafile()
+        datafile.set({'filename': remote_file.name,
+                      'directoryLabel': str(remote_file.parent),
+                      'label': remote_file.name,
+                      'pid': self._doi})
+
+        self._upload_file(datafile, key, local_file, remote_file)
+
+    def transferexport_retrieve(self, key, local_file, remote_file):
+        # In export mode, we need to fix remote paths:
+        remote_file = mangle_directory_names(remote_file)
+        stored_id = self.get_stored_id(key)
+        file_id = None
+        if stored_id is not None:
+            file_id = stored_id
+        else:
+            # Like in `self.checkpresentexport`, we fall back to path matching
+            # for special keys only in export mode.
+            if key in DATALAD_ANNEX_SPECIAL_KEYS:
+                file_id = self.get_id_by_path(remote_file)
+            if file_id is None:
+                raise RemoteError(f"Key {key} unavailable")
+
+        self._download_file(file_id, local_file)
+
+    def removeexport(self, key, remote_file):
+        remote_file = mangle_directory_names(remote_file)
+        self._remove_file(key, remote_file)
+
+    def renameexport(self, key, filename, new_filename):
+        """Moves an exported file.
+
+        If implemented, this is called by annex-export when a file was moved.
+        Otherwise annex calls removeexport + transferexport_store, which doesn't
+        scale well performance-wise.
+        """
+        # Note: In opposition to other API methods, `update_datafile_metadata`
+        # is running `curl` in a subprocess. No idea why. As a consequence, this
+        # depends on the availability of curl and the return value is not (as in
+        # all other cases) a `requests.Response` object, but a
+        # `subprocess.CompletedProcess`.
+        # This apparently is planned to be changed in pydataverse 0.4.0:
+        # https://github.com/gdcc/pyDataverse/issues/88
+        if not CURL_EXISTS:
+            raise UnsupportedRequest()
+
+        filename = mangle_directory_names(filename)
+        new_filename = mangle_directory_names(new_filename)
+
+        stored_id = self.get_stored_id(key)
+        file_id = None
+        if stored_id is None:
+            if key in DATALAD_ANNEX_SPECIAL_KEYS:
+                file_id = self.get_id_by_path(filename)
+        else:
+            file_id = stored_id
+        if file_id is None:
+            raise RemoteError(f"{key} not available for renaming")
+
+        datafile = Datafile()
+        datafile.set({'filename': new_filename.name,
+                      'directoryLabel': str(new_filename.parent),
+                      'label': new_filename.name,
+                      'pid': self._doi})
+
+        proc = self._api.update_datafile_metadata(
+            file_id,
+            json_str=datafile.json(),
+            is_filepid=False,
+        )
+        if proc.returncode:
+            raise RemoteError(f"Renaming failed: {proc.stderr}")
+
+    #
+    # Helpers
+    #
     @property
     def data_access_api(self):
         if self._data_access_api is None:
             self._data_access_api = DataAccessApi(
-                base_url=self.url,
+                base_url=self._url,
                 # this relies on having established the NativeApi in prepare()
                 api_token=self._token,
-                )
+            )
         return self._data_access_api
 
     @property
@@ -285,7 +407,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # Hence, the file lists in the version entries may contain
             # duplicates (unchanged files across versions).
             self.message("Request all dataset versions", type='debug')
-            versions = self.api.get_dataset_versions(self.doi)
+            versions = self._api.get_dataset_versions(self._doi)
             versions.raise_for_status()
 
             self._old_dataset_versions = versions.json()['data']
@@ -336,8 +458,10 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
         if self._dataset_latest is None:
             self.message("Request latest dataset version", type='debug')
-            dataset = self.api.get_dataset(identifier=self.doi,
-                                           version=":latest")
+            dataset = self._api.get_dataset(
+                identifier=self._doi,
+                version=":latest",
+            )
             dataset.raise_for_status()
             self._dataset_latest = dataset.json()['data']['latestVersion']
         return self._dataset_latest
@@ -350,13 +474,17 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         """
 
         if self._files_old is None:
-            self._files_old = {f['dataFile']['id']: FileIdRecord(
-                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                True  # older versions are always released
+            self._files_old = {
+                f['dataFile']['id']: FileIdRecord(
+                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                    True  # older versions are always released
                 )
-                for file_lists in [(version['files'], version['versionState'])
-                                   for version in self.old_dataset_versions]
-                for f in file_lists[0]}
+                for file_lists in [
+                    (version['files'], version['versionState'])
+                    for version in self.old_dataset_versions
+                ]
+                for f in file_lists[0]
+            }
 
         return self._files_old
 
@@ -377,11 +505,13 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
         if self._files_latest is None:
             # Latest version in self.dataset is first entry.
-            self._files_latest = {f['dataFile']['id']: FileIdRecord(
-                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                self.dataset_latest['versionState'] == "RELEASED"
+            self._files_latest = {
+                f['dataFile']['id']: FileIdRecord(
+                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                    self.dataset_latest['versionState'] == "RELEASED",
                 )
-                for f in self.dataset_latest['files']}
+                for f in self.dataset_latest['files']
+            }
 
         return self._files_latest
 
@@ -467,56 +597,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
                            if f.path == path]
         return existing_id[0] if existing_id else None
 
-    def prepare(self):
-        # trigger API instance in order to get possibly auth/connection errors
-        # right away
-        self.api
-
-    def checkpresent(self, key):
-        stored_id = self.get_stored_id(key)
-        if stored_id is not None:
-            # First, check latest version. Second, check older versions.
-            # This is to avoid requesting the full file list unless necessary.
-            return stored_id in self.files_latest.keys() or \
-                   stored_id in self.files_old.keys()
-        else:
-            # We do not have an ID on record for this key.
-            # Fall back to filename matching for two reasons:
-            # 1. We have to deal with the special keys of the datalad-annex
-            #    git-remote-helper. They must be matched by name, since the
-            #    throwaway repo using them doesn't have a relevant git-annex
-            #    branch with an ID record (especially when cloning via the
-            #    git-remote-helper)
-            # 2. We are in "regular annex mode" here - keys are stored under
-            #    their name. Falling back to name matching allows to recover
-            #    data, despite a lost or not generated id record for it. For
-            #    example on could have uploaded lots of data via git-annex-copy,
-            #    but failed to push the git-annex branch somewhere.
-            return Path(key) in [f.path for f in self.files_latest.values()] or \
-                   Path(key) in [f.path for f in self.files_old.values()]
-
-    def checkpresentexport(self, key, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
-
-        # In opposition to checkpresent (annex mode), we fall back to path
-        # matching for the special keys of the datalad-annex
-        # git-remote-helper only. For accessing other files w/o an id record,
-        # that are present on dataverse, importtree is the way to go.
-        if key in DATALAD_ANNEX_SPECIAL_KEYS:
-            return remote_file in [f.path for f in self.files_latest.values()]
-        else:
-            stored_id = self.get_stored_id(key)
-            if stored_id is not None:
-                # Only check latest version in export mode. Doesn't currently
-                # work for keys from older versions, since annex fails to even
-                # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-                return stored_id in self.files_latest.keys()
-            else:
-                # We do not have an ID on record for this key and we can't trust
-                # matching paths in export mode in the general case.
-                return False
-
     def _upload_file(self, datafile, key, local_file, remote_file):
         """helper for both transfer-store methods"""
         # If the remote path already exists, we need to replace rather than
@@ -526,15 +606,19 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         replace_id = self.get_id_by_path(remote_file)
         if replace_id is not None:
             self.message(f"Replacing {remote_file} ...", type='debug')
-            response = self.api.replace_datafile(identifier=replace_id,
-                                                 filename=local_file,
-                                                 json_str=datafile.json(),
-                                                 is_filepid=False)
+            response = self._api.replace_datafile(
+                identifier=replace_id,
+                filename=local_file,
+                json_str=datafile.json(),
+                is_filepid=False,
+            )
         else:
             self.message(f"Uploading {remote_file} ...", type='debug')
-            response = self.api.upload_datafile(identifier=self.doi,
-                                                filename=local_file,
-                                                json_str=datafile.json())
+            response = self._api.upload_datafile(
+                identifier=self._doi,
+                filename=local_file,
+                json_str=datafile.json(),
+            )
 
         if response.status_code == 400 and \
                 response.json()['status'] == "ERROR" and \
@@ -548,8 +632,10 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # git-remote-helper).
             # Hence, having the key on the remote end, doesn't mean it's
             # identical. So, we can't catch it beforehand this way.
-            self.message(f"Failed to upload {key}, since dataverse says we are "
-                         f"replacing with duplicate content.", type='debug')
+            self.message(
+                f"Failed to upload {key}, since dataverse says we are "
+                f"replacing with duplicate content.", type='debug'
+            )
             return  # nothing changed and nothing needs to be done
         else:
             response.raise_for_status()
@@ -609,7 +695,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             return
 
         status = delete(
-            f'{self.url}/dvn/api/data-deposit/v1.1/swordv2/'
+            f'{self._url}/dvn/api/data-deposit/v1.1/swordv2/'
             f'edit-media/file/{rm_id}',
             # this relies on having established the NativeApi in prepare()
             auth=HTTPBasicAuth(self._token, ''))
@@ -640,116 +726,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             pass
         # This ID is not part of the latest version anymore.
         self.remove_from_filelist(rm_id)
-
-    def transfer_store(self, key, local_file):
-        datafile = Datafile()
-        datafile.set({'filename': key, 'label': key})
-        datafile.set({'pid': self.doi})
-
-        self._upload_file(datafile=datafile,
-                          key=key,
-                          local_file=local_file,
-                          remote_file=Path(key))
-
-    def transferexport_store(self, key, local_file, remote_file):
-        remote_file = mangle_directory_names(remote_file)
-        # TODO: See
-        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
-        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
-                     string=str(remote_file.parent),
-                     flags=re.ASCII | re.IGNORECASE):
-            self.annex.error(f"Invalid character in directory name of "
-                             f"{str(remote_file)}. Valid characters are a-Z, "
-                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
-                             f"(white space).")
-
-        datafile = Datafile()
-        datafile.set({'filename': remote_file.name,
-                      'directoryLabel': str(remote_file.parent),
-                      'label': remote_file.name,
-                      'pid': self.doi})
-
-        self._upload_file(datafile, key, local_file, remote_file)
-
-    def transfer_retrieve(self, key, file):
-        stored_id = self.get_stored_id(key)
-        if stored_id is not None:
-            file_id = stored_id
-        else:
-            # Like in `self.checkpresent`, we fall back to path matching.
-            # Delayed checking for availability from old versions is included.
-            file_id = self.get_id_by_path(Path(key), latest_only=False)
-            if file_id is None:
-                raise RemoteError(f"Key {key} unavailable")
-
-        self._download_file(file_id, file)
-
-    def transferexport_retrieve(self, key, local_file, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is not None:
-            file_id = stored_id
-        else:
-            # Like in `self.checkpresentexport`, we fall back to path matching
-            # for special keys only in export mode.
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(remote_file)
-            if file_id is None:
-                raise RemoteError(f"Key {key} unavailable")
-
-        self._download_file(file_id, local_file)
-
-    def remove(self, key):
-        remote_file = Path(key)
-        self._remove_file(key, remote_file)
-
-    def removeexport(self, key, remote_file):
-        remote_file = mangle_directory_names(remote_file)
-        self._remove_file(key, remote_file)
-
-    def renameexport(self, key, filename, new_filename):
-        """Moves an exported file.
-
-        If implemented, this is called by annex-export when a file was moved.
-        Otherwise annex calls removeexport + transferexport_store, which doesn't
-        scale well performance-wise.
-        """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise UnsupportedRequest()
-
-        filename = mangle_directory_names(filename)
-        new_filename = mangle_directory_names(new_filename)
-
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is None:
-            if key in DATALAD_ANNEX_SPECIAL_KEYS:
-                file_id = self.get_id_by_path(filename)
-        else:
-            file_id = stored_id
-        if file_id is None:
-            raise RemoteError(f"{key} not available for renaming")
-
-        datafile = Datafile()
-        datafile.set({'filename': new_filename.name,
-                      'directoryLabel': str(new_filename.parent),
-                      'label': new_filename.name,
-                      'pid': self.doi})
-
-        proc = self.api.update_datafile_metadata(file_id,
-                                                 json_str=datafile.json(),
-                                                 is_filepid=False)
-        if proc.returncode:
-            raise RemoteError(f"Renaming failed: {proc.stderr}")
 
 
 def main():

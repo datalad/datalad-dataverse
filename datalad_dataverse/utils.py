@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 
 from pyDataverse.api import NativeApi
@@ -6,20 +7,21 @@ from datalad_next.utils import update_specialremote_credential
 
 # This cannot currently be queried for via public API. See gh-27
 DATASET_SUBJECTS = [
- 'Agricultural Sciences',
- 'Arts and Humanities',
- 'Astronomy and Astrophysics',
- 'Business and Management',
- 'Chemistry',
- 'Computer and Information Science',
- 'Earth and Environmental Sciences',
- 'Engineering',
- 'Law',
- 'Mathematical Sciences',
- 'Medicine, Health and Life Sciences',
- 'Physics',
- 'Social Sciences',
- 'Other']
+    'Agricultural Sciences',
+    'Arts and Humanities',
+    'Astronomy and Astrophysics',
+    'Business and Management',
+    'Chemistry',
+    'Computer and Information Science',
+    'Earth and Environmental Sciences',
+    'Engineering',
+    'Law',
+    'Mathematical Sciences',
+    'Medicine, Health and Life Sciences',
+    'Physics',
+    'Social Sciences',
+    'Other',
+]
 
 
 def get_native_api(baseurl, token):
@@ -162,3 +164,43 @@ def format_doi(doi_in: str) -> str:
         return re.sub(pattern=url_doi_pattern, repl='doi:', string=doi_in)
 
     return f'doi:{doi_in}'
+
+
+def mangle_directory_names(path):
+    """Replace leading dot in directory names of a path
+
+    Dataverse currently auto-removes a leading dot from directory names.
+    Thus, map `.` -> `_._`
+    """
+    LEADING_DOT_REPLACEMENT = "_._"
+
+    local_path = Path(path)
+
+    # only directories are treated this way:
+    if not local_path.is_dir():
+        filename = local_path.name
+        local_path = local_path.parent
+    else:
+        filename = None
+
+    if local_path == Path("."):
+        # `path` either is '.' or a file in '.'.
+        # Nothing to do: '.' has no representation on dataverse anyway.
+        # Note also, that Path(".").parts is an empty tuple for some reason,
+        # hence the code block below must be protected against this case.
+        dataverse_path = local_path
+    else:
+        dataverse_path = \
+            Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
+                 if local_path.parts[0].startswith('.')
+                 else local_path.parts[0]
+                 )
+        for pt in local_path.parts[1:]:
+            dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
+                if pt.startswith('.') else pt
+
+    # re-append file if necessary
+    if filename:
+        dataverse_path /= filename
+
+    return dataverse_path
