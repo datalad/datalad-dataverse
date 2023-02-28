@@ -1,7 +1,6 @@
 import pytest
 
 from datalad.tests.utils_pytest import (
-    assert_in,
     assert_result_count,
 )
 from datalad.api import (
@@ -71,8 +70,8 @@ def test_workflow(dataverse_admin_api,
                             action='create_sibling_dataverse.storage')
         assert_result_count(results, 2)
 
-        assert_in('doi', results[0])
-        assert_in('doi', results[1])
+        assert 'doi' in results[0]
+        assert 'doi' in results[1]
 
         clone_url = [r['url'] for r in results
                      if r['action'] == "create_sibling_dataverse"][0]
