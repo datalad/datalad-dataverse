@@ -1,15 +1,9 @@
 import pytest
-from pyDataverse.exceptions import (
-    ApiAuthorizationError,
-    OperationFailedError,
-)
 
 from datalad.tests.utils_pytest import (
     assert_in,
     assert_raises,
     assert_result_count,
-    skip_if,
-    with_tempfile,
 )
 from datalad.api import (
     clone,
@@ -18,72 +12,31 @@ from datalad.distribution.dataset import (
     Dataset,
 )
 from datalad.support.exceptions import CommandError
-from datalad_next.tests.utils import with_credential
-
-from datalad_dataverse.tests import (
-    DATAVERSE_TEST_APITOKENS,
-    DATAVERSE_TEST_COLLECTION_NAME,
-    DATAVERSE_TEST_URL,
-    DEMO_DATAVERSE_URL,
-)
-from datalad_dataverse.tests.utils import (
-    create_test_dataverse_collection,
-)
-from datalad_dataverse.utils import get_native_api
 
 
 ckwa = dict(result_renderer='disabled')
 
 
-def _prep_test(path):
-    """Create a DataLad dataset and a dataverse collection to work with"""
+# TODO despaghettify this monster
+@pytest.mark.parametrize("mode", ["annex", "filetree"])
+def test_workflow(dataverse_admin_api,
+                  dataverse_admin_credential_setup,
+                  dataverse_demoinstance_url,
+                  dataverse_instance_url,
+                  dataverse_published_collection,
+                  tmp_path,
+                  *, mode):
+    path = tmp_path / 'ds'
+    clone_path = tmp_path / 'clone'
+
+    # some local dataset to play with
     ds = Dataset(path).create(**ckwa)
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save(**ckwa)
-    admin_api = get_native_api(
-        DATAVERSE_TEST_URL,
-        DATAVERSE_TEST_APITOKENS['testadmin'],
-    )
-    create_test_dataverse_collection(admin_api, DATAVERSE_TEST_COLLECTION_NAME)
-
-    # This may not work in all test setups due to lack of permissions or /root
-    # not being published or it being published already. Try though, since it's
-    # necessary to publish datasets in order to test against dataverse datasets
-    # with several versions.
-    try:
-        admin_api.publish_dataverse(DATAVERSE_TEST_COLLECTION_NAME)
-    except ApiAuthorizationError:
-        # Test setup doesn't allow for it
-        pass
-    except OperationFailedError as e:
-        print(str(e))
-
-    return ds, admin_api
-
-
-@skip_if(cond='testadmin' not in DATAVERSE_TEST_APITOKENS)
-@pytest.mark.parametrize("mode", ["annex", "filetree"])
-@with_tempfile
-@with_tempfile
-def test_workflow(path=None, clone_path=None, *, mode):
-    ds, admin_api = _prep_test(path)
-    _check_workflow(
-        admin_api, ds, DATAVERSE_TEST_COLLECTION_NAME, 'testadmin',
-        clone_path,
-        mode=mode,
-    )
-
-
-@with_credential(
-    'dataverse',
-    secret=DATAVERSE_TEST_APITOKENS.get('testadmin'),
-    realm=f'{DATAVERSE_TEST_URL.rstrip("/")}/dataverse',
-)
-def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
 
     with assert_raises(ValueError) as ve:
         ds.create_sibling_dataverse(
-            url=DATAVERSE_TEST_URL,
+            url=dataverse_instance_url,
             collection='no-ffing-datalad-way-this-exists',
             credential="dataverse",
             **ckwa
@@ -93,17 +46,19 @@ def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
     ds_repo = ds.repo
     dspid = None
     try:
-        results = ds.create_sibling_dataverse(url=DATAVERSE_TEST_URL,
-                                              collection=collection_alias,
-                                              name='git_remote',
-                                              storage_name='special_remote',
-                                              mode=mode,
-                                              existing='error',
-                                              recursive=False,
-                                              recursion_limit=None,
-                                              metadata=None,
-                                              credential="dataverse",
-                                              **ckwa)
+        results = ds.create_sibling_dataverse(
+            url=dataverse_instance_url,
+            collection=dataverse_published_collection,
+            name='git_remote',
+            storage_name='special_remote',
+            mode=mode,
+            existing='error',
+            recursive=False,
+            recursion_limit=None,
+            metadata=None,
+            credential="dataverse",
+            **ckwa
+        )
         # make dataset removal work in `finally`
         # no being careful and get(), we really require it
         dspid = results[0]['doi']
@@ -146,9 +101,9 @@ def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
         #       version)
         # However, at least when possible (docker setup with published root
         # collection), test some aspect of dealing with this.
-        if DATAVERSE_TEST_URL != DEMO_DATAVERSE_URL:
+        if dataverse_instance_url != dataverse_demoinstance_url:
             try:
-                response = admin_api.publish_dataset(dspid, release_type='major')
+                response = dataverse_admin_api.publish_dataset(dspid, release_type='major')
             except Exception as e:
                 # nothing to do - we test what we can test, but print the reason
                 print(str(e))
@@ -198,4 +153,4 @@ def _check_workflow(admin_api, ds, collection_alias, user, clone_path, mode):
 
     finally:
         if dspid:
-            admin_api.destroy_dataset(dspid)
+            dataverse_admin_api.destroy_dataset(dspid)

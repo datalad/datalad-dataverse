@@ -6,5 +6,12 @@ from datalad_next.conftest import setup_package
 pytest_plugins = "datalad_next.tests.fixtures"
 
 from datalad_dataverse.tests.fixtures import (
+    dataverse_admin_api,
+    dataverse_admin_credential_setup,
     dataverse_admin_token,
+    dataverse_collection,
+    dataverse_dataset,
+    dataverse_demoinstance_url,
+    dataverse_instance_url,
+    dataverse_published_collection,
 )
