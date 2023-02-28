@@ -47,8 +47,11 @@ def dataverse_collection(dataverse_admin_api,
     base_collection = 'demo' \
         if dataverse_instance_url == dataverse_demoinstance_url else 'root'
 
-    # TODO make random with this prefix
-    collection_alias = 'dataladtester'
+    # use a UUID1 to get a host and time-specific UI, such that we get
+    # non-conflicting collections on the same dataverse instances
+    # for CI running in parallel
+    from uuid import uuid1
+    collection_alias = f'dv-{uuid1()}'
 
     create_test_dataverse_collection(
         dataverse_admin_api,
@@ -57,8 +60,9 @@ def dataverse_collection(dataverse_admin_api,
     )
     yield collection_alias
 
-    # TODO we should clean up, and it should be straightforward when the
-    # collection alias is actually unique to a test session
+    # if all other fixtures and tests have properly cleaned-up after
+    # themselves we can now simply delete the collection
+    dataverse_admin_api.delete_dataverse(collection_alias)
 
 
 @pytest.fixture(autouse=False, scope='session')
