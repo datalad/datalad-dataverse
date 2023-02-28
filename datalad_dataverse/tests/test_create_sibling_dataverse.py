@@ -2,7 +2,6 @@ import pytest
 
 from datalad.tests.utils_pytest import (
     assert_in,
-    assert_raises,
     assert_result_count,
 )
 from datalad.api import (
@@ -34,7 +33,7 @@ def test_workflow(dataverse_admin_api,
     (ds.pathobj / 'somefile.txt').write_text('content')
     ds.save(**ckwa)
 
-    with assert_raises(ValueError) as ve:
+    with pytest.raises(ValueError) as ve:
         ds.create_sibling_dataverse(
             url=dataverse_instance_url,
             collection='no-ffing-datalad-way-this-exists',
@@ -134,9 +133,8 @@ def test_workflow(dataverse_admin_api,
         # previous push doesn't affect the key file (we'd need to drop from the
         # remote for that).
         if mode == 'filetree':
-            assert_raises(CommandError,
-                          ds_repo.call_annex_records,
-                          ['get', '--key', newfile_key])
+            with pytest.raises(CommandError):
+                ds_repo.call_annex_records(['get', '--key', newfile_key])
         else:
             ds_repo.call_annex_records(['get', '--key', newfile_key])
 
