@@ -38,7 +38,7 @@ DATALAD_ANNEX_SPECIAL_KEYS = ["XDLRA--refs", "XDLRA--repo-export"]
 # The latter meaning: It can be removed from the new DRAFT version, but it's
 # still available via its id from an older version of the dataverse dataset.
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
-FileIdRecord = namedtuple("FileIdRecord", "path, is_released")
+FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 
 # Needed to determine whether RENAMEEXPORT can be considered implemented.
 CURL_EXISTS = which('curl') is not None
