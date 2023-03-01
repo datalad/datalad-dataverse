@@ -9,17 +9,17 @@ from datalad_next.utils import (
     rmtree,
 )
 
+ckwa = dict(result_renderer='disabled')
 
 @pytest.mark.parametrize("exporttree", ["yes", "no"])
 def test_remote(dataverse_admin_credential_setup,
                 dataverse_dataset,
                 dataverse_instance_url,
                 tmp_path,
-                credman,
                 *, exporttree):
-    ds = Dataset(tmp_path).create()
+    ds = Dataset(tmp_path).create(**ckwa)
     (ds.pathobj / 'somefile.txt').write_text('content')
-    ds.save()
+    ds.save(**ckwa)
     repo = ds.repo
     repo.call_annex([
         'initremote', 'mydv', 'encryption=none', 'type=external',
@@ -67,7 +67,7 @@ def test_datalad_annex(dataverse_admin_credential_setup,
                        tmp_path):
     dspath = tmp_path / 'ds'
     clonepath = tmp_path / 'clone'
-    ds = Dataset(dspath).create()
+    ds = Dataset(dspath).create(**ckwa)
     repo = ds.repo
     # this is the raw datalad-annex URL, convenience could be added on top
     git_remote_url = \
@@ -85,7 +85,7 @@ def test_datalad_annex(dataverse_admin_credential_setup,
         # actual dataset landing page
         f'{dataverse_instance_url}/dataset.xhtml?persistentId={dataverse_dataset}&version=DRAFT',
     ):
-        dsclone = clone(git_remote_url, clonepath)
+        dsclone = clone(git_remote_url, clonepath, **ckwa)
         cloned_repo = dsclone.repo
 
         # we got the same thing
