@@ -244,7 +244,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         else:
             # Like in `self.checkpresent`, we fall back to path matching.
             # Delayed checking for availability from old versions is included.
-            file_id = self._get_fileid_from_exportpath(Path(key), latest_only=False)
+            file_id = self._get_fileid_from_key(key, latest_only=False)
             if file_id is None:
                 raise RemoteError(f"Key {key} unavailable")
 
@@ -533,6 +533,38 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             dataverse database id for `key`. Empty string to unset.
         """
         self.annex.setstate(key, str(id))
+
+    def _get_fileid_from_key(self,
+                             key: str,
+                             latest_only: bool = True) -> int | None:
+        """Get the id of a dataverse file, that matches a given annex key
+        dataverse dataset.
+
+        This method assumes that keys are deposited under paths that are
+        identical to the key name.
+
+        Parameters
+        ----------
+        key:
+            Annex key to perform the lookup for
+        latest_only: bool
+            Whether to only consider the latest version on dataverse. If
+            `False`, matching against older versions will only be performed
+            when there was no match in the latest version (implies that an
+            additional request may be performed)
+
+        Returns
+        -------
+        int or None
+        """
+        # for now this also just performs a look-up by path
+        # but if other metadata-based lookups become possible
+        # this implementation could change
+        # https://github.com/datalad/datalad-dataverse/issues/188
+        return self._get_fileid_from_exportpath(
+            Path(key),
+            latest_only=latest_only,
+        )
 
     def _get_fileid_from_exportpath(self,
                                     path: Path,
