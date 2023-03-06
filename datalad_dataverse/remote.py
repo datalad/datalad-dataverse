@@ -244,7 +244,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         else:
             # Like in `self.checkpresent`, we fall back to path matching.
             # Delayed checking for availability from old versions is included.
-            file_id = self.get_id_by_path(Path(key), latest_only=False)
+            file_id = self._get_fileid_from_exportpath(Path(key), latest_only=False)
             if file_id is None:
                 raise RemoteError(f"Key {key} unavailable")
 
@@ -293,7 +293,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_directory_names(remote_file)
 
-        file_id = self._get_annex_fileid_record(key) or self.get_id_by_path(remote_file)
+        file_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(remote_file)
         if file_id is None:
             raise RemoteError(f"Key {key} unavailable")
 
@@ -323,7 +323,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         filename = mangle_directory_names(filename)
         new_filename = mangle_directory_names(new_filename)
 
-        file_id = self._get_annex_fileid_record(key) or self.get_id_by_path(filename)
+        file_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(filename)
         if file_id is None:
             raise RemoteError(f"{key} not available for renaming")
 
@@ -534,7 +534,9 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         """
         self.annex.setstate(key, str(id))
 
-    def get_id_by_path(self, path, latest_only=True):
+    def _get_fileid_from_exportpath(self,
+                                    path: Path,
+                                    latest_only: bool = True) -> int | None:
         """Get the id of a dataverse file, that matches a given `Path` in the
         dataverse dataset.
 
@@ -564,7 +566,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # upload the file, since otherwise dataverse would rename the file on
         # its end. However, this only concerns the latest version of the dataset
         # (which is what we are pushing into)!
-        replace_id = self.get_id_by_path(remote_file)
+        replace_id = self._get_fileid_from_exportpath(remote_file)
         if replace_id is not None:
             self.message(f"Replacing {remote_file} ...", type='debug')
             response = self._api.replace_datafile(
@@ -633,7 +635,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
     def _remove_file(self, key, remote_file):
         """helper for both remove methods"""
-        rm_id = self._get_annex_fileid_record(key) or self.get_id_by_path(remote_file)
+        rm_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(remote_file)
 
         if rm_id is None:
             # We didn't find anything to remove. That should be fine and
