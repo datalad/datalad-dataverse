@@ -293,7 +293,8 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_directory_names(remote_file)
 
-        file_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(remote_file, latest_only=True)
+        file_id = self._get_annex_fileid_record(key) \
+            or self._get_fileid_from_exportpath(remote_file, latest_only=True)
         if file_id is None:
             raise RemoteError(f"Key {key} unavailable")
 
@@ -323,7 +324,8 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         filename = mangle_directory_names(filename)
         new_filename = mangle_directory_names(new_filename)
 
-        file_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(filename, latest_only=True)
+        file_id = self._get_annex_fileid_record(key) \
+            or self._get_fileid_from_exportpath(filename, latest_only=True)
         if file_id is None:
             raise RemoteError(f"{key} not available for renaming")
 
@@ -600,7 +602,8 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # upload the file, since otherwise dataverse would rename the file on
         # its end. However, this only concerns the latest version of the dataset
         # (which is what we are pushing into)!
-        replace_id = self._get_fileid_from_exportpath(remote_file, latest_only=True)
+        replace_id = self._get_fileid_from_exportpath(
+            remote_file, latest_only=True)
         if replace_id is not None:
             self.message(f"Replacing {remote_file} ...", type='debug')
             response = self._api.replace_datafile(
@@ -669,7 +672,8 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
     def _remove_file(self, key, remote_file):
         """helper for both remove methods"""
-        rm_id = self._get_annex_fileid_record(key) or self._get_fileid_from_exportpath(remote_file, latest_only=True)
+        rm_id = self._get_annex_fileid_record(key) \
+            or self._get_fileid_from_exportpath(remote_file, latest_only=True)
 
         if rm_id is None:
             # We didn't find anything to remove. That should be fine and
