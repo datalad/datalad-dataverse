@@ -522,7 +522,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         else:
             return int(stored_id)
 
-    def set_stored_id(self, key, id):
+    def _set_annex_fileid_record(self, key, id):
         """Store a dataverse database id for a given key
 
         Parameters
@@ -617,13 +617,13 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # file list (`self.files_old`).
             if not (self.files_latest[replace_id].is_released or
                     replace_id in self.files_old.keys()):
-                self.set_stored_id(key, "")
+                self._set_annex_fileid_record(key, "")
 
         uploaded_file = response.json()['data']['files'][0]
         # update cache:
         self.add_to_filelist(uploaded_file)
         # remember dataverse's database id for this key
-        self.set_stored_id(key, uploaded_file['dataFile']['id'])
+        self._set_annex_fileid_record(key, uploaded_file['dataFile']['id'])
 
     def _download_file(self, file_id, local_file):
         """helper for both transfer-retrieve methods"""
@@ -660,7 +660,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         if not (self.files_latest[rm_id].is_released or
                 rm_id in self.files_old.keys()):
             self.message(f"Unset stored id for {key}", type='debug')
-            self.set_stored_id(key, "")
+            self._set_annex_fileid_record(key, "")
         else:
             # Despite not actually deleting from the dataverse database, we
             # currently loose access to the old key (in export mode, that is),
