@@ -642,17 +642,14 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
     def _remove_file(self, key, remote_file):
         """helper for both remove methods"""
-        stored_id = self.get_stored_id(key)
-        rm_id = None
-        if stored_id is not None:
-            rm_id = stored_id
-            if rm_id not in self.files_latest.keys():
-                # We can't remove from older (hence published) versions.
-                return
+        rm_id = self.get_stored_id(key) or self.get_id_by_path(remote_file)
 
         if rm_id is None:
             # We didn't find anything to remove. That should be fine and
             # considered a successful removal by git-annex.
+            return
+        if rm_id not in self.files_latest.keys():
+            # We can't remove from older (hence published) versions.
             return
 
         status = delete(
