@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 import re
 import sys
@@ -203,7 +205,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             raise RuntimeError("Cannot find dataset")
 
     def checkpresent(self, key):
-        stored_id = self.get_stored_id(key)
+        stored_id = self._get_annex_fileid_record(key)
         if stored_id is not None:
             # First, check latest version. Second, check older versions.
             # This is to avoid requesting the full file list unless necessary.
@@ -236,7 +238,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
                           remote_file=Path(key))
 
     def transfer_retrieve(self, key, file):
-        stored_id = self.get_stored_id(key)
+        stored_id = self._get_annex_fileid_record(key)
         if stored_id is not None:
             file_id = stored_id
         else:
@@ -256,7 +258,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     # Export API
     #
     def checkpresentexport(self, key, remote_file):
-        stored_id = self.get_stored_id(key)
+        stored_id = self._get_annex_fileid_record(key)
         if stored_id is not None:
             # Only check latest version in export mode. Doesn't currently
             # work for keys from older versions, since annex fails to even
@@ -291,7 +293,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_directory_names(remote_file)
 
-        file_id = self.get_stored_id(key) or self.get_id_by_path(remote_file)
+        file_id = self._get_annex_fileid_record(key) or self.get_id_by_path(remote_file)
         if file_id is None:
             raise RemoteError(f"Key {key} unavailable")
 
@@ -321,7 +323,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         filename = mangle_directory_names(filename)
         new_filename = mangle_directory_names(new_filename)
 
-        file_id = self.get_stored_id(key) or self.get_id_by_path(filename)
+        file_id = self._get_annex_fileid_record(key) or self.get_id_by_path(filename)
         if file_id is None:
             raise RemoteError(f"{key} not available for renaming")
 
@@ -498,7 +500,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             False  # We just added - it can't be released
         )
 
-    def get_stored_id(self, key):
+    def _get_annex_fileid_record(self, key: str) -> int | None:
         """Get the dataverse database id from the git-annex branch
 
         This is using the getstate/setstate special remote feature. Hence, a
@@ -631,7 +633,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
 
     def _remove_file(self, key, remote_file):
         """helper for both remove methods"""
-        rm_id = self.get_stored_id(key) or self.get_id_by_path(remote_file)
+        rm_id = self._get_annex_fileid_record(key) or self.get_id_by_path(remote_file)
 
         if rm_id is None:
             # We didn't find anything to remove. That should be fine and
