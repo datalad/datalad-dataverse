@@ -256,9 +256,6 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     # Export API
     #
     def checkpresentexport(self, key, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
-
         stored_id = self.get_stored_id(key)
         if stored_id is not None:
             # Only check latest version in export mode. Doesn't currently
@@ -266,9 +263,9 @@ class DataverseRemote(ExportRemote, SpecialRemote):
             # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
             return stored_id in self.files_latest.keys()
         else:
-            # We do not have an ID on record for this key and we can't trust
-            # matching paths in export mode in the general case.
-            return False
+            # In export mode, we need to fix remote paths:
+            remote_file = mangle_directory_names(remote_file)
+            return remote_file in [f.path for f in self.files_latest.values()]
 
     def transferexport_store(self, key, local_file, remote_file):
         remote_file = mangle_directory_names(remote_file)
@@ -293,13 +290,10 @@ class DataverseRemote(ExportRemote, SpecialRemote):
     def transferexport_retrieve(self, key, local_file, remote_file):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_directory_names(remote_file)
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is not None:
-            file_id = stored_id
-        else:
-            if file_id is None:
-                raise RemoteError(f"Key {key} unavailable")
+
+        file_id = self.get_stored_id(key) or self.get_id_by_path(remote_file)
+        if file_id is None:
+            raise RemoteError(f"Key {key} unavailable")
 
         self._download_file(file_id, local_file)
 
@@ -327,12 +321,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         filename = mangle_directory_names(filename)
         new_filename = mangle_directory_names(new_filename)
 
-        stored_id = self.get_stored_id(key)
-        file_id = None
-        if stored_id is None:
-            pass
-        else:
-            file_id = stored_id
+        file_id = self.get_stored_id(key) or self.get_id_by_path(filename)
         if file_id is None:
             raise RemoteError(f"{key} not available for renaming")
 
