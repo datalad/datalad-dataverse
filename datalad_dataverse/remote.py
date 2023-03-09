@@ -645,7 +645,7 @@ class DataverseRemote(ExportRemote, SpecialRemote):
         # If we replaced, `replaced_id` is not part of the latest version
         # anymore.
         if replace_id is not None:
-            self.remove_from_filelist(re)
+            self.remove_from_filelist(replace_id)
             # In case of replace we need to figure whether the replaced
             # ID was part of a DRAFT version only. In that case it's gone and
             # we'd need to remove the ID record. Otherwise, it's still retrieval
