@@ -11,18 +11,46 @@ from datalad_next.tests.utils import md5sum
 #
 
 
-def test_file_handling(tmp_path, dataverse_admin_api, dataverse_dataset):
+def test_file_handling(
+        tmp_path,
+        dataverse_admin_api,
+        dataverse_dataaccess_api,
+        dataverse_dataset,
+):
     fcontent = 'some_content'
     fpath = tmp_path / 'dummy.txt'
     fpath.write_text(fcontent)
     src_md5 = md5sum(fpath)
 
-    check_upload(
-        dataverse_admin_api, dataverse_dataset, fcontent, fpath, src_md5)
+    fileid = check_upload(
+        dataverse_admin_api,
+        dataverse_dataset, fcontent, fpath, src_md5)
+
+    check_download(
+        dataverse_dataaccess_api, fileid,
+        dataverse_dataset, tmp_path / 'downloaded.txt', src_md5)
 
     # TODO replace_datafile
     # TODO get_datafile
+    # TODO update_datafile_metadata
     # custom request to remove a file via `data-deposit` API
+
+
+def check_download(api, fileid, dsid, fpath, src_md5):
+    # TODO there is no standalone implementation of the following
+    # reimplementing DataverseRemote._download_file
+    response = api.get_datafile(fileid)
+    # TODO this could also just be a download via HttpUrlOperations
+    # avoiding any custom code
+    assert response.status_code == 200
+    with fpath.open("wb") as f:
+        # use a stupdly small chunksize to actual get chunking on
+        # our tiny test file
+        for chunk in response.iter_content(chunk_size=1):
+            f.write(chunk)
+
+    # confirm identity
+    assert md5sum(fpath) == src_md5
 
 
 def check_upload(api, dsid, fcontent, fpath, src_md5):
@@ -61,3 +89,6 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     assert df['pidURL'] == ''
     assert df['rootDataFileId'] == -1
     assert df['storageIdentifier'].startswith('s3://demo-dataverse')
+
+    # report the file ID for external use
+    return  df['id']

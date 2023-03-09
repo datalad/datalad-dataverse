@@ -1,4 +1,6 @@
 from os import environ
+from pyDataverse.api import DataAccessApi
+
 import pytest
 
 from datalad_dataverse.utils import get_native_api
@@ -38,6 +40,16 @@ def dataverse_instance_url(dataverse_demoinstance_url):
 @pytest.fixture(autouse=False, scope="session")
 def dataverse_admin_api(dataverse_admin_token, dataverse_instance_url):
     return get_native_api(dataverse_instance_url, dataverse_admin_token)
+
+
+@pytest.fixture(autouse=False, scope="session")
+def dataverse_dataaccess_api(dataverse_admin_token, dataverse_instance_url):
+    # TODO there is no common implementation for this, there should be
+    return DataAccessApi(
+        base_url=dataverse_instance_url,
+        # this relies on having established the NativeApi in prepare()
+        api_token=dataverse_admin_token,
+    )
 
 
 @pytest.fixture(autouse=False, scope='session')
