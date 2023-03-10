@@ -158,7 +158,9 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
 
     def removeexport(self, key, remote_file):
         remote_file = mangle_directory_names(remote_file)
-        self._remove_file(key, remote_file)
+        rm_id = self._get_annex_fileid_record(key) \
+            or self._get_fileid_from_exportpath(remote_file, latest_only=True)
+        self._remove_file(key, rm_id)
 
     def renameexport(self, key, filename, new_filename):
         """Moves an exported file.
@@ -294,52 +296,6 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self.add_to_filelist(uploaded_file)
         # remember dataverse's database id for this key
         self._set_annex_fileid_record(key, uploaded_file['dataFile']['id'])
-
-    def _remove_file(self, key, remote_file):
-        """helper for both remove methods"""
-        rm_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_exportpath(remote_file, latest_only=True)
-
-        if rm_id is None:
-            # We didn't find anything to remove. That should be fine and
-            # considered a successful removal by git-annex.
-            return
-        if rm_id not in self.files_latest.keys():
-            # We can't remove from older (hence published) versions.
-            return
-
-        status = delete(
-            f'{self._url}/dvn/api/data-deposit/v1.1/swordv2/'
-            f'edit-media/file/{rm_id}',
-            # this relies on having established the NativeApi in prepare()
-            auth=HTTPBasicAuth(self._token, ''))
-        # http error handling
-        status.raise_for_status()
-        # We need to figure whether the removed ID was part of a released
-        # version. In that case it's still retrievable from an old, published
-        # version.
-        # Note, that this would potentially trigger the request of the full
-        # file list (`self.files_old`).
-        if not (self.files_latest[rm_id].is_released or
-                rm_id in self.files_old.keys()):
-            self.message(f"Unset stored id for {key}", type='debug')
-            self._set_annex_fileid_record(key, "")
-        else:
-            # Despite not actually deleting from the dataverse database, we
-            # currently loose access to the old key (in export mode, that is),
-            # because annex registers a successful REMOVEEXPORT and there seems
-            # to be no way to make annex even try to run a CHECKPRESENT(-EXPORT)
-            # on an export remote in such case. get, fsck, checkpresentkey -
-            # none of them would do.
-            # TODO: We could try to setpresenturl for the not-really-removed
-            # file, if it has a persistent URL (should be findable in
-            # self.old_dataset_versions) or even via api/access/datafile/811.
-            # However, that depends on permissions, etc., so not clear it's
-            # useful or desireable to always do that.
-            # Otherwise not seeing a solution ATM. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351
-            pass
-        # This ID is not part of the latest version anymore.
-        self.remove_from_filelist(rm_id)
 
 
 def main():

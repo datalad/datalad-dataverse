@@ -233,8 +233,9 @@ class DataverseRemote(SpecialRemote):
         self._download_file(file_id, file)
 
     def remove(self, key):
-        remote_file = Path(key)
-        self._remove_file(key, remote_file)
+        rm_id = self._get_annex_fileid_record(key) \
+            or self._get_fileid_from_key(key, latest_only=True)
+        self._remove_file(key, rm_id)
 
     #
     # Helpers
@@ -563,13 +564,14 @@ class DataverseRemote(SpecialRemote):
         with open(local_file, "wb") as f:
             f.write(response.content)
 
-    def _remove_file(self, key, remote_file):
-        """helper for both remove methods"""
-        rm_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_exportpath(remote_file, latest_only=True)
+    def _remove_file(self, key: str, rm_id: int | None):
+        """Remove a file by dataverse fileId
 
+        It is OK to call this method even when there is ``None``. It anticipates
+        this case in order to provide uniform handling.
+        """
         if rm_id is None:
-            # We didn't find anything to remove. That should be fine and
+            # We don't have anything to remove. That should be fine and
             # considered a successful removal by git-annex.
             return
         if rm_id not in self.files_latest.keys():
