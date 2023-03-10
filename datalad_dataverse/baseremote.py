@@ -42,12 +42,6 @@ CURL_EXISTS = which('curl') is not None
 class DataverseRemote(SpecialRemote):
     """Special remote to interface dataverse datasets.
 
-    There are two modes of operation:
-    - "Regular" special remote (configured with exporttree=false; default),
-      where a flat ist of annex keys is put into that dataverse dataset and
-    - export remote (configured with exporttree=yes), where the actual worktree
-      is put into the dataverse dataset
-
     Dataverse
     ---------
 
@@ -92,14 +86,6 @@ class DataverseRemote(SpecialRemote):
     key when checking for its presence. However, as laid out above, it is faster
     to utilize knowledge about the database ID, so the idea is to use path
     matching only as a fallback.
-
-    Export remote
-    -------------
-
-    In export mode the special remote can not conclude the annex key from a
-    remote path in general. In order to be able to access versions of a file
-    that are not part of the latest version (draft or not) of the dataverse
-    dataset, reliance on recorded database IDs is crucial.
 
     Implementation note
     -------------------
