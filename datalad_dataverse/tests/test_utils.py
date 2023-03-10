@@ -1,6 +1,35 @@
+from itertools import product
+from pathlib import Path
+
 import pytest
 
-from ..utils import format_doi
+from ..utils import (
+    format_doi,
+    mangle_directory_names,
+    unmangle_directory_names
+)
+
+
+_test_paths = [
+    ".x",
+    "_x",
+    "..x",
+    "._x",
+    "__x",
+    "_.x",
+    ".dir/.x",
+    "_dir/_x",
+    "..dir/..x",
+    "._dir/._x",
+    "_.dir/_.x",
+    "__dir/__x",
+    ".dir/x",
+    "_dir/x",
+    "..dir/x",
+    "._dir/x",
+    "_.dir/x",
+    "__dir/x",
+]
 
 
 def test_format_doi():
@@ -14,3 +43,17 @@ def test_format_doi():
         format_doi('')
     with pytest.raises(TypeError):
         format_doi(123)
+
+
+def test_dir_mangling_identity():
+    for p in _test_paths:
+        assert p == str(unmangle_directory_names(mangle_directory_names(p)))
+
+
+def test_dir_mangling_sub_dirs():
+    for p, q, r in product(_test_paths, _test_paths, _test_paths):
+        path = Path(p) / q / r
+        mangled_path = mangle_directory_names(path)
+        for part in mangled_path.parts[:-1]:
+            assert part[0] != "."
+        assert str(unmangle_directory_names(mangled_path)) == str(path)

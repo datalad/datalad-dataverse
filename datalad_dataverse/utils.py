@@ -170,9 +170,14 @@ def mangle_directory_names(path):
     """Replace leading dot in directory names of a path
 
     Dataverse currently auto-removes a leading dot from directory names.
-    Thus, map `.` -> `_._`
+    Thus, map:
+        leading `.` -> `_.`
+        leading `_` -> `__`
     """
-    LEADING_DOT_REPLACEMENT = "_._"
+    replacements = {
+        ".": "_.",
+        "_": "__"
+    }
 
     local_path = Path(path)
 
@@ -191,16 +196,64 @@ def mangle_directory_names(path):
         dataverse_path = local_path
     else:
         dataverse_path = \
-            Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
-                 if local_path.parts[0].startswith('.')
-                 else local_path.parts[0]
-                 )
+            Path(
+                replacements.get(
+                    local_path.parts[0][0],
+                    local_path.parts[0][0]
+                )
+                + local_path.parts[0][1:]
+            )
+
         for pt in local_path.parts[1:]:
-            dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
-                if pt.startswith('.') else pt
+            dataverse_path /= replacements.get(pt[0], pt[0]) + pt[1:]
 
     # re-append file if necessary
     if filename:
         dataverse_path /= filename
 
     return dataverse_path
+
+
+def unmangle_directory_names(dataverse_path):
+    """Revert dataverse specific path name mangling
+
+    For dataverse we encode path-elements that have a leading ``.`` with
+    ``_.`` and path-elements that have a leading ``_`` with ``__``. This
+    method reverts this mapping.
+    """
+    encodings = {
+        "_.": ".",
+        "__": "_"
+    }
+
+    dataverse_path = Path(dataverse_path)
+
+    # File names are not mangled and need therefore no un-mangling
+    if len(dataverse_path.parts) == 1:
+        return dataverse_path
+
+    # Split the file name from the path elements
+    filename = dataverse_path.name
+    dataverse_path = dataverse_path.parent
+
+    if dataverse_path == Path("."):
+        # `path` either is '.' or a file in '.'.
+        # Nothing to do: '.' has no representation on dataverse anyway.
+        # Note also, that Path(".").parts is an empty tuple for some reason,
+        # hence the code block below must be protected against this case.
+        result_path = dataverse_path
+    else:
+        result_path = (
+            Path(encodings[dataverse_path.parts[0][0:2]] + dataverse_path.parts[0][2:])
+            if len(dataverse_path.parts[0]) >= 2 and dataverse_path.parts[0][0:2] in encodings
+            else dataverse_path
+        )
+
+        for pt in dataverse_path.parts[1:]:
+            result_path /= (
+                encodings[pt[0:2]] + pt[2:]
+                if len(pt) >= 2 and pt[0:2] in encodings
+                else pt
+            )
+
+    return result_path / filename
