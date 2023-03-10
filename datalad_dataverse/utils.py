@@ -1,5 +1,7 @@
-from pathlib import Path
+from __future__ import annotations
+
 import re
+from pathlib import Path
 
 from pyDataverse.api import NativeApi
 
@@ -166,18 +168,14 @@ def format_doi(doi_in: str) -> str:
     return f'doi:{doi_in}'
 
 
-def mangle_directory_names(path):
-    """Replace leading dot in directory names of a path
+def mangle_directory_names(path: str | Path) -> Path:
+    """Quote leading dot and unsupported chars in directory names of a path
 
-    Dataverse currently auto-removes a leading dot from directory names.
-    Thus, map:
-        leading `.` -> `_.`
-        leading `_` -> `__`
+    Dataverse currently auto-removes a leading dot from directory names. It also
+    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\`` in
+    directory names. We therefore quote ``.`` and all non-allowed characters
+    in directory names
     """
-    replacements = {
-        ".": "_.",
-        "_": "__"
-    }
 
     local_path = Path(path)
 
@@ -195,17 +193,9 @@ def mangle_directory_names(path):
         # hence the code block below must be protected against this case.
         dataverse_path = local_path
     else:
-        dataverse_path = \
-            Path(
-                replacements.get(
-                    local_path.parts[0][0],
-                    local_path.parts[0][0]
-                )
-                + local_path.parts[0][1:]
-            )
-
+        dataverse_path = Path(dataverse_dirname_quote(local_path.parts[0]))
         for pt in local_path.parts[1:]:
-            dataverse_path /= replacements.get(pt[0], pt[0]) + pt[1:]
+            dataverse_path /= dataverse_dirname_quote(pt)
 
     # re-append file if necessary
     if filename:
@@ -214,17 +204,11 @@ def mangle_directory_names(path):
     return dataverse_path
 
 
-def unmangle_directory_names(dataverse_path):
+def unmangle_directory_names(dataverse_path: str | Path) -> Path:
     """Revert dataverse specific path name mangling
 
-    For dataverse we encode path-elements that have a leading ``.`` with
-    ``_.`` and path-elements that have a leading ``_`` with ``__``. This
-    method reverts this mapping.
+    This method undoes the quoting performed by ``mangle_directory_names()``
     """
-    encodings = {
-        "_.": ".",
-        "__": "_"
-    }
 
     dataverse_path = Path(dataverse_path)
 
@@ -243,17 +227,58 @@ def unmangle_directory_names(dataverse_path):
         # hence the code block below must be protected against this case.
         result_path = dataverse_path
     else:
-        result_path = (
-            Path(encodings[dataverse_path.parts[0][0:2]] + dataverse_path.parts[0][2:])
-            if len(dataverse_path.parts[0]) >= 2 and dataverse_path.parts[0][0:2] in encodings
-            else dataverse_path
+        result_path = Path(dataverse_dirname_unquote(dataverse_path.parts[0]))
+        for pt in dataverse_path.parts[1:]:
+            result_path /= dataverse_dirname_unquote(pt)
+    return result_path / filename
+
+
+def dataverse_dirname_quote(dirname: str) -> str:
+    """ Encode dirname to only contain valid dataverse directory name characters
+
+    Directory names in dataverse can only contain alphanum and ``_``, ``-``,
+    ``.``, ``/``, and ``\``. But we might deliver any character with unicode
+    0 to 255.
+
+    All other characters are replaced by ``_<HEXCODE>`` where ``<HEXCODE>`` is
+    a two digit hexadecimal. Because ``.`` should never appear at the
+    beginning of a path, we encode it as well.
+    """
+    def verify_range(character: str) -> bool:
+        if 0 <= ord(character) <= 255:
+            return True
+        raise ValueError(
+            f"Out of range character '{character}'"
+            f" (code: {ord(character)})"
         )
 
-        for pt in dataverse_path.parts[1:]:
-            result_path /= (
-                encodings[pt[0:2]] + pt[2:]
-                if len(pt) >= 2 and pt[0:2] in encodings
-                else pt
-            )
+    return "".join([
+        f"_{ord(c):02X}" if not c.isalnum() and c not in ("-", " ") else c
+        for c in dirname
+        if verify_range(c)
+    ])
 
-    return result_path / filename
+
+def dataverse_dirname_unquote(quoted_dirname: str) -> str:
+    """ Revert the quoting done in ``dataverse_dirname_quote()`` """
+    try:
+        unquoted_dirname = ""
+        state = 0
+        for index, character in enumerate(quoted_dirname):
+            if state == 0:
+                if character == "_":
+                    state = 1
+                    code = 0
+                else:
+                    unquoted_dirname += character
+            elif state == 1:
+                state = 2
+                code = 16 * int(character, 16)
+            else:
+                state = 0
+                code += int(character, 16)
+                unquoted_dirname += chr(code)
+    except Exception as e:
+        raise ValueError("Dataverse quotation error in:" + quoted_dirname) from e
+
+    return unquoted_dirname
