@@ -26,6 +26,22 @@ DATASET_SUBJECTS = [
 ]
 
 
+# We do not consider ``.`` to be safe in a dirname because
+# dataverse will ignore it, if it is the first character in
+# a directory name.
+DATAVERSE_DIRNAME_SAFE = {
+    chr(c) for c in range(128)
+    if chr(c).isprintable()
+    and (chr(c).isalnum() or chr(c) in ('_', '-', ' '))
+}
+
+DATAVERSE_FILENAME_SAFE = {
+    chr(c) for c in range(128)
+    if chr(c).isprintable()
+    and chr(c) not in ('/', ':', '*', '?', '"', '<', '>', '|', ';', '#')
+}
+
+
 def get_native_api(baseurl, token):
     """
     Returns
@@ -181,7 +197,7 @@ def mangle_directory_names(path: str | Path) -> Path:
 
     # only directories are treated this way:
     if not local_path.is_dir():
-        filename = local_path.name
+        filename = dataverse_filename_quote(local_path.name)
         local_path = local_path.parent
     else:
         filename = None
@@ -214,10 +230,10 @@ def unmangle_directory_names(dataverse_path: str | Path) -> Path:
 
     # File names are not mangled and need therefore no un-mangling
     if len(dataverse_path.parts) == 1:
-        return dataverse_path
+        return Path(dataverse_unquote(str(dataverse_path)))
 
     # Split the file name from the path elements
-    filename = dataverse_path.name
+    filename = dataverse_unquote(dataverse_path.name)
     dataverse_path = dataverse_path.parent
 
     if dataverse_path == Path("."):
@@ -227,9 +243,9 @@ def unmangle_directory_names(dataverse_path: str | Path) -> Path:
         # hence the code block below must be protected against this case.
         result_path = dataverse_path
     else:
-        result_path = Path(dataverse_dirname_unquote(dataverse_path.parts[0]))
+        result_path = Path(dataverse_unquote(dataverse_path.parts[0]))
         for pt in dataverse_path.parts[1:]:
-            result_path /= dataverse_dirname_unquote(pt)
+            result_path /= dataverse_unquote(pt)
     return result_path / filename
 
 
@@ -237,48 +253,75 @@ def dataverse_dirname_quote(dirname: str) -> str:
     """ Encode dirname to only contain valid dataverse directory name characters
 
     Directory names in dataverse can only contain alphanum and ``_``, ``-``,
-    ``.``, ``/``, and ``\``. But we might deliver any character with unicode
-    0 to 255.
+    ``.``, `` ``, ``/``, and ``\``. All other characters are replaced by
+    ``_<HEXCODE>`` where ``<HEXCODE>`` is a two digit hexadecimal. Because ``.``
+    should never appear at the beginning of a path, we encode it as well.
+    """
+    return dataverse_quote(dirname, DATAVERSE_DIRNAME_SAFE)
 
-    All other characters are replaced by ``_<HEXCODE>`` where ``<HEXCODE>`` is
-    a two digit hexadecimal. Because ``.`` should never appear at the
-    beginning of a path, we encode it as well.
+
+def dataverse_filename_quote(filename: str) -> str:
+    """ Encode filename to only contain valid dataverse file name characters
+
+    File names in dataverse must not contain the following characters:
+    ``/``, ``:``, ``*``,  ``?``,  ``"``,  ``<``,  ``>``,  ``|``, ``;``,  and
+    ``#``. Those are quoted with an "%"-escape character
+    """
+    return dataverse_quote(filename, DATAVERSE_FILENAME_SAFE)
+
+
+def dataverse_quote(name: str,
+                    safe: set[str],
+                    esc: str = "_"
+                    ) -> str:
+    """ Encode name to only contain characters from the set ``safe``
+
+    All characters that are not in the ``safe`` set and the escape character
+    ``esc`` are replaced by ``<esc><HEXCODE>`` where ``<HEXCODE>`` is a
+    two digit hexadecimal.
+
+    The escape character must be in the safe set and character codes must
+    be in the interval 0 ... 127. We also assume the hexdigits are in the
+    safe set.
     """
     def verify_range(character: str) -> bool:
-        if 0 <= ord(character) <= 255:
+        if 0 <= ord(character) <= 127:
             return True
         raise ValueError(
             f"Out of range character '{character}'"
             f" (code: {ord(character)})"
         )
 
+    assert esc in safe
     return "".join([
-        f"_{ord(c):02X}" if not c.isalnum() and c not in ("-", " ") else c
-        for c in dirname
+        f"{esc}{ord(c):02X}" if c not in safe or c == esc else c
+        for c in name
         if verify_range(c)
     ])
 
 
-def dataverse_dirname_unquote(quoted_dirname: str) -> str:
-    """ Revert the quoting done in ``dataverse_dirname_quote()`` """
+def dataverse_unquote(quoted_name: str,
+                      esc: str = "_"
+                      ) -> str:
+    """ Revert the quoting done in ``dataverse_quote()`` """
     try:
-        unquoted_dirname = ""
+        unquoted_name = ""
         state = 0
-        for index, character in enumerate(quoted_dirname):
+        for index, character in enumerate(quoted_name):
             if state == 0:
-                if character == "_":
+                if character == esc:
                     state = 1
                     code = 0
                 else:
-                    unquoted_dirname += character
+                    unquoted_name += character
             elif state == 1:
                 state = 2
                 code = 16 * int(character, 16)
             else:
                 state = 0
                 code += int(character, 16)
-                unquoted_dirname += chr(code)
+                unquoted_name += chr(code)
     except Exception as e:
-        raise ValueError("Dataverse quotation error in:" + quoted_dirname) from e
+        raise ValueError("Dataverse quotation error in:" + quoted_name) from e
 
-    return unquoted_dirname
+    return unquoted_name

@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 
 from ..utils import (
+    dataverse_filename_quote,
+    dataverse_unquote,
     format_doi,
     mangle_directory_names,
     unmangle_directory_names
@@ -29,7 +31,7 @@ _test_paths = [
     "._dir/x",
     "_.dir/x",
     "__dir/x",
-    "%%;;,,?&=",
+    "%%;;,_,?&=",
 ]
 
 
@@ -49,6 +51,11 @@ def test_format_doi():
 def test_dir_mangling_identity():
     for p in _test_paths:
         assert p == str(unmangle_directory_names(mangle_directory_names(p)))
+
+
+def test_file_mangling_identity():
+    for p in ["x/a", ".:*#?<>|;#"]:
+        assert p == dataverse_unquote(dataverse_filename_quote(p))
 
 
 def test_dir_mangling_sub_dirs():
