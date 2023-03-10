@@ -143,7 +143,14 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
                       'label': remote_file.name,
                       'pid': self._doi})
 
-        self._upload_file(datafile, key, local_file, remote_file)
+        # If the remote path already exists, we need to replace rather than
+        # upload the file, since otherwise dataverse would rename the file on
+        # its end. However, this only concerns the latest version of the
+        # dataset (which is what we are pushing into)!
+        replace_id = self._get_fileid_from_exportpath(
+            remote_file, latest_only=True)
+
+        self._upload_file(datafile, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
         # In export mode, we need to fix remote paths:
@@ -230,72 +237,6 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
             existing_id = [i for i, f in self.files_old.items()
                            if f.path == path]
         return existing_id[0] if existing_id else None
-
-    def _upload_file(self, datafile, key, local_file, remote_file):
-        """helper for both transfer-store methods"""
-        # If the remote path already exists, we need to replace rather than
-        # upload the file, since otherwise dataverse would rename the file on
-        # its end. However, this only concerns the latest version of the dataset
-        # (which is what we are pushing into)!
-        replace_id = self._get_fileid_from_exportpath(
-            remote_file, latest_only=True)
-        if replace_id is not None:
-            self.message(f"Replacing {remote_file} ...", type='debug')
-            response = self._api.replace_datafile(
-                identifier=replace_id,
-                filename=local_file,
-                json_str=datafile.json(),
-                is_filepid=False,
-            )
-        else:
-            self.message(f"Uploading {remote_file} ...", type='debug')
-            response = self._api.upload_datafile(
-                identifier=self._doi,
-                filename=local_file,
-                json_str=datafile.json(),
-            )
-
-        if response.status_code == 400 and \
-                response.json()['status'] == "ERROR" and \
-                "duplicate content" in response.json()['message']:
-            # Ignore this one for now.
-            # TODO: This needs better handling. Currently, this happens in
-            # git-annex-testremote ("store when already present").
-            # Generally it's kinda fine, but we'd better figure this out more
-            # reliably. Note, that we have to deal with annex keys, which are
-            # not hash based (for example the special keys fo datalad-annex
-            # git-remote-helper).
-            # Hence, having the key on the remote end, doesn't mean it's
-            # identical. So, we can't catch it beforehand this way.
-            self.message(
-                f"Failed to upload {key}, since dataverse says we are "
-                f"replacing with duplicate content.", type='debug'
-            )
-            return  # nothing changed and nothing needs to be done
-        else:
-            response.raise_for_status()
-
-        # Success.
-
-        # If we replaced, `replaced_id` is not part of the latest version
-        # anymore.
-        if replace_id is not None:
-            self.remove_from_filelist(replace_id)
-            # In case of replace we need to figure whether the replaced
-            # ID was part of a DRAFT version only. In that case it's gone and
-            # we'd need to remove the ID record. Otherwise, it's still retrieval
-            # from an old, published version.
-            # Note, that this would potentially trigger the request of the full
-            # file list (`self.files_old`).
-            if not (self.files_latest[replace_id].is_released or
-                    replace_id in self.files_old.keys()):
-                self._set_annex_fileid_record(key, "")
-
-        uploaded_file = response.json()['data']['files'][0]
-        # update cache:
-        self.add_to_filelist(uploaded_file)
-        # remember dataverse's database id for this key
-        self._set_annex_fileid_record(key, uploaded_file['dataFile']['id'])
 
 
 def main():

@@ -214,10 +214,18 @@ class DataverseRemote(SpecialRemote):
         datafile.set({'filename': key, 'label': key})
         datafile.set({'pid': self._doi})
 
-        self._upload_file(datafile=datafile,
-                          key=key,
-                          local_file=local_file,
-                          remote_file=Path(key))
+        # If the remote path already exists, we need to replace rather than
+        # upload the file, since otherwise dataverse would rename the file on
+        # its end. However, this only concerns the latest version of the
+        # dataset (which is what we are pushing into)!
+        replace_id = self._get_fileid_from_key(key, latest_only=True)
+
+        self._upload_file(
+            datafile=datafile,
+            key=key,
+            local_file=local_file,
+            replace_id=replace_id,
+        )
 
     def transfer_retrieve(self, key, file):
         stored_id = self._get_annex_fileid_record(key)
@@ -490,16 +498,10 @@ class DataverseRemote(SpecialRemote):
                            if f.path == path]
         return existing_id[0] if existing_id else None
 
-    def _upload_file(self, datafile, key, local_file, remote_file):
+    def _upload_file(self, datafile, key, local_file, replace_id):
         """helper for both transfer-store methods"""
-        # If the remote path already exists, we need to replace rather than
-        # upload the file, since otherwise dataverse would rename the file on
-        # its end. However, this only concerns the latest version of the dataset
-        # (which is what we are pushing into)!
-        replace_id = self._get_fileid_from_exportpath(
-            remote_file, latest_only=True)
         if replace_id is not None:
-            self.message(f"Replacing {remote_file} ...", type='debug')
+            self.message(f"Replacing fileId {replace_id} ...", type='debug')
             response = self._api.replace_datafile(
                 identifier=replace_id,
                 filename=local_file,
@@ -507,7 +509,7 @@ class DataverseRemote(SpecialRemote):
                 is_filepid=False,
             )
         else:
-            self.message(f"Uploading {remote_file} ...", type='debug')
+            self.message(f"Uploading key {key} ...", type='debug')
             response = self._api.upload_datafile(
                 identifier=self._doi,
                 filename=local_file,
@@ -542,12 +544,12 @@ class DataverseRemote(SpecialRemote):
             self.remove_from_filelist(replace_id)
             # In case of replace we need to figure whether the replaced
             # ID was part of a DRAFT version only. In that case it's gone and
-            # we'd need to remove the ID record. Otherwise, it's still retrieval
-            # from an old, published version.
+            # we'd need to remove the ID record. Otherwise, it's still
+            # retrieval from an old, published version.
             # Note, that this would potentially trigger the request of the full
             # file list (`self.files_old`).
-            if not (self.files_latest[replace_id].is_released or
-                    replace_id in self.files_old.keys()):
+            if not (self.files_latest[replace_id].is_released \
+                    or replace_id in self.files_old.keys()):
                 self._set_annex_fileid_record(key, "")
 
         uploaded_file = response.json()['data']['files'][0]
