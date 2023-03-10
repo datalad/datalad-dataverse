@@ -1,5 +1,7 @@
-from pathlib import Path
+from __future__ import annotations
+
 import re
+from pathlib import Path
 
 from pyDataverse.api import NativeApi
 
@@ -166,13 +168,14 @@ def format_doi(doi_in: str) -> str:
     return f'doi:{doi_in}'
 
 
-def mangle_directory_names(path):
-    """Replace leading dot in directory names of a path
+def mangle_directory_names(path: str | Path) -> Path:
+    """Quote leading dot and unsupported chars in directory names of a path
 
-    Dataverse currently auto-removes a leading dot from directory names.
-    Thus, map `.` -> `_._`
+    Dataverse currently auto-removes a leading dot from directory names. It also
+    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\`` in
+    directory names. We therefore quote ``.`` and all non-allowed characters
+    in directory names
     """
-    LEADING_DOT_REPLACEMENT = "_._"
 
     local_path = Path(path)
 
@@ -190,17 +193,92 @@ def mangle_directory_names(path):
         # hence the code block below must be protected against this case.
         dataverse_path = local_path
     else:
-        dataverse_path = \
-            Path((LEADING_DOT_REPLACEMENT + local_path.parts[0][1:])
-                 if local_path.parts[0].startswith('.')
-                 else local_path.parts[0]
-                 )
+        dataverse_path = Path(dataverse_dirname_quote(local_path.parts[0]))
         for pt in local_path.parts[1:]:
-            dataverse_path /= (LEADING_DOT_REPLACEMENT + pt[1:]) \
-                if pt.startswith('.') else pt
+            dataverse_path /= dataverse_dirname_quote(pt)
 
     # re-append file if necessary
     if filename:
         dataverse_path /= filename
 
     return dataverse_path
+
+
+def unmangle_directory_names(dataverse_path: str | Path) -> Path:
+    """Revert dataverse specific path name mangling
+
+    This method undoes the quoting performed by ``mangle_directory_names()``
+    """
+
+    dataverse_path = Path(dataverse_path)
+
+    # File names are not mangled and need therefore no un-mangling
+    if len(dataverse_path.parts) == 1:
+        return dataverse_path
+
+    # Split the file name from the path elements
+    filename = dataverse_path.name
+    dataverse_path = dataverse_path.parent
+
+    if dataverse_path == Path("."):
+        # `path` either is '.' or a file in '.'.
+        # Nothing to do: '.' has no representation on dataverse anyway.
+        # Note also, that Path(".").parts is an empty tuple for some reason,
+        # hence the code block below must be protected against this case.
+        result_path = dataverse_path
+    else:
+        result_path = Path(dataverse_dirname_unquote(dataverse_path.parts[0]))
+        for pt in dataverse_path.parts[1:]:
+            result_path /= dataverse_dirname_unquote(pt)
+    return result_path / filename
+
+
+def dataverse_dirname_quote(dirname: str) -> str:
+    """ Encode dirname to only contain valid dataverse directory name characters
+
+    Directory names in dataverse can only contain alphanum and ``_``, ``-``,
+    ``.``, ``/``, and ``\``. But we might deliver any character with unicode
+    0 to 255.
+
+    All other characters are replaced by ``_<HEXCODE>`` where ``<HEXCODE>`` is
+    a two digit hexadecimal. Because ``.`` should never appear at the
+    beginning of a path, we encode it as well.
+    """
+    def verify_range(character: str) -> bool:
+        if 0 <= ord(character) <= 255:
+            return True
+        raise ValueError(
+            f"Out of range character '{character}'"
+            f" (code: {ord(character)})"
+        )
+
+    return "".join([
+        f"_{ord(c):02X}" if not c.isalnum() and c not in ("-", " ") else c
+        for c in dirname
+        if verify_range(c)
+    ])
+
+
+def dataverse_dirname_unquote(quoted_dirname: str) -> str:
+    """ Revert the quoting done in ``dataverse_dirname_quote()`` """
+    try:
+        unquoted_dirname = ""
+        state = 0
+        for index, character in enumerate(quoted_dirname):
+            if state == 0:
+                if character == "_":
+                    state = 1
+                    code = 0
+                else:
+                    unquoted_dirname += character
+            elif state == 1:
+                state = 2
+                code = 16 * int(character, 16)
+            else:
+                state = 0
+                code += int(character, 16)
+                unquoted_dirname += chr(code)
+    except Exception as e:
+        raise ValueError("Dataverse quotation error in:" + quoted_dirname) from e
+
+    return unquoted_dirname
