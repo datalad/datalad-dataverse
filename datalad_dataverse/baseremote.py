@@ -29,8 +29,6 @@ from datalad_dataverse.utils import (
     mangle_directory_names,
 )
 
-from .baseremote import DataverseRemote as BaseDataverseRemote
-
 # Object to hold what's on dataverse's end for a given database id.
 # We need the paths in the latest version (if the id is part of that) in order
 # to know whether we need to replace rather than just upload a file, and we need
@@ -45,7 +43,7 @@ FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 CURL_EXISTS = which('curl') is not None
 
 
-class DataverseRemote(ExportRemote, BaseDataverseRemote):
+class DataverseRemote(ExportRemote, SpecialRemote):
     """Special remote to interface dataverse datasets.
 
     There are two modes of operation:
