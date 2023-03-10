@@ -49,12 +49,12 @@ def test_format_doi():
 
 
 def test_dir_mangling_identity():
-    for p in _test_paths:
+    for p in _test_paths + ['?;#:eee=2.txt']:
         assert p == str(unmangle_directory_names(mangle_directory_names(p)))
 
 
 def test_file_mangling_identity():
-    for p in ["x/a", ".:*#?<>|;#"]:
+    for p in ["x_/a", "._:*#?<>|;#"]:
         assert p == dataverse_unquote(dataverse_filename_quote(p))
 
 
