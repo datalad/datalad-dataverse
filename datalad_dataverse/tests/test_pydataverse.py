@@ -2,6 +2,8 @@
 
 import datetime
 import json
+from requests import delete
+from requests.auth import HTTPBasicAuth
 
 from datalad_next.tests.utils import md5sum
 
@@ -166,4 +168,66 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     assert df['storageIdentifier'].startswith('s3://demo-dataverse')
 
     # report the file ID for external use
-    return  df['id']
+    return df['id']
+
+
+def test_file_removal(
+        tmp_path,
+        dataverse_admin_api,
+        dataverse_publishable_dataset,
+):
+
+    # the starting point of `dataverse_dataset` is a freshly
+    # created, non-published dataset in draft mode, with no prior
+    # version
+    fcontent = 'some_content'
+    fpath = tmp_path / 'dummy.txt'
+    fpath.write_text(fcontent)
+    response = dataverse_admin_api.upload_datafile(
+        identifier=dataverse_publishable_dataset,
+        filename=fpath,
+    )
+    # worked
+    assert response.status_code == 200, \
+        f"failed to upload file {response.status_code}: {response.json()}"
+    # No further assertion on upload response - this is tested in
+    # test_file_handling.
+
+    fid = response.json()['data']['files'][0]['dataFile']['id']
+
+    # This should be removable:
+    status = delete(
+        f'{dataverse_admin_api.base_url}/dvn/api/data-deposit/v1.1/swordv2/'
+        f'edit-media/file/{fid}',
+        auth=HTTPBasicAuth(dataverse_admin_api.api_token, ''))
+    # TODO: Not sure, whether that is always a 204. Or why it would be at all
+    # for that matter.
+    assert status.status_code == 204, \
+        f"failed to delete file {status.status_code}: {status.json()}"
+
+    # Re-upload
+    response = dataverse_admin_api.upload_datafile(
+        identifier=dataverse_publishable_dataset,
+        filename=fpath,
+    )
+    assert response.status_code == 200, \
+        f"failed to upload file {response.status_code}: {response.json()}"
+
+    fid2 = response.json()['data']['files'][0]['dataFile']['id']
+
+    # Publish the dataset
+    # Note, that "major" release is required. We can't publish a "minor" when
+    # there's no major yet.
+    response = dataverse_admin_api.publish_dataset(
+        dataverse_publishable_dataset, release_type="major")
+    assert response.status_code == 200, \
+        f"publishing dataset failed with {response.status_code}: {response.json()}"
+
+    # We can't remove a file that is part of a published dataset:
+    status = delete(
+        f'{dataverse_admin_api.base_url}/dvn/api/data-deposit/v1.1/swordv2/'
+        f'edit-media/file/{fid2}',
+        auth=HTTPBasicAuth(dataverse_admin_api.api_token, ''))
+
+    assert status.status_code == 400, \
+        f"unexpected status on deletion {status.status_code}: {status.json()}"

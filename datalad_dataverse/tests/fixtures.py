@@ -110,6 +110,20 @@ def dataverse_dataset(dataverse_admin_api, dataverse_collection):
 
 
 @pytest.fixture(autouse=False, scope='function')
+def dataverse_publishable_dataset(dataverse_admin_api,
+                                  dataverse_published_collection):
+    """Same as `dataverse_dataset` but dataset is part of a published
+    collection. This is required to be able to publish the dataset."""
+    dspid = create_test_dataverse_dataset(
+        dataverse_admin_api, dataverse_published_collection, 'testds')
+
+    yield dspid
+
+    # cleanup
+    dataverse_admin_api.destroy_dataset(dspid)
+
+
+@pytest.fixture(autouse=False, scope='function')
 def dataverse_admin_credential_setup(
         dataverse_admin_token, dataverse_instance_url, credman):
     credman.set('dataverse', secret=dataverse_admin_token,
