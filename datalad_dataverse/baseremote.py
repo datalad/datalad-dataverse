@@ -466,17 +466,19 @@ class DataverseRemote(SpecialRemote):
         # but if other metadata-based lookups become possible
         # this implementation could change
         # https://github.com/datalad/datalad-dataverse/issues/188
-        return self._get_fileid_from_exportpath(
+        return self._get_fileid_from_remotepath(
             Path(key),
             latest_only=latest_only,
         )
 
-    def _get_fileid_from_exportpath(self,
-                                    path: Path,
-                                    *,
-                                    latest_only: bool) -> int | None:
-        """Get the id of a dataverse file, that matches a given `Path` in the
-        dataverse dataset.
+    def _get_fileid_from_remotepath(
+            self,
+            path: Path,
+            *,
+            latest_only: bool) -> int | None:
+        """Get the id of a dataverse file, that matches a given path in the
+        dataverse dataset. The path is interpreted as the conjunction of a
+        ``directoryLabel`` and a ``label`` (filename) in dataverse terminology.
 
         Parameters
         ----------
