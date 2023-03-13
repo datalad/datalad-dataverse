@@ -127,6 +127,11 @@ class OnlineDataverseDataset:
         datafile = Datafile()
         # remote file metadata
         datafile.set({
+            # if we do not give `label`, it would use the local filename
+            'label': remote_path.name,
+            # the model enforces this property, despite `label` being the
+            # effective setter, and despite it being ignore and replaced
+            # we the local filename
             'filename': remote_path.name,
             'directoryLabel': str(remote_path.parent),
             'pid': self._dsid,
