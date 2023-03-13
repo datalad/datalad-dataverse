@@ -7,6 +7,12 @@ from requests.auth import HTTPBasicAuth
 
 from datalad_next.tests.utils import md5sum
 
+from .utils import (
+    list_dataset_files,
+    get_dvfile_with_md5,
+)
+
+
 #
 # functionality tested here is all candidate for a dedicated pydataverse
 # abstraction for use in datalad-dataverse. however, first all functionality
@@ -27,6 +33,11 @@ def test_file_handling(
     fpath = tmp_path / 'dummy.txt'
     fpath.write_text(fcontent)
     src_md5 = md5sum(fpath)
+
+    check_duplicate_file_deposition(
+        dataverse_admin_api,
+        dataverse_dataset,
+        tmp_path)
 
     fileid = check_upload(
         dataverse_admin_api,
@@ -128,6 +139,35 @@ def check_download(api, fileid, dsid, fpath, src_md5):
 
     # confirm identity
     assert md5sum(fpath) == src_md5
+
+
+def check_duplicate_file_deposition(api, dsid, tmp_path):
+    content = 'identical'
+    content_md5 = 'ee0cbdbacdada19376449799774976e8'
+    for fname in ('nonunique1.txt', 'nonunique2.txt'):
+        (tmp_path / fname).write_text(content)
+
+    response = api.upload_datafile(
+        identifier=dsid,
+        filename=tmp_path / 'nonunique1.txt'
+    )
+    # we do not expect issues here
+    response.raise_for_status()
+    # now upload the second file with the same content
+    response = api.upload_datafile(
+        identifier=dsid,
+        filename=tmp_path / 'nonunique2.txt'
+    )
+    response.raise_for_status()
+
+    # check both files are available under their respective names
+    flist = list_dataset_files(api, dsid)
+    identicals = get_dvfile_with_md5(flist, content_md5, all_matching=True)
+    assert len(identicals) == 2
+    assert any(f['label'] == 'nonunique1.txt' and f['dataFile']['md5'] == content_md5
+               for f in identicals)
+    assert any(f['label'] == 'nonunique2.txt' and f['dataFile']['md5'] == content_md5
+               for f in identicals)
 
 
 def check_upload(api, dsid, fcontent, fpath, src_md5):
