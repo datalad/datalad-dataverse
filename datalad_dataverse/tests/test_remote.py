@@ -3,7 +3,6 @@ from urllib.parse import quote as urlquote
 
 from datalad.api import clone
 
-from datalad_next.datasets import Dataset
 from datalad_next.utils import (
     on_windows,
     rmtree,
@@ -22,9 +21,9 @@ def test_remote(dataverse_admin_credential_setup,
                 dataverse_admin_api,
                 dataverse_dataset,
                 dataverse_instance_url,
-                tmp_path,
+                existing_dataset,
                 *, exporttree):
-    ds = Dataset(tmp_path).create(**ckwa)
+    ds = existing_dataset
     payload = 'content'
     payload_md5 = '9a0364b9e99bb480dd25e1f0284c8555'
     payload_fname = 'somefile.txt'
@@ -87,10 +86,10 @@ def test_remote(dataverse_admin_credential_setup,
 def test_datalad_annex(dataverse_admin_credential_setup,
                        dataverse_dataset,
                        dataverse_instance_url,
+                       existing_dataset,
                        tmp_path):
-    dspath = tmp_path / 'ds'
-    clonepath = tmp_path / 'clone'
-    ds = Dataset(dspath).create(**ckwa)
+    ds = existing_dataset
+    clonepath = tmp_path
     repo = ds.repo
     # this is the raw datalad-annex URL, convenience could be added on top
     git_remote_url = \
@@ -117,3 +116,34 @@ def test_datalad_annex(dataverse_admin_credential_setup,
 
         # cleanup for the next iteration
         rmtree(clonepath)
+
+
+# this tests is simply an indicator for dataverse potentially making it
+# possible to export two identical files with the same content.
+# presently this is not the case, and this tests merely checks that
+def test_export_identical_unsupported(
+        dataverse_admin_credential_setup,
+        dataverse_admin_api,
+        dataverse_dataset,
+        dataverse_instance_url,
+        existing_dataset):
+    # dataset with two identical files
+    ds = existing_dataset
+    payload = 'identical'
+    payload_md5 = 'ee0cbdbacdada19376449799774976e8'
+    for fname in ('one.txt', 'two.txt'):
+        (ds.pathobj / fname).write_text(payload)
+    ds.save(**ckwa)
+    repo = ds.repo
+    repo.call_annex([
+        'initremote', 'mydv', 'encryption=none', 'type=external',
+        'externaltype=dataverse', f'url={dataverse_instance_url}',
+        f'doi={dataverse_dataset}', 'exporttree=yes'
+    ])
+    repo.call_annex([
+        'export', 'HEAD', '--to', 'mydv'
+    ])
+    flist = list_dataset_files(dataverse_admin_api, dataverse_dataset)
+    identicals = get_dvfile_with_md5(flist, payload_md5, all_matching=True)
+    assert len(identicals) == 1, \
+        'Check if dataverse can handle identical file content under different names now'

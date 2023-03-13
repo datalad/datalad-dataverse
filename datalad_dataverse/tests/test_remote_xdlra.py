@@ -1,5 +1,4 @@
 from pathlib import Path
-from datalad_next.datasets import Dataset
 from datalad_next.utils import rmtree
 
 ckwa = dict(result_renderer='disabled')
@@ -9,13 +8,13 @@ def test_XDLRA_key(
         dataverse_admin_credential_setup,
         dataverse_dataset,
         dataverse_instance_url,
-        tmp_path,
+        existing_dataset,
 ):
     """Test purpose of this test is to verify correct operations with a key
     that points to changing content with no change in the key (name) itself.
     """
     # a demo dataset with one file
-    ds = Dataset(tmp_path).create(**ckwa)
+    ds = existing_dataset
     fpath = (ds.pathobj / 'somefile.txt')
     # this specific format of content is needed for backend verification
     # we will track multiple versions
