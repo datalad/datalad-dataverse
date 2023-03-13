@@ -365,6 +365,10 @@ def _dataverse_quote(name: str,
         )
 
     assert esc in safe
+
+    if set(name).issubset(safe):
+        return name
+
     return "".join([
         f"{esc}{ord(c):02X}" if c not in safe or c == esc else c
         for c in name

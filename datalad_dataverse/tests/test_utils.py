@@ -73,3 +73,9 @@ def test_dir_quoting_leading_dot():
         q = _dataverse_dirname_quote(p)
         assert q[0] != "."
         assert p == _dataverse_unquote(q)
+
+
+def test_null_quoting_skip():
+    s = "a---b"
+    assert s == _dataverse_dirname_quote(s)
+    assert s == _dataverse_filename_quote(s)
