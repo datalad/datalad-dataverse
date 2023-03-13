@@ -50,7 +50,7 @@ def test_format_doi():
 
 def test_dir_mangling_identity():
     for p in _test_paths + ['?;#:eee=2.txt']:
-        assert p == str(unmangle_directory_names(mangle_directory_names(p)))
+        assert Path(p) == unmangle_directory_names(mangle_directory_names(p))
 
 
 def test_file_mangling_identity():
@@ -64,4 +64,4 @@ def test_dir_mangling_sub_dirs():
         mangled_path = mangle_directory_names(path)
         for part in mangled_path.parts[:-1]:
             assert part[0] != "."
-        assert str(unmangle_directory_names(mangled_path)) == str(path)
+        assert unmangle_directory_names(mangled_path) == path
