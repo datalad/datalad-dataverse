@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from annexremote import ExportRemote
 
 from datalad_next.annexremotes import (
@@ -10,9 +8,7 @@ from datalad_next.annexremotes import (
     super_main,
 )
 
-
 from .baseremote import DataverseRemote as BaseDataverseRemote
-from .utils import mangle_path
 
 
 class DataverseRemote(ExportRemote, BaseDataverseRemote):
@@ -113,21 +109,9 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
             return self._dvds.has_fileid_in_latest_version(stored_id)
         else:
             # In export mode, we need to fix remote paths:
-            remote_file = mangle_path(remote_file)
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
-        remote_file = mangle_path(remote_file)
-        # TODO: See
-        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
-        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
-                     string=str(remote_file.parent),
-                     flags=re.ASCII | re.IGNORECASE):
-            self.annex.error(f"Invalid character in directory name of "
-                             f"{str(remote_file)}. Valid characters are a-Z, "
-                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
-                             f"(white space).")
-
         # If the remote path already exists, we need to replace rather than
         # upload the file, since otherwise dataverse would rename the file on
         # its end. However, this only concerns the latest version of the
@@ -138,9 +122,6 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._upload_file(remote_file, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_path(remote_file)
-
         file_id = self._get_annex_fileid_record(key) \
             or self._get_fileid_from_remotepath(remote_file, latest_only=True)
         if file_id is None:
@@ -149,7 +130,6 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._download_file(file_id, local_file)
 
     def removeexport(self, key, remote_file):
-        remote_file = mangle_path(remote_file)
         rm_id = self._get_annex_fileid_record(key) \
             or self._get_fileid_from_remotepath(remote_file, latest_only=True)
         self._remove_file(key, rm_id)
@@ -163,9 +143,9 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         """
         try:
             self._dvds.rename_file(
-                new_path=mangle_path(new_filename),
+                new_path=new_filename,
                 rename_id=self._get_annex_fileid_record(key),
-                rename_path=mangle_path(filename),
+                rename_path=filename,
             )
         except RuntimeError as e:
             raise UnsupportedRequest() from e

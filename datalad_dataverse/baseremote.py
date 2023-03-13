@@ -245,11 +245,11 @@ class DataverseRemote(SpecialRemote):
         Returns
         -------
         PurePosixPath
-          annex-keys/<dirhash-lower>/<key>
+          annex/<dirhash-lower>/<key>
         """
         dirhash = self.annex.dirhash_lower(key)
         return PurePosixPath(
-            'annex-keys',
+            'annex',
             dirhash,
             key,
         )
