@@ -11,13 +11,11 @@ from datalad_next.annexremotes import (
     super_main,
 )
 
-from datalad_dataverse.utils import (
-    mangle_directory_names,
-)
 
-from .baseremote import (
-    DataverseRemote as BaseDataverseRemote,
-    CURL_EXISTS,
+from .baseremote import DataverseRemote as BaseDataverseRemote
+from .dataset import CURL_EXISTS
+from .utils import (
+    mangle_directory_names,
 )
 
 
@@ -116,11 +114,11 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
             # Only check latest version in export mode. Doesn't currently
             # work for keys from older versions, since annex fails to even
             # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-            return stored_id in self.files_latest.keys()
+            return self._dvds.has_fileid_in_latest_version(stored_id)
         else:
             # In export mode, we need to fix remote paths:
             remote_file = mangle_directory_names(remote_file)
-            return remote_file in [f.path for f in self.files_latest.values()]
+            return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
         remote_file = mangle_directory_names(remote_file)
@@ -134,12 +132,6 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
                              f"0-9, '_', '-', '.', '\\', '/' and ' ' "
                              f"(white space).")
 
-        datafile = Datafile()
-        datafile.set({'filename': remote_file.name,
-                      'directoryLabel': str(remote_file.parent),
-                      'label': remote_file.name,
-                      'pid': self._doi})
-
         # If the remote path already exists, we need to replace rather than
         # upload the file, since otherwise dataverse would rename the file on
         # its end. However, this only concerns the latest version of the
@@ -147,7 +139,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         replace_id = self._get_fileid_from_remotepath(
             remote_file, latest_only=True)
 
-        self._upload_file(datafile, key, local_file, replace_id)
+        self._upload_file(remote_file, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
         # In export mode, we need to fix remote paths:
@@ -191,6 +183,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         if file_id is None:
             raise RemoteError(f"{key} not available for renaming")
 
+        # TODO needs to move to OnlineDataverseDataset
         datafile = Datafile()
         datafile.set({'filename': new_filename.name,
                       'directoryLabel': str(new_filename.parent),

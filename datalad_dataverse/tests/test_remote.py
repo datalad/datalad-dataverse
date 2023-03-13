@@ -9,16 +9,26 @@ from datalad_next.utils import (
     rmtree,
 )
 
+from .utils import (
+    list_dataset_files,
+    get_dvfile_with_md5,
+)
+
 ckwa = dict(result_renderer='disabled')
+
 
 @pytest.mark.parametrize("exporttree", ["yes", "no"])
 def test_remote(dataverse_admin_credential_setup,
+                dataverse_admin_api,
                 dataverse_dataset,
                 dataverse_instance_url,
                 tmp_path,
                 *, exporttree):
     ds = Dataset(tmp_path).create(**ckwa)
-    (ds.pathobj / 'somefile.txt').write_text('content')
+    payload = 'content'
+    payload_md5 = '9a0364b9e99bb480dd25e1f0284c8555'
+    payload_fname = 'somefile.txt'
+    (ds.pathobj / payload_fname).write_text(payload)
     ds.save(**ckwa)
     repo = ds.repo
     repo.call_annex([
@@ -26,15 +36,28 @@ def test_remote(dataverse_admin_credential_setup,
         'externaltype=dataverse', f'url={dataverse_instance_url}',
         f'doi={dataverse_dataset}', f'exporttree={exporttree}'
     ])
-    # some smoke testing of the git-annex interface
+    # check initial file naming on export and copy-to
     if exporttree == "yes":
         repo.call_annex([
             'export', 'HEAD', '--to', 'mydv'
         ])
+        flist = list_dataset_files(dataverse_admin_api, dataverse_dataset)
+        # more than one file, we also exported all files in Git
+        assert len(flist) > 1
+        frec = get_dvfile_with_md5(flist, payload_md5)
+        assert frec['label'] == payload_fname
     else:
         repo.call_annex([
             'copy', '--to', 'mydv', 'somefile.txt',
         ])
+        flist = list_dataset_files(dataverse_admin_api, dataverse_dataset)
+        # one key
+        assert len(flist) == 1
+        frec = get_dvfile_with_md5(flist, payload_md5)
+        # dataverse file label equals the key
+        assert frec['label'] == \
+            repo.get_content_annexinfo(
+                paths=[payload_fname]).popitem()[1]['key']
     repo.call_annex([
         'fsck', '-f', 'mydv',
     ])
