@@ -152,20 +152,17 @@ class DataverseRemote(SpecialRemote):
         stored_id = self._get_annex_fileid_record(key)
         if stored_id is not None:
             return self._dvds.has_fileid(stored_id)
-        else:
-            # We do not have an ID on record for this key.
-            # Fall back to filename matching for two reasons:
-            # 1. We have to deal with the special keys of the datalad-annex
-            #    git-remote-helper. They must be matched by name, since the
-            #    throwaway repo using them doesn't have a relevant git-annex
-            #    branch with an ID record (especially when cloning via the
-            #    git-remote-helper)
-            # 2. We are in "regular annex mode" here - keys are stored under
-            #    their name. Falling back to name matching allows to recover
-            #    data, despite a lost or not generated id record for it. For
-            #    example on could have uploaded lots of data via git-annex-copy,
-            #    but failed to push the git-annex branch somewhere.
-            return self._dvds.has_path(self._get_remotepath_for_key(key))
+
+        # We do not have an ID on record for this key, check at dataverse
+        # for this key (generates a path from the key itself)
+        file_id = self._get_fileid_from_key(key, latest_only=False)
+
+        if file_id:
+            # store this ID locally to speed up future retrieval
+            # (avoids getting a dataset listing first)
+            self._set_annex_fileid_record(key, file_id)
+
+        return file_id is not None
 
     def transfer_store(self, key, local_file):
         # If the remote path already exists, we need to replace rather than
@@ -263,9 +260,6 @@ class DataverseRemote(SpecialRemote):
                              latest_only: bool) -> int | None:
         """Get the id of a dataverse file, that matches a given annex key
         dataverse dataset.
-
-        This method assumes that keys are deposited under paths that are
-        identical to the key name.
 
         Parameters
         ----------
