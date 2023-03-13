@@ -74,7 +74,9 @@ def dataverse_collection(dataverse_admin_api,
 
     # if all other fixtures and tests have properly cleaned-up after
     # themselves we can now simply delete the collection
-    dataverse_admin_api.delete_dataverse(collection_alias)
+    r = dataverse_admin_api.delete_dataverse(collection_alias)
+    # make sure cleanup failure does not go unnoticed
+    r.raise_for_status()
 
 
 @pytest.fixture(autouse=False, scope='function')
@@ -85,7 +87,9 @@ def dataverse_dataset(dataverse_admin_api, dataverse_collection):
     yield dspid
 
     # cleanup
-    dataverse_admin_api.destroy_dataset(dspid)
+    r = dataverse_admin_api.destroy_dataset(dspid)
+    # make sure cleanup failure does not go unnoticed
+    r.raise_for_status()
 
 
 @pytest.fixture(autouse=False, scope='function')
