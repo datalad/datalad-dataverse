@@ -45,3 +45,18 @@ def create_test_dataverse_dataset(api, collection, name):
     req = _create_dv_dataset(api, col, meta)
     req.raise_for_status()
     return req.json()['data']['persistentId']
+
+
+def list_dataset_files(api, doi: str) -> list:
+    """Returns a list of file records in a dataverse dataset given by its DOI
+    """
+    return api.get_dataset(doi).json()['data']['latestVersion']['files']
+
+
+def get_dvfile_with_md5(listing: list, md5: str) -> dict:
+    frec = [f for f in listing
+            if f.get('dataFile', {}).get('md5') == md5]
+    if not frec:
+        raise ValueError(f'no file record with MD5 {md5!r}')
+
+    return frec[0]
