@@ -149,9 +149,13 @@ class DataverseRemote(SpecialRemote):
         self.prepare()
 
     def checkpresent(self, key):
-        stored_id = self._get_annex_fileid_record(key)
-        if stored_id is not None:
-            return self._dvds.has_fileid(stored_id)
+        stored_ids = self._get_annex_fileid_record(key)
+        if stored_ids:
+            # In non-export mode, it shouldn't matter which of the recorded IDs
+            # the key is available from. In fact, can't think of scenario that
+            # would lead to several to begin with.
+            return any(self._dvds.has_fileid(stored_id)
+                       for stored_id in stored_ids)
 
         # We do not have an ID on record for this key, check at dataverse
         # for this key (generates a path from the key itself)
@@ -160,7 +164,7 @@ class DataverseRemote(SpecialRemote):
         if file_id:
             # store this ID locally to speed up future retrieval
             # (avoids getting a dataset listing first)
-            self._set_annex_fileid_record(key, file_id)
+            self._add_annex_fileid_record(key, file_id)
 
         return file_id is not None
 
@@ -180,9 +184,11 @@ class DataverseRemote(SpecialRemote):
         )
 
     def transfer_retrieve(self, key, file):
-        stored_id = self._get_annex_fileid_record(key)
-        if stored_id is not None:
-            file_id = stored_id
+        stored_ids = self._get_annex_fileid_record(key)
+        if stored_ids:
+            # Note, that for content retrieval it doesn't matter which ID we are
+            # downloading. Only content matters. Hence, first entry and be done.
+            file_id = stored_ids[0]
         else:
             # Like in `self.checkpresent`, we fall back to path matching.
             # Delayed checking for availability from old versions is included.
@@ -193,19 +199,23 @@ class DataverseRemote(SpecialRemote):
         self._download_file(file_id, file)
 
     def remove(self, key):
-        rm_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_key(key, latest_only=True)
-        self._remove_file(key, rm_id)
+        rm_ids = self._get_annex_fileid_record(key) \
+            or [self._get_fileid_from_key(key, latest_only=True)]
+        for rm_id in rm_ids:
+            self._remove_file(key, rm_id)
 
     #
     # Helpers
     #
-    def _get_annex_fileid_record(self, key: str) -> int | None:
+    def _get_annex_fileid_record(self, key: str) -> list:
         """Get the dataverse database id from the git-annex branch
 
         This is using the getstate/setstate special remote feature. Hence, a
         stored id only exists, if the key was put to the dataverse instance by
         this special remote.
+        Note, that what is stored is in fact a comma-separated list of IDs,
+        since this is required for export mode, where several copies of the same
+        content may need to exist on the dataverse end.
 
         Parameters
         ----------
@@ -214,25 +224,61 @@ class DataverseRemote(SpecialRemote):
 
         Returns
         -------
-        int or None
+        list of int
         """
         stored_id = self.annex.getstate(key)
         if stored_id == "":
-            return None
+            return []
         else:
-            return int(stored_id)
+            return [int(n.strip()) for n in stored_id.split(',')]
 
-    def _set_annex_fileid_record(self, key, id):
+    def _set_annex_fileid_record(self, key: str, ids: list):
         """Store a dataverse database id for a given key
 
         Parameters
         ----------
         key: str
             annex key to store the id for
-        id: int or str
-            dataverse database id for `key`. Empty string to unset.
+        ids: list of int
+            dataverse database ids for `key`. Empty list to unset.
         """
-        self.annex.setstate(key, str(id))
+        self.annex.setstate(key, ", ".join([str(i) for i in ids]))
+
+    def _add_annex_fileid_record(self, key: str, id: int):
+        """Add a dataverse database ID to annex' record for `key`
+
+        Parameters
+        ----------
+        key: str
+            annex key to store the id for
+        id: int
+            dataverse database id for `key`
+        """
+        r = self._get_annex_fileid_record(key)
+        r.append(id)
+        self._set_annex_fileid_record(key, r)
+
+    def _remove_annex_fileid_record(self, key, id):
+        """Remove a dataverse database ID from annex' record for `key`
+
+        Parameters
+        ----------
+        key: str
+            annex key to store the id for
+        id: int
+            dataverse database id for `key`
+        """
+
+        r = self._get_annex_fileid_record(key)
+        try:
+            r.remove(id)
+        except ValueError:
+            self.message(f"Unable to remove {id} from {r}. (ValueError)",
+                         type='debug')
+            # If ID isn't in the list, that should be fine. At least no reason
+            # to error out.
+            pass
+        self._set_annex_fileid_record(key, r)
 
     def _get_remotepath_for_key(self, key: str) -> PurePosixPath:
         """Return the cannonical remote path for a given key
@@ -329,10 +375,10 @@ class DataverseRemote(SpecialRemote):
             # Note, that this would potentially trigger the request of the full
             # file list (`self.files_old`).
             if not self.is_released_file(replace_id):
-                self._set_annex_fileid_record(key, "")
+                self._remove_annex_fileid_record(key, replace_id)
 
         # remember dataverse's database id for this key
-        self._set_annex_fileid_record(key, upload_id)
+        self._add_annex_fileid_record(key, upload_id)
 
     def _download_file(self, file_id, local_file):
         """helper for both transfer-retrieve methods"""
@@ -361,7 +407,7 @@ class DataverseRemote(SpecialRemote):
         # file list (`self.files_old`).
         if not self._dvds.is_released_file(rm_id):
             self.message(f"Unset stored id for {key}", type='debug')
-            self._set_annex_fileid_record(key, "")
+            self._remove_annex_fileid_record(key, rm_id)
         else:
             # Despite not actually deleting from the dataverse database, we
             # currently loose access to the old key (in export mode, that is),

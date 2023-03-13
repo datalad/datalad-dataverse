@@ -105,15 +105,13 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
     # Export API
     #
     def checkpresentexport(self, key, remote_file):
-        stored_id = self._get_annex_fileid_record(key)
-        if stored_id is not None:
-            # Only check latest version in export mode. Doesn't currently
-            # work for keys from older versions, since annex fails to even
-            # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-            return self._dvds.has_fileid_in_latest_version(stored_id)
+        remote_file = mangle_path(remote_file)
+        stored_ids = self._get_annex_fileid_record(key)
+        if stored_ids:
+            # Only check latest version in export mode.
+            return self._get_fileid_from_remotepath(
+                remote_file, latest_only=True) in stored_ids
         else:
-            # In export mode, we need to fix remote paths:
-            remote_file = mangle_path(remote_file)
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
@@ -141,8 +139,12 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         # In export mode, we need to fix remote paths:
         remote_file = mangle_path(remote_file)
 
-        file_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_remotepath(remote_file, latest_only=True)
+        # Note, that content retrieval doesn't care where the content is coming
+        # from. Hence, taking the first ID on record should suffice.
+        stored_ids = self._get_annex_fileid_record(key)
+        file_id = stored_ids[0] if stored_ids \
+            else self._get_fileid_from_remotepath(remote_file, latest_only=True)
+
         if file_id is None:
             raise RemoteError(f"Key {key} unavailable")
 
@@ -150,8 +152,11 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
 
     def removeexport(self, key, remote_file):
         remote_file = mangle_path(remote_file)
-        rm_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_remotepath(remote_file, latest_only=True)
+
+        # For removal, path matching needs to be done, since we could have
+        # several copies (dataverse IDs) of the content. Need to remove the one
+        # that also matches the path.
+        rm_id = self._get_fileid_from_remotepath(remote_file, latest_only=True)
         self._remove_file(key, rm_id)
 
     def renameexport(self, key, filename, new_filename):
@@ -161,10 +166,15 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         Otherwise annex calls removeexport + transferexport_store, which
         does not scale well performance-wise.
         """
+
+        # We cannot rely on ID lookup, since there could be several. We need to
+        # match the path.
+        rename_id = self._get_fileid_from_remotepath(mangle_path(filename),
+                                                     latest_only=True)
         try:
             self._dvds.rename_file(
                 new_path=mangle_path(new_filename),
-                rename_id=self._get_annex_fileid_record(key),
+                rename_id=rename_id,
                 rename_path=mangle_path(filename),
             )
         except RuntimeError as e:
