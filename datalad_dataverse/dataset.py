@@ -173,7 +173,7 @@ class OnlineDataverseDataset:
         Raises
         ------
         RuntimeError
-          Whenever the operation cannot or did not success. This could be,
+          Whenever the operation cannot or did not succeed. This could be
           because of a missing dependency, or because the file in question
           cannot be renamed (included in an earlier version).
         """
