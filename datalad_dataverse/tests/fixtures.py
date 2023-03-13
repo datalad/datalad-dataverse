@@ -77,45 +77,10 @@ def dataverse_collection(dataverse_admin_api,
     dataverse_admin_api.delete_dataverse(collection_alias)
 
 
-@pytest.fixture(autouse=False, scope='session')
-def dataverse_published_collection(dataverse_admin_api, dataverse_collection):
-    # This may not work in all test setups due to lack of permissions or /root
-    # not being published or it being published already. Try though, since it's
-    # necessary to publish datasets in order to test against dataverse datasets
-    # with several versions.
-    from pyDataverse.exceptions import (
-        ApiAuthorizationError,
-        OperationFailedError,
-    )
-    try:
-        dataverse_admin_api.publish_dataverse(dataverse_collection)
-    except ApiAuthorizationError:
-        # Test setup doesn't allow for it
-        pass
-    except OperationFailedError as e:
-        print(str(e))
-
-    yield dataverse_collection
-
-
 @pytest.fixture(autouse=False, scope='function')
 def dataverse_dataset(dataverse_admin_api, dataverse_collection):
     dspid = create_test_dataverse_dataset(
         dataverse_admin_api, dataverse_collection, 'testds')
-
-    yield dspid
-
-    # cleanup
-    dataverse_admin_api.destroy_dataset(dspid)
-
-
-@pytest.fixture(autouse=False, scope='function')
-def dataverse_publishable_dataset(dataverse_admin_api,
-                                  dataverse_published_collection):
-    """Same as `dataverse_dataset` but dataset is part of a published
-    collection. This is required to be able to publish the dataset."""
-    dspid = create_test_dataverse_dataset(
-        dataverse_admin_api, dataverse_published_collection, 'testds')
 
     yield dspid
 
