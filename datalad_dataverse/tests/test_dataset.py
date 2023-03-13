@@ -34,11 +34,37 @@ def test_file_handling(
 
     check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
 
+    fileid = check_replace_file(odd, fileid, tmp_path)
+
+    check_rename_file(odd, fileid)
+
     check_remove(odd, fileid, Path(fpath.name))
 
     check_duplicate_file_deposition(odd, tmp_path)
 
-    # TODO replace_datafile
+
+def check_rename_file(odd, fileid):
+    new_path = PurePosixPath('fresh') / 'place.txt'
+    assert not odd.has_path(new_path)
+    assert odd.has_fileid(fileid)
+    odd.rename_file(new_path, fileid)
+    assert odd.has_fileid(fileid)
+    assert odd.has_path_in_latest_version(new_path)
+
+
+def check_replace_file(odd, fileid, tmp_path):
+    fpath = tmp_path / 'replace_source.txt'
+    fpath.write_text('some_new_content')
+    remote_path = PurePosixPath('downstairs') / fpath.name
+
+    odd.has_fileid(fileid)
+    # we replace the file AND give it a new name at the same time
+    new_fileid = odd.upload_file(fpath, remote_path, fileid)
+    assert fileid != new_fileid
+    assert not odd.has_fileid(fileid)
+    assert odd.has_fileid(new_fileid)
+    assert odd.has_path_in_latest_version(remote_path)
+    return new_fileid
 
 
 def check_download(odd, fileid, fpath, src_md5):

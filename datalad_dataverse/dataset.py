@@ -196,14 +196,13 @@ class OnlineDataverseDataset:
         if rename_id is None:
             raise RuntimeError(f"file {rename_path} cannot be renamed")
 
-        # TODO needs to move to OnlineDataverseDataset
         datafile = Datafile()
         datafile.set({
             # same as with upload `filename` and `label` must be redundant
             'label': new_path.name,
             'filename': new_path.name,
             'directoryLabel': str(new_path.parent),
-            'pid': self._doi,
+            'pid': self._dsid,
         })
 
         proc = self._api.update_datafile_metadata(
@@ -213,6 +212,12 @@ class OnlineDataverseDataset:
         )
         if proc.returncode:
             raise RuntimeError(f"Renaming failed: {proc.stderr}")
+
+        # https://github.com/datalad/datalad-dataverse/issues/236
+        # we have no record to update the internal file list,
+        # we must wipe it out
+        self._files_latest = None
+        self._dataset_latest = None
 
     #
     # Helpers
