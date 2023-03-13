@@ -165,6 +165,60 @@ class OnlineDataverseDataset:
         # return the database fileid of the upload
         return uploaded_file['dataFile']['id']
 
+    def rename_file(self,
+                    new_path: Path,
+                    rename_id: int | None = None,
+                    rename_path: Path | None = None):
+        """
+        Raises
+        ------
+        RuntimeError
+          Whenever the operation cannot or did not success. This could be,
+          because of a missing dependency, or because the file in question
+          cannot be renamed (included in an earlier version).
+        """
+        # Note: In opposition to other API methods, `update_datafile_metadata`
+        # is running `curl` in a subprocess. No idea why. As a consequence, this
+        # depends on the availability of curl and the return value is not (as in
+        # all other cases) a `requests.Response` object, but a
+        # `subprocess.CompletedProcess`.
+        # This apparently is planned to be changed in pydataverse 0.4.0:
+        # https://github.com/gdcc/pyDataverse/issues/88
+        if not CURL_EXISTS:
+            raise RuntimeError('renaming a file needs CURL')
+
+        if rename_id is None and rename_path is None:
+            raise ValueError('rename_id and rename_path cannot both be `None`')
+
+        if rename_id is None:
+            # unclear to MIH why `latest_only=True`, presumably because
+            # renaming in an earlier version does not transparently reassign
+            # a copy of the file record, but is treated as a disallowed
+            # modification attempt
+            rename_id = self.get_fileid_from_path(
+                rename_path, latest_only=True)
+
+        if rename_id is None:
+            raise RuntimeError(f"file {rename_path} cannot be renamed")
+
+        # TODO needs to move to OnlineDataverseDataset
+        datafile = Datafile()
+        datafile.set({
+            # same as with upload `filename` and `label` must be redundant
+            'label': new_path.name,
+            'filename': new_path.name,
+            'directoryLabel': str(new_path.parent),
+            'pid': self._doi,
+        })
+
+        proc = self._api.update_datafile_metadata(
+            rename_id,
+            json_str=datafile.json(),
+            is_filepid=False,
+        )
+        if proc.returncode:
+            raise RuntimeError(f"Renaming failed: {proc.stderr}")
+
     #
     # Helpers
     #

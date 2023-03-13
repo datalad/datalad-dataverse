@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 
 from annexremote import ExportRemote
-from pyDataverse.models import Datafile
 
 from datalad_next.annexremotes import (
     RemoteError,
@@ -13,7 +12,6 @@ from datalad_next.annexremotes import (
 
 
 from .baseremote import DataverseRemote as BaseDataverseRemote
-from .dataset import CURL_EXISTS
 from .utils import (
     mangle_directory_names,
 )
@@ -162,41 +160,17 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         """Moves an exported file.
 
         If implemented, this is called by annex-export when a file was moved.
-        Otherwise annex calls removeexport + transferexport_store, which doesn't
-        scale well performance-wise.
+        Otherwise annex calls removeexport + transferexport_store, which
+        does not scale well performance-wise.
         """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise UnsupportedRequest()
-
-        filename = mangle_directory_names(filename)
-        new_filename = mangle_directory_names(new_filename)
-
-        file_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_remotepath(filename, latest_only=True)
-        if file_id is None:
-            raise RemoteError(f"{key} not available for renaming")
-
-        # TODO needs to move to OnlineDataverseDataset
-        datafile = Datafile()
-        datafile.set({'filename': new_filename.name,
-                      'directoryLabel': str(new_filename.parent),
-                      'label': new_filename.name,
-                      'pid': self._doi})
-
-        proc = self._api.update_datafile_metadata(
-            file_id,
-            json_str=datafile.json(),
-            is_filepid=False,
-        )
-        if proc.returncode:
-            raise RemoteError(f"Renaming failed: {proc.stderr}")
+        try:
+            self._dvds.rename_file(
+                new_path=mangle_directory_names(new_filename),
+                rename_id=self._get_annex_fileid_record(key),
+                rename_path=mangle_directory_names(filename),
+            )
+        except RuntimeError as e:
+            raise UnsupportedRequest() from e
 
 
 def main():
