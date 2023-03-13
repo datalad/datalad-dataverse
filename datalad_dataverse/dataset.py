@@ -32,11 +32,6 @@ class OnlineDataverseDataset:
         self._dsid = dsid
 
         self._data_access_api = None
-        # store for reuse with data access API.
-        # we do not initialize that one here, because it is only used
-        # for file downloads
-        # TODO remove, available from self._api.api_token
-        self._token = None
         self._old_dataset_versions = None
         self._dataset_latest = None
         self._files_old = None
@@ -374,5 +369,3 @@ class OnlineDataverseDataset:
             Path(d.get('directoryLabel', '')) / d['dataFile']['filename'],
             False  # We just added - it can't be released
         )
-
-
