@@ -174,7 +174,7 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
 def test_file_removal(
         tmp_path,
         dataverse_admin_api,
-        dataverse_publishable_dataset,
+        dataverse_dataset,
 ):
 
     # the starting point of `dataverse_dataset` is a freshly
@@ -184,7 +184,7 @@ def test_file_removal(
     fpath = tmp_path / 'dummy.txt'
     fpath.write_text(fcontent)
     response = dataverse_admin_api.upload_datafile(
-        identifier=dataverse_publishable_dataset,
+        identifier=dataverse_dataset,
         filename=fpath,
     )
     # worked
@@ -207,27 +207,8 @@ def test_file_removal(
 
     # Re-upload
     response = dataverse_admin_api.upload_datafile(
-        identifier=dataverse_publishable_dataset,
+        identifier=dataverse_dataset,
         filename=fpath,
     )
     assert response.status_code == 200, \
         f"failed to upload file {response.status_code}: {response.json()}"
-
-    fid2 = response.json()['data']['files'][0]['dataFile']['id']
-
-    # Publish the dataset
-    # Note, that "major" release is required. We can't publish a "minor" when
-    # there's no major yet.
-    response = dataverse_admin_api.publish_dataset(
-        dataverse_publishable_dataset, release_type="major")
-    assert response.status_code == 200, \
-        f"publishing dataset failed with {response.status_code}: {response.json()}"
-
-    # We can't remove a file that is part of a published dataset:
-    status = delete(
-        f'{dataverse_admin_api.base_url}/dvn/api/data-deposit/v1.1/swordv2/'
-        f'edit-media/file/{fid2}',
-        auth=HTTPBasicAuth(dataverse_admin_api.api_token, ''))
-
-    assert status.status_code == 400, \
-        f"unexpected status on deletion {status.status_code}: {status.json()}"

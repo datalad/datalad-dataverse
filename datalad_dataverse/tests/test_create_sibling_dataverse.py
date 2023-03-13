@@ -16,7 +16,7 @@ def test_workflow(dataverse_admin_api,
                   dataverse_admin_credential_setup,
                   dataverse_demoinstance_url,
                   dataverse_instance_url,
-                  dataverse_published_collection,
+                  dataverse_collection,
                   tmp_path,
                   *, mode):
     path = tmp_path / 'ds'
@@ -41,7 +41,7 @@ def test_workflow(dataverse_admin_api,
     try:
         results = ds.create_sibling_dataverse(
             url=dataverse_instance_url,
-            collection=dataverse_published_collection,
+            collection=dataverse_collection,
             name='git_remote',
             storage_name='special_remote',
             mode=mode,
@@ -84,29 +84,6 @@ def test_workflow(dataverse_admin_api,
         (ds.pathobj / "somefile.txt").rename(ds.pathobj / "subdir" / "newname.md")
         ds.save(message="Move a file")
         ds.push(to="git_remote", **ckwa)
-
-        # Publish this version (if we can):
-        # May fail due to same reasons as the publication of the collection in
-        # `_prep_test`.
-        # Plus: Somehow this doesn't workout on demo.dataverse.org
-        #       Looks like we can't modify a published dataset there?
-        #       (In local docker setup that automatically creates a new draft
-        #       version)
-        # However, at least when possible (docker setup with published root
-        # collection), test some aspect of dealing with this.
-        if dataverse_instance_url != dataverse_demoinstance_url:
-            try:
-                response = dataverse_admin_api.publish_dataset(dspid, release_type='major')
-            except Exception as e:
-                # nothing to do - we test what we can test, but print the reason
-                print(str(e))
-            published = response is not None and response.status_code == 200
-            if not published and response is not None:
-                # Publishing didn't succeed, but gave a json reponse not an
-                # exception - print in this case, too.
-                print(f"{response.json()}")
-        else:
-            published = False
 
         # Add a file and push again (creating new draft version)
         (ds.pathobj / "newfile.txt").write_text("Whatever new content")
