@@ -12,9 +12,7 @@ from datalad_next.annexremotes import (
 
 
 from .baseremote import DataverseRemote as BaseDataverseRemote
-from .utils import (
-    mangle_directory_names,
-)
+from .utils import mangle_path
 
 
 class DataverseRemote(ExportRemote, BaseDataverseRemote):
@@ -115,11 +113,11 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
             return self._dvds.has_fileid_in_latest_version(stored_id)
         else:
             # In export mode, we need to fix remote paths:
-            remote_file = mangle_directory_names(remote_file)
+            remote_file = mangle_path(remote_file)
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
-        remote_file = mangle_directory_names(remote_file)
+        remote_file = mangle_path(remote_file)
         # TODO: See
         # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
         if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
@@ -141,7 +139,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
 
     def transferexport_retrieve(self, key, local_file, remote_file):
         # In export mode, we need to fix remote paths:
-        remote_file = mangle_directory_names(remote_file)
+        remote_file = mangle_path(remote_file)
 
         file_id = self._get_annex_fileid_record(key) \
             or self._get_fileid_from_remotepath(remote_file, latest_only=True)
@@ -151,7 +149,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._download_file(file_id, local_file)
 
     def removeexport(self, key, remote_file):
-        remote_file = mangle_directory_names(remote_file)
+        remote_file = mangle_path(remote_file)
         rm_id = self._get_annex_fileid_record(key) \
             or self._get_fileid_from_remotepath(remote_file, latest_only=True)
         self._remove_file(key, rm_id)
@@ -165,9 +163,9 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         """
         try:
             self._dvds.rename_file(
-                new_path=mangle_directory_names(new_filename),
+                new_path=mangle_path(new_filename),
                 rename_id=self._get_annex_fileid_record(key),
-                rename_path=mangle_directory_names(filename),
+                rename_path=mangle_path(filename),
             )
         except RuntimeError as e:
             raise UnsupportedRequest() from e
