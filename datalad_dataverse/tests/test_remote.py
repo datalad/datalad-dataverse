@@ -116,3 +116,34 @@ def test_datalad_annex(dataverse_admin_credential_setup,
 
         # cleanup for the next iteration
         rmtree(clonepath)
+
+
+# this tests is simply an indicator for dataverse potentially making it
+# possible to export two identical files with the same content.
+# presently this is not the case, and this tests merely checks that
+def test_export_identical_unsupported(
+        dataverse_admin_credential_setup,
+        dataverse_admin_api,
+        dataverse_dataset,
+        dataverse_instance_url,
+        existing_dataset):
+    # dataset with two identical files
+    ds = existing_dataset
+    payload = 'identical'
+    payload_md5 = 'ee0cbdbacdada19376449799774976e8'
+    for fname in ('one.txt', 'two.txt'):
+        (ds.pathobj / fname).write_text(payload)
+    ds.save(**ckwa)
+    repo = ds.repo
+    repo.call_annex([
+        'initremote', 'mydv', 'encryption=none', 'type=external',
+        'externaltype=dataverse', f'url={dataverse_instance_url}',
+        f'doi={dataverse_dataset}', 'exporttree=yes'
+    ])
+    repo.call_annex([
+        'export', 'HEAD', '--to', 'mydv'
+    ])
+    flist = list_dataset_files(dataverse_admin_api, dataverse_dataset)
+    identicals = get_dvfile_with_md5(flist, payload_md5, all_matching=True)
+    assert len(identicals) == 1, \
+        'Check if dataverse can handle identical file content under different names now'

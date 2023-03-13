@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pyDataverse.models import Dataverse
 from pyDataverse.exceptions import OperationFailedError
 from ..create_sibling_dataverse import (
@@ -53,10 +55,15 @@ def list_dataset_files(api, doi: str) -> list:
     return api.get_dataset(doi).json()['data']['latestVersion']['files']
 
 
-def get_dvfile_with_md5(listing: list, md5: str) -> dict:
+def get_dvfile_with_md5(
+        listing: list, md5: str, all_matching=False) -> dict | list:
+    """With all_matching=True, more than one record might be returned"""
     frec = [f for f in listing
             if f.get('dataFile', {}).get('md5') == md5]
     if not frec:
         raise ValueError(f'no file record with MD5 {md5!r}')
 
-    return frec[0]
+    if all_matching:
+        return frec
+    else:
+        return frec[0]
