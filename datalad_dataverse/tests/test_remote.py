@@ -58,6 +58,8 @@ def test_remote(dataverse_admin_credential_setup,
         assert frec['label'] == \
             repo.get_content_annexinfo(
                 paths=[payload_fname]).popitem()[1]['key']
+        # keys are placed in a hashtree, in a dedicated directory
+        assert frec['directoryLabel'] == 'annex-keys/1f1/8cc'
     repo.call_annex([
         'fsck', '-f', 'mydv',
     ])

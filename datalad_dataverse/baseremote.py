@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import (
+    Path,
+    PurePosixPath,
+)
 
 from requests.exceptions import HTTPError
 
@@ -162,7 +165,7 @@ class DataverseRemote(SpecialRemote):
             #    data, despite a lost or not generated id record for it. For
             #    example on could have uploaded lots of data via git-annex-copy,
             #    but failed to push the git-annex branch somewhere.
-            return self._dvds.has_path(Path(key))
+            return self._dvds.has_path(self._get_remotepath_for_key(key))
 
     def transfer_store(self, key, local_file):
         # If the remote path already exists, we need to replace rather than
@@ -173,7 +176,7 @@ class DataverseRemote(SpecialRemote):
 
         self._upload_file(
             # TODO must be PurePosixPath
-            remote_path=Path(key),
+            remote_path=self._get_remotepath_for_key(key),
             key=key,
             local_file=local_file,
             replace_id=replace_id,
@@ -234,6 +237,26 @@ class DataverseRemote(SpecialRemote):
         """
         self.annex.setstate(key, str(id))
 
+    def _get_remotepath_for_key(self, key: str) -> PurePosixPath:
+        """Return the cannonical remote path for a given key
+
+        Parameters
+        ----------
+        key: str
+          git-annex key
+
+        Returns
+        -------
+        PurePosixPath
+          annex-keys/<dirhash-lower>/<key>
+        """
+        dirhash = self.annex.dirhash_lower(key)
+        return PurePosixPath(
+            'annex-keys',
+            dirhash,
+            key,
+        )
+
     def _get_fileid_from_key(self,
                              key: str,
                              *,
@@ -263,7 +286,7 @@ class DataverseRemote(SpecialRemote):
         # this implementation could change
         # https://github.com/datalad/datalad-dataverse/issues/188
         return self._get_fileid_from_remotepath(
-            Path(key),
+            self._get_remotepath_for_key(key),
             latest_only=latest_only,
         )
 
