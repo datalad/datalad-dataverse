@@ -61,7 +61,7 @@ class InvalidDatasetMetadata(ValueError):
 
 
 @build_doc
-class CreateSiblingDataverse(Interface):
+class AddSiblingDataverse(Interface):
     """Create a dataset sibling(-tandem) on a Dataverse instance.
 
     Dataverse is a web application to share and cite research data.

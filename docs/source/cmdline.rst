@@ -9,4 +9,4 @@ Command line reference
 .. toctree::
    :maxdepth: 1
 
-   generated/man/datalad-create-sibling-dataverse
+   generated/man/datalad-add-sibling-dataverse
