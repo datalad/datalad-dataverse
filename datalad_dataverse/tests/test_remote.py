@@ -3,7 +3,6 @@ from urllib.parse import quote as urlquote
 
 from datalad.api import clone
 
-from datalad_next.datasets import Dataset
 from datalad_next.utils import (
     on_windows,
     rmtree,
@@ -22,9 +21,9 @@ def test_remote(dataverse_admin_credential_setup,
                 dataverse_admin_api,
                 dataverse_dataset,
                 dataverse_instance_url,
-                tmp_path,
+                existing_dataset,
                 *, exporttree):
-    ds = Dataset(tmp_path).create(**ckwa)
+    ds = existing_dataset
     payload = 'content'
     payload_md5 = '9a0364b9e99bb480dd25e1f0284c8555'
     payload_fname = 'somefile.txt'
@@ -87,10 +86,10 @@ def test_remote(dataverse_admin_credential_setup,
 def test_datalad_annex(dataverse_admin_credential_setup,
                        dataverse_dataset,
                        dataverse_instance_url,
+                       existing_dataset,
                        tmp_path):
-    dspath = tmp_path / 'ds'
-    clonepath = tmp_path / 'clone'
-    ds = Dataset(dspath).create(**ckwa)
+    ds = existing_dataset
+    clonepath = tmp_path
     repo = ds.repo
     # this is the raw datalad-annex URL, convenience could be added on top
     git_remote_url = \
