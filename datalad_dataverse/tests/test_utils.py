@@ -4,11 +4,12 @@ from pathlib import Path
 import pytest
 
 from ..utils import (
-    dataverse_filename_quote,
-    dataverse_unquote,
+    _dataverse_dirname_quote,
+    _dataverse_filename_quote,
+    _dataverse_unquote,
     format_doi,
-    mangle_directory_names,
-    unmangle_directory_names
+    mangle_path,
+    unmangle_path
 )
 
 
@@ -31,7 +32,7 @@ _test_paths = [
     "._dir/x",
     "_.dir/x",
     "__dir/x",
-    "%%;;,_,?&=",
+    "%%;;,_,?-&=",
 ]
 
 
@@ -48,20 +49,27 @@ def test_format_doi():
         format_doi(123)
 
 
-def test_dir_mangling_identity():
+def test_path_mangling_identity():
     for p in _test_paths + ['?;#:eee=2.txt']:
-        assert Path(p) == unmangle_directory_names(mangle_directory_names(p))
+        assert Path(p) == unmangle_path(mangle_path(p))
 
 
-def test_file_mangling_identity():
-    for p in ["x_/a", "._:*#?<>|;#"]:
-        assert p == dataverse_unquote(dataverse_filename_quote(p))
-
-
-def test_dir_mangling_sub_dirs():
+def test_path_mangling_sub_dirs():
     for p, q, r in product(_test_paths, _test_paths, _test_paths):
         path = Path(p) / q / r
-        mangled_path = mangle_directory_names(path)
+        mangled_path = mangle_path(path)
         for part in mangled_path.parts[:-1]:
             assert part[0] != "."
-        assert unmangle_directory_names(mangled_path) == path
+        assert unmangle_path(mangled_path) == path
+
+
+def test_file_quoting_identity():
+    for p in ["x-/a-b", "._:*#?<>|;#", "x-/a"]:
+        assert p == _dataverse_unquote(_dataverse_filename_quote(p))
+
+
+def test_dir_quoting_leading_dot():
+    for p in [".a", "..a", "_a", "_.a", "__a"]:
+        q = _dataverse_dirname_quote(p)
+        assert q[0] != "."
+        assert p == _dataverse_unquote(q)
