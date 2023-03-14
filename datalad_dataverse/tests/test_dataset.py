@@ -8,6 +8,7 @@ from pathlib import (
     Path,
     PurePosixPath,
 )
+import json
 
 from datalad_next.tests.utils import md5sum
 
@@ -33,6 +34,9 @@ def test_file_handling(
     fileid = check_upload(odd, fcontent, fpath, src_md5)
 
     check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
+
+    check_file_metadata_update(dataverse_admin_api, dataverse_dataset, odd,
+                               fileid, fpath)
 
     fileid = check_replace_file(odd, fileid, tmp_path)
 
@@ -115,3 +119,81 @@ def check_remove(odd, file_id, remote_path):
     assert odd.get_fileid_from_path(remote_path, latest_only=True) == None
     assert odd.get_fileid_from_path(remote_path, latest_only=False) == None
     assert not odd.is_released_file(file_id)
+
+
+def check_file_metadata_update(api, dsid, odd, fileid, fpath):
+
+    def _get_md(fid):
+        # TODO: Metadata retrieval is still using pydataverse.
+        response = api.get_datafile_metadata(
+            fid, is_filepid=False, is_draft=True, auth=True)
+        assert response.status_code == 200
+        om = response.json()
+        return om
+
+    def _update_md(fid, rec, mdid=None):
+        response = odd.update_file_metadata(
+            fid,
+            json_str=json.dumps(rec),
+            is_filepid=False,
+        )
+
+        assert response.status_code == 200
+        # Note, what we actually get in response.text is something like this:
+        # 'File Metadata update has been completed: {"label":"dummy.txt", \
+        # "description":"test description","restricted":false,"id":608}'
+        # Meaning: In opposition to other NativeApi responses where we get
+        # valid JSON, we can't use response.json() right away. Would need a
+        # regex to extract the JSON part.
+        if mdid:
+            # if given, we check that the metadata record ID is included in
+            # the outcome report
+            assert f'"id":{mdid}' in response.text
+
+    # the original metadata for this file on dataverse
+    om = _get_md(fileid)
+    # this is a subset of what `upload_datafile()` reported
+    assert om['label'] == fpath.name
+    assert om['description'] == ''
+    assert om['restricted'] is False
+    # this is "the id of the file metadata version" according to the docs
+    assert om['id']
+
+    # update the description and verify it was applied
+    _update_md(fileid, {'description': 'test description'}, om['id'])
+    mm = _get_md(fileid)
+    assert mm['description'] == 'test description'
+    # this "file metadata version id" does not update
+    assert mm['id'] == om['id']
+
+    # amend metadata with other info that it should support according to the
+    # docs
+    _update_md(
+        fileid,
+        {
+            # capitalization is key here!
+            # https://guides.dataverse.org/en/latest/api/native-api.html#list-files-in-a-dataset
+            # says `provFreeform`, but this lets the key be discarded silently
+            'provFreeForm': 'myprov',
+            'categories': ['Data'],
+        },
+        om['id'],
+    )
+    mm = _get_md(fileid)
+    # description was not included in the 2nd update, but persists
+    # update != replacement
+    assert mm['description'] == 'test description'
+    assert mm['categories'] == ['Data']
+    # this field would be ideal to record an annex-key as an external
+    # 'sameAs' reference. however, it is not reported in the
+    # `get_dataset()` not in the `get_datafiles_metadata()` listings.
+    # One a per-file `get_datafile_metadata()` (like done in this test)
+    # reveals it -- at least for draft-mode datasets.
+    assert mm['provFreeForm'] == 'myprov'
+    # still no "file metadata version id" update
+    assert mm['id'] == om['id']
+
+    # 'label' and 'filename' are one and the same thing
+    _update_md(fileid, {'label': 'mykey'}, om['id'])
+    mm = api.get_datafiles_metadata(dsid).json()['data'][0]
+    assert mm['label'] == mm['dataFile']['filename'] == 'mykey'

@@ -47,81 +47,8 @@ def test_file_handling(
         dataverse_dataaccess_api, fileid,
         dataverse_dataset, tmp_path / 'downloaded.txt', src_md5)
 
-    check_file_metadata_update(
-        dataverse_admin_api, dataverse_dataset, fileid, fpath)
-
     # TODO replace_datafile
     # custom request to remove a file via `data-deposit` API
-
-
-def check_file_metadata_update(api, dsid, fileid, fpath):
-    def _get_md(fid):
-        response = api.get_datafile_metadata(
-            fileid, is_filepid=False, is_draft=True, auth=True)
-        assert response.status_code == 200
-        om = response.json()
-        return om
-
-    def _update_md(fid, rec, mdid=None):
-        proc = api.update_datafile_metadata(
-            fid,
-            json_str=json.dumps(rec),
-            is_filepid=False,
-        )
-        # curl ran without error
-        assert proc.returncode == 0
-        if mdid:
-            # if give, we check that the metadata record ID is included in
-            # the outcome report
-            assert f'"id":{mdid}' in str(proc.stdout)
-
-    # the orginal metadata for this file on dataverse
-    om = _get_md(fileid)
-    # this is a subset of what `upload_datafile()` reported
-    assert om['label'] == fpath.name
-    assert om['description'] == ''
-    assert om['restricted'] is False
-    # this is "the id of the file metadata version" according to the docs
-    assert om['id']
-
-    # update the description and verify it was applied
-    _update_md(fileid, {'description': 'test description'}, om['id'])
-    mm = _get_md(fileid)
-    assert mm['description'] == 'test description'
-    # this "file metadata version id" does not update
-    assert mm['id'] == om['id']
-
-    # amend metadata with other info that it should support according to the
-    # docs
-    _update_md(
-        fileid,
-        {
-            # capitalization is key here!
-            # https://guides.dataverse.org/en/latest/api/native-api.html#list-files-in-a-dataset
-            # says `provFreeform`, but this lets the key be discarded silently
-            'provFreeForm': 'myprov',
-            'categories': ['Data'],
-        },
-        om['id'],
-    )
-    mm = _get_md(fileid)
-    # description was not included in the 2nd update, but persists
-    # update != replacement
-    assert mm['description'] == 'test description'
-    assert mm['categories'] == ['Data']
-    # this field would be ideal to record an annex-key as an external
-    # 'sameAs' reference. however, it is not reported in the
-    # `get_dataset()` not in the `get_datafiles_metadata()` listings.
-    # One a per-file `get_datafile_metadata()` (like done in this test)
-    # reveals it -- at least for draft-mode datasets.
-    assert mm['provFreeForm'] == 'myprov'
-    # stil no "file metadata version id" update
-    assert mm['id'] == om['id']
-
-    # 'label' and 'filename' are one and the same thing
-    _update_md(fileid, {'label': 'mykey'}, om['id'])
-    mm = api.get_datafiles_metadata(dsid).json()['data'][0]
-    assert mm['label'] == mm['dataFile']['filename'] == 'mykey'
 
 
 def check_download(api, fileid, dsid, fpath, src_md5):
