@@ -352,7 +352,10 @@ class DataverseRemote(SpecialRemote):
             # We can't remove from older (hence published) versions.
             return
 
-        self._dvds.remove_file(rm_id)
+        try:
+            self._dvds.remove_file(rm_id)
+        except Exception as e:
+            raise RemoteError from e
 
         # We need to figure whether the removed ID was part of a released
         # version. In that case it's still retrievable from an old, published
