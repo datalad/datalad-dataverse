@@ -3,12 +3,6 @@
 
 import json
 import logging
-from pyDataverse.exceptions import (
-    OperationFailedError,
-)
-from pyDataverse.models import (
-    Dataset as DvDataset,
-)
 from typing import (
     Optional,
     Union,
@@ -42,7 +36,6 @@ from datalad.support.constraints import (
     EnsureNone,
     EnsureStr,
 )
-from datalad.support.exceptions import CapturedException
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
 from datalad.utils import Path
@@ -53,15 +46,11 @@ from datalad_dataverse.utils import (
 
 __docformat__ = "restructuredtext"
 
-lgr = logging.getLogger('datalad.distributed.create_sibling_dataverse')
-
-
-class InvalidDatasetMetadata(ValueError):
-    pass
+lgr = logging.getLogger('datalad.distributed.add_sibling_dataverse')
 
 
 @build_doc
-class CreateSiblingDataverse(Interface):
+class AddSiblingDataverse(Interface):
     """Create a dataset sibling(-tandem) on a Dataverse instance.
 
     Dataverse is a web application to share and cite research data.
@@ -78,18 +67,23 @@ class CreateSiblingDataverse(Interface):
         dict(text="Create a dataverse dataset sibling for sharing and citing",
              code_py="""\
                  > ds = Dataset('.')
-                 > ds.create_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
+                 > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
              """,
-             code_cmd="datalad create-sibling-dataverse demo.dataverse.org -s dataverse",
+             code_cmd="datalad add-sibling-dataverse demo.dataverse.org -s dataverse",
         ),
     ]
 
     _params_ = dict(
-        url=Parameter(
-            args=("url",),
+        dv_url=Parameter(
+            args=("dv_url",),
             metavar='URL',
             doc="URL identifying the dataverse instance to connect to",
             constraints=EnsureStr()),
+        ds_pid=Parameter(
+            args=("ds_pid",),
+            constraints=EnsureStr(),
+            doc="""""",
+        ),
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""specify the dataset to process.  If
@@ -145,7 +139,7 @@ class CreateSiblingDataverse(Interface):
                 'git-only'),
             doc="""
             TODO: Not sure yet, what modes we can/want support here.
-            
+
             Siblings can be created in various modes:
             full-featured sibling tandem, one for a dataset's Git history
             and one storage sibling to host any number of file versions
@@ -172,44 +166,14 @@ class CreateSiblingDataverse(Interface):
             together, a publication dependency on the storage sibling is
             configured for the regular sibling in the local dataset clone.
             """),
-        collection=Parameter(
-            args=("--collection",),
-            constraints=EnsureStr() | EnsureNone(),
-            doc="""TODO
-
-            I think this likely needs to become several options to specify a
-            mode of operation (at least 'use an existing' vs 'create one') and
-            the respective specification.
-            """
-        ),
-        metadata=Parameter(
-            args=("--metadata",),
-            constraints=EnsureStr() | EnsureNone(),
-            doc="""TODO
-            
-            For now intended to be either a path or JSON dictionary or 
-            'interactive'. In python API could be an actual dict in CLI would be 
-            string to be interpreted as such. Not fully implemented yet.
-            
-            Re path:
-            - absolute only works in non-recursive operation, I suppose
-            - relative would be relative to the (sub-)dataset's root
-            
-            I guess it may be useful to have substitutions available for the 
-            path to be replaced by the command (dataset id, dataset basepath, 
-            whatever)
-            """
-        ),
     )
-    # TODO: - This command needs to be pointed to an existing dataverse
-    #         collection. Even if it creates one itself, that in turn is likely
-    #         to not be the root of the dataverse instance
 
     @staticmethod
-    @datasetmethod(name='create_sibling_dataverse')
+    @datasetmethod(name='add_sibling_dataverse')
     @eval_results
     def __call__(
-            url: str,
+            dv_url: str,
+            ds_pid: str,
             *,
             dataset: Optional[Union[str, Dataset]] = None,
             name: Optional[str] = 'dataverse',
@@ -219,10 +183,7 @@ class CreateSiblingDataverse(Interface):
             existing: str = 'error',
             recursive: bool = False,
             recursion_limit: Optional[int] = None,
-            collection: Optional[str] = None,
-            metadata: Optional[Union[str, dict]] = None
     ):
-
         # Make sure we actually have a dataset to operate on
         ds = require_dataset(
             dataset,
@@ -231,41 +192,14 @@ class CreateSiblingDataverse(Interface):
 
         # shared result properties
         res_kwargs = dict(
-            action='create_sibling_dataverse',
+            action='add_sibling_dataverse',
             logger=lgr,
             refds=ds.path,
         )
 
-        # 1. validate parameters
-        _validate_parameters(url, metadata, dataset, name, storage_name, mode,
-                             credential, existing, recursive, recursion_limit,
-                             collection)
-
         if mode != 'git-only' and not storage_name:
             storage_name = "{}-storage".format(name)
 
-        # Handle metadata option
-        if metadata:
-            if isinstance(metadata, dict):
-                # nothing to do here
-                pass
-            elif metadata == 'interactive':
-                raise NotImplementedError
-            else:
-                # Should be either a path to JSON file or a JSON string.
-                # Try to detect and pass on either as is or as a `Path` instance
-                # for the create_dataset function to consider (it may need some
-                # further resolution per dataset in recursive operation)
-                try:
-                    meta_path = Path(metadata)
-                    # delay assignment to not destroy original value
-                    # prematurely:
-                    metadata = meta_path
-                except Exception as e:
-                    CapturedException(e)
-                    # Apparently not a path; try to interprete as JSON directly.
-
-        # 2. check existing siblings upfront to fail early on --existing=error
         if existing == 'error':
             failed = False
             for r in _fail_on_existing_sibling(
@@ -282,16 +216,10 @@ class CreateSiblingDataverse(Interface):
         # 3. get API Token
         credman = CredentialManager(ds.config)
         api = get_dataverse_api(
-            url,
+            dv_url,
             credman,
             credential_name=credential,
         )
-
-        # 4. Get the collection to put the dataset(s) in
-        # TODO: This may need a switch to either create one or just get an
-        #       existing one for use with _create_sibling_dataverse;
-        #       Either way, result is pydataverse.models.Dataverse
-        dv_collection = _get_dv_collection(api, collection)
 
         # 5. use datalad-foreach-dataset command with a wrapper function to
         #    operate in a singe dataset to address recursive behavior and yield
@@ -299,15 +227,16 @@ class CreateSiblingDataverse(Interface):
         def _dummy(ds, refds, **kwargs):
             """wrapper for use with foreach-dataset"""
 
-            return _create_sibling_dataverse(ds=ds,
-                                             api=api,
-                                             credential_name=credential,
-                                             collection=dv_collection,
-                                             mode=mode,
-                                             name=name,
-                                             storage_name=storage_name,
-                                             existing=existing,
-                                             metadata=metadata)
+            return _add_sibling_dataverse(
+                ds=ds,
+                api=api,
+                credential_name=credential,
+                ds_pid=ds_pid,
+                mode=mode,
+                name=name,
+                storage_name=storage_name,
+                existing=existing,
+            )
         for res in ds.foreach_dataset(
                 _dummy,
                 return_type='generator',
@@ -348,22 +277,6 @@ class CreateSiblingDataverse(Interface):
         ))
 
 
-def _validate_parameters(url: str,
-                         dataset: Optional[Union[str, Dataset]] = None,
-                         name: Optional[str] = None,
-                         storage_name: Optional[str] = None,
-                         mode: str = 'annex',
-                         credential: Optional[str] = None,
-                         existing: str = 'error',
-                         recursive: bool = False,
-                         recursion_limit: Optional[int] = None,
-                         collection: Optional[str] = None,
-                         metadata: Optional[Union[str, dict]] = None):
-    """This function is supposed to validate the given parameters of
-    create_sibling_dataverse invocation"""
-    pass
-
-
 def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
                               **res_kwargs):
     """yield error results whenever sibling(s) with one of `names` already
@@ -382,109 +295,32 @@ def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
             **res_kwargs)
 
 
-def _get_dv_collection(api, alias):
-    # TODO: this should be able to deal with different identifiers not just the
-    # alias, I guess
-    try:
-        response = api.get_dataverse(alias)
-    except OperationFailedError as e:
-        try:
-            # fetch all collection IDs and titles in the root collection
-            # to give people an immediate choice
-            # how long do we want an individual collection title to be
-            # in the exception message
-            max_title = 15
-            collections = [
-                f"{d['title'][:max_title]}"
-                f"{'…' if len(d['title']) > max_title else ''} "
-                f"({d['id']})"
-                for d in api.get_dataverse_contents(':root').json().get(
-                    'data', [])
-                if d.get('type') == 'dataverse'
-            ]
-            raise ValueError(
-                f'No collection {alias!r} found among existing: '
-                f"{', '.join(collections) if collections else 'none'}") from e
-        except ValueError:
-            raise
-        except Exception as unexpected_exc:
-            # our best effort failed
-            CapturedException(unexpected_exc)
-            raise e
-
-    # we are only catching the pyDataverse error above
-    # be safe and error for any request failure too
-    response.raise_for_status()
-    return response.json()
-
-
-def _create_dv_dataset(api, collection, dataset_meta):
+def _add_sibling_dataverse(
+        ds, api, credential_name, ds_pid,
+        *,
+        mode='git-only',
+        name=None,
+        storage_name=None,
+        existing='error',
+):
     """
-
-    Parameters
-    ----------
-    api: NativeApi
-    collection: Dataverse
-    dataset_meta: dict
-
-    Returns
-    -------
-    DvDataset
-    """
-    dv_dataset = DvDataset()
-    dv_dataset.set(dataset_meta)
-    if not dv_dataset.validate_json():
-        raise InvalidDatasetMetadata
-    dv_dataset = api.create_dataset(collection['data']['alias'],
-                                    dv_dataset.json())
-    dv_dataset.raise_for_status()
-    return dv_dataset
-
-
-def _create_sibling_dataverse(ds, api, credential_name, collection,
-                              metadata, *,
-                              mode='git-only',
-                              name=None,
-                              storage_name=None,
-                              existing='error'):
-    """
-
     meant to be executed via foreach-dataset
 
     Parameters
     ----------
     ds: Dataset
     api: pydataverse.api.NativeApi
-    collection: pydataverse.models.Dataverse
+    ds_pid: dataverse dataset PID
     mode: str, optional
     name: str, optional
     storage_name: str, optional
     existing: str, optional
     """
-
-    # 1. figure dataset metadata to use
-    dataset_meta = _get_ds_metadata(ds, metadata)
-
-    # 2. create the actual dataset on dataverse; we need one independently on
-    # `mode`.
-    try:
-        dv_dataset = _create_dv_dataset(api, collection, dataset_meta)
-    except InvalidDatasetMetadata:
-        yield get_status_dict(status='error',
-                              message=f"Invalid metadata for dataset {ds}")
-    except Exception as exc:
-        ce = CapturedException(exc)
-        yield get_status_dict(status='error',
-                              message=f"Failed to create dataset on {api.base_url}."
-                                      f"Reason: {ce.message}")
-        return
-
-    # 3. Set up the actual remotes
+    # Set up the actual remotes
     # simplify downstream logic, export yes or no
     export_storage = 'filetree' in mode
 
     url = api.base_url
-    doi = dv_dataset.json()['data']['persistentId']
 
     existing_siblings = [
         r[1] for r in _yield_ds_w_matching_siblings(
@@ -494,10 +330,10 @@ def _create_sibling_dataverse(ds, api, credential_name, collection,
     ]
 
     if mode != 'git-only':
-        yield from _create_storage_sibling(
+        yield from _add_storage_sibling(
             ds=ds,
             url=url,
-            doi=doi,
+            doi=ds_pid,
             name=storage_name,
             export=export_storage,
             existing=existing,
@@ -505,10 +341,10 @@ def _create_sibling_dataverse(ds, api, credential_name, collection,
         )
 
     if mode not in ('annex-only', 'filetree-only'):
-        yield from _create_git_sibling(
+        yield from _add_git_sibling(
             ds=ds,
             url=url,
-            doi=doi,
+            doi=ds_pid,
             name=name,
             credential_name=credential_name,
             export=export_storage,
@@ -521,7 +357,7 @@ def _create_sibling_dataverse(ds, api, credential_name, collection,
 
 def _get_skip_sibling_result(name, ds, type_):
     return get_status_dict(
-        action='create_sibling_dataverse{}'.format(
+        action='add_sibling_dataverse{}'.format(
             '.storage' if type_ == 'storage' else ''),
         ds=ds,
         status='notneeded',
@@ -532,7 +368,7 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _create_git_sibling(ds, url, doi, name, credential_name, export,
+def _add_git_sibling(ds, url, doi, name, credential_name, export,
                         existing,
                         known, publish_depends=None):
     """
@@ -593,12 +429,12 @@ def _create_git_sibling(ds, url, doi, name, credential_name, export,
         if r.get('action') == 'configure-sibling':
             r['action'] = 'reconfigure_sibling_dataverse' \
                 if known and existing == 'reconfigure' \
-                else 'create_sibling_dataverse'
+                else 'add_sibling_dataverse'
             r['doi'] = doi
         yield r
 
 
-def _create_storage_sibling(
+def _add_storage_sibling(
         ds, url, doi, name, export, existing, known=False):
     """
     Parameters
@@ -638,7 +474,7 @@ def _create_storage_sibling(
         status='ok',
         action='reconfigure_sibling_dataverse.storage'
                if known and existing == 'reconfigure' else
-        'create_sibling_dataverse.storage',
+        'add_sibling_dataverse.storage',
         name=name,
         type='sibling',
         url=url,
