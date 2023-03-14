@@ -3,8 +3,13 @@ from __future__ import annotations
 from collections import namedtuple
 
 from pathlib import Path
+
+from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
-from requests import delete as delete_request
+from requests import (
+    delete as delete_request,
+    post,
+)
 from requests.auth import HTTPBasicAuth
 from shutil import which
 import sys
@@ -242,11 +247,30 @@ class OnlineDataverseDataset:
         else:
             query_str = "{0}/files/{1}/metadata".format(base_str, identifier)
 
-        return self._api.post_request(
-            url=query_str,
-            data=json_str,
-            auth=True
-        )
+        headers = {}
+        if self._api.api_token:
+            headers["X-Dataverse-key"] = self._api.api_token
+
+        try:
+            resp = post(
+                query_str,
+                files={'jsonData': (None, json_str.encode())},
+                headers=headers
+            )
+            if resp.status_code == 401:
+                error_msg = resp.json()["message"]
+                raise ApiAuthorizationError(
+                    "ERROR: POST HTTP 401 - Authorization error {0}. MSG: {1}".format(
+                        query_str, error_msg
+                    )
+                )
+            return resp
+        except ConnectionError:
+            raise ConnectionError(
+                "ERROR: POST - Could not establish connection to API: {0}".format(
+                    query_str
+                )
+            )
 
     #
     # Helpers
