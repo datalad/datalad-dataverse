@@ -201,6 +201,9 @@ class DataverseRemote(SpecialRemote):
     def remove(self, key):
         rm_ids = self._get_annex_fileid_record(key) \
             or [self._get_fileid_from_key(key, latest_only=True)]
+        # the loop is only here because the tooling could handle
+        # multiple IDs, but the feature is only used for export-mode.
+        # Not here.
         for rm_id in rm_ids:
             self._remove_file(key, rm_id)
 
@@ -224,13 +227,10 @@ class DataverseRemote(SpecialRemote):
 
         Returns
         -------
-        list of int
+        list(int)
         """
         stored_id = self.annex.getstate(key)
-        if stored_id == "":
-            return []
-        else:
-            return [int(n.strip()) for n in stored_id.split(',')]
+        return [int(n.strip()) for n in stored_id.split(',')]
 
     def _set_annex_fileid_record(self, key: str, ids: list):
         """Store a dataverse database id for a given key
@@ -291,11 +291,11 @@ class DataverseRemote(SpecialRemote):
         Returns
         -------
         PurePosixPath
-          annex-keys/<dirhash-lower>/<key>
+          annex/<dirhash-lower>/<key>
         """
         dirhash = self.annex.dirhash_lower(key)
         return PurePosixPath(
-            'annex-keys',
+            'annex',
             dirhash,
             key,
         )

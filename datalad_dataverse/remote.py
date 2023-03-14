@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from annexremote import ExportRemote
 
 from datalad_next.annexremotes import (
@@ -10,9 +8,7 @@ from datalad_next.annexremotes import (
     super_main,
 )
 
-
 from .baseremote import DataverseRemote as BaseDataverseRemote
-from .utils import mangle_path
 
 
 class DataverseRemote(ExportRemote, BaseDataverseRemote):
@@ -105,27 +101,23 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
     # Export API
     #
     def checkpresentexport(self, key, remote_file):
-        remote_file = mangle_path(remote_file)
+        # Only check latest version of dataverse dataset here.
+        # Doesn't currently work for keys from older versions,
+        # because annex does not even call CHECKPRESENT
+        # https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351
         stored_ids = self._get_annex_fileid_record(key)
         if stored_ids:
-            # Only check latest version in export mode.
             return self._get_fileid_from_remotepath(
                 remote_file, latest_only=True) in stored_ids
         else:
+            # TODO without a stored ID shouldn't the answer to CHECKPRESENT
+            # be False?
+            # https://github.com/datalad/datalad-dataverse/pull/237#discussion_r1135119335
+            # TODO check that datalad-annex clone test covers this,
+            # and remove.
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
-        remote_file = mangle_path(remote_file)
-        # TODO: See
-        # https://github.com/datalad/datalad-dataverse/issues/83#issuecomment-1214406034
-        if re.search(pattern=r'[^a-z0-9_\-.\\/\ ]',
-                     string=str(remote_file.parent),
-                     flags=re.ASCII | re.IGNORECASE):
-            self.annex.error(f"Invalid character in directory name of "
-                             f"{str(remote_file)}. Valid characters are a-Z, "
-                             f"0-9, '_', '-', '.', '\\', '/' and ' ' "
-                             f"(white space).")
-
         # If the remote path already exists, we need to replace rather than
         # upload the file, since otherwise dataverse would rename the file on
         # its end. However, this only concerns the latest version of the
@@ -136,27 +128,27 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._upload_file(remote_file, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
-        # In export mode, we need to fix remote paths:
-        remote_file = mangle_path(remote_file)
-
-        # Note, that content retrieval doesn't care where the content is coming
-        # from. Hence, taking the first ID on record should suffice.
         stored_ids = self._get_annex_fileid_record(key)
+        if not stored_ids:
+            raise RemoteError(f"Key {key} unavailable")
+
+        # Content retrieval doesn't care where the content is coming
+        # from. Hence, taking the first ID on record should suffice.
+        # TODO it may be that any one of the record fileid is not longer
+        # available. An alternative would be to simply loop over the
+        # records and have get_fileid_from_remotepath() generate the
+        # last candidate.
         file_id = stored_ids[0] if stored_ids \
             else self._get_fileid_from_remotepath(remote_file, latest_only=True)
-
-        if file_id is None:
-            raise RemoteError(f"Key {key} unavailable")
 
         self._download_file(file_id, local_file)
 
     def removeexport(self, key, remote_file):
-        remote_file = mangle_path(remote_file)
-
-        # For removal, path matching needs to be done, since we could have
+        # For removal, path matching needs to be done, because we could have
         # several copies (dataverse IDs) of the content. Need to remove the one
         # that also matches the path.
         rm_id = self._get_fileid_from_remotepath(remote_file, latest_only=True)
+        # _remove_file() takes care of removing the fileid record
         self._remove_file(key, rm_id)
 
     def renameexport(self, key, filename, new_filename):
@@ -166,16 +158,15 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         Otherwise annex calls removeexport + transferexport_store, which
         does not scale well performance-wise.
         """
-
         # We cannot rely on ID lookup, since there could be several. We need to
         # match the path.
-        rename_id = self._get_fileid_from_remotepath(mangle_path(filename),
-                                                     latest_only=True)
+        rename_id = self._get_fileid_from_remotepath(
+            filename, latest_only=True)
         try:
             self._dvds.rename_file(
-                new_path=mangle_path(new_filename),
+                new_path=new_filename,
                 rename_id=rename_id,
-                rename_path=mangle_path(filename),
+                rename_path=filename,
             )
         except RuntimeError as e:
             raise UnsupportedRequest() from e

@@ -8,6 +8,7 @@ from datalad_next.utils import (
     rmtree,
 )
 
+from ..utils import mangle_path
 from .utils import (
     list_dataset_files,
     get_dvfile_with_md5,
@@ -55,10 +56,12 @@ def test_remote(dataverse_admin_credential_setup,
         frec = get_dvfile_with_md5(flist, payload_md5)
         # dataverse file label equals the key
         assert frec['label'] == \
-            repo.get_content_annexinfo(
-                paths=[payload_fname]).popitem()[1]['key']
+            str(mangle_path(
+                repo.get_content_annexinfo(
+                    paths=[payload_fname]).popitem()[1]['key']
+            ))
         # keys are placed in a hashtree, in a dedicated directory
-        assert frec['directoryLabel'] == 'annex-keys/1f1/8cc'
+        assert frec['directoryLabel'] == 'annex/1f1/8cc'
     repo.call_annex([
         'fsck', '-f', 'mydv',
     ])

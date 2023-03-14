@@ -11,6 +11,8 @@ import sys
 
 from pyDataverse.api import DataAccessApi
 
+from .utils import mangle_path
+
 # Object to hold what's on dataverse's end for a given database id.
 # We need the paths in the latest version (if the id is part of that) in order
 # to know whether we need to replace rather than just upload a file, and we need
@@ -26,6 +28,17 @@ CURL_EXISTS = which('curl') is not None
 
 
 class OnlineDataverseDataset:
+    """Representation of Dataverse dataset in a remote instance.
+
+    Apart from providing an API for basic operations on such a dataset,
+    a main purpose of this class is the uniform and consistent mangling
+    of local DataLad datasets path to the corresponding counterparts
+    on Dataverse. Dataverse imposing strict limits to acceptably names
+    for `directoryLabel` and `label`. So strict, that it rules out anything
+    not representable by a subset of ASCII, and therefore any non-latin
+    alphabet. See the documentation of the ``mangle_path()`` function
+    for details.
+    """
     def __init__(self, api, dsid: str):
         # dataverse native API handle
         self._api = api
@@ -69,6 +82,7 @@ class OnlineDataverseDataset:
         -------
         int or None
         """
+        path = mangle_path(path)
         existing_id = [i for i, f in self.files_latest.items()
                        if f.path == path]
         if not latest_only and not existing_id:
@@ -86,10 +100,12 @@ class OnlineDataverseDataset:
         return fid in self.files_latest.keys()
 
     def has_path(self, path: Path) -> bool:
+        path = mangle_path(path)
         return path in [f.path for f in self.files_latest.values()] \
             or path in [f.path for f in self.files_old.values()]
 
     def has_path_in_latest_version(self, path: Path) -> bool:
+        path = mangle_path(path)
         return path in [f.path for f in self.files_latest.values()]
 
     def is_released_file(self, fid: int) -> bool:
@@ -119,6 +135,7 @@ class OnlineDataverseDataset:
                     local_path: Path,
                     remote_path: Path,
                     replace_id: int | None = None) -> int:
+        remote_path = mangle_path(remote_path)
         datafile = Datafile()
         # remote file metadata
         datafile.set({
@@ -185,6 +202,10 @@ class OnlineDataverseDataset:
         if rename_id is None and rename_path is None:
             raise ValueError('rename_id and rename_path cannot both be `None`')
 
+        # mangle_path for rename_path is done inside get_fileid_from_path()
+        # in the conditional below
+        new_path = mangle_path(new_path)
+
         if rename_id is None:
             # unclear to MIH why `latest_only=True`, presumably because
             # renaming in an earlier version does not transparently reassign
@@ -196,14 +217,13 @@ class OnlineDataverseDataset:
         if rename_id is None:
             raise RuntimeError(f"file {rename_path} cannot be renamed")
 
-        # TODO needs to move to OnlineDataverseDataset
         datafile = Datafile()
         datafile.set({
             # same as with upload `filename` and `label` must be redundant
             'label': new_path.name,
             'filename': new_path.name,
             'directoryLabel': str(new_path.parent),
-            'pid': self._doi,
+            'pid': self._dsid,
         })
 
         proc = self._api.update_datafile_metadata(
@@ -213,6 +233,12 @@ class OnlineDataverseDataset:
         )
         if proc.returncode:
             raise RuntimeError(f"Renaming failed: {proc.stderr}")
+
+        # https://github.com/datalad/datalad-dataverse/issues/236
+        # we have no record to update the internal file list,
+        # we must wipe it out
+        self._files_latest = None
+        self._dataset_latest = None
 
     #
     # Helpers
