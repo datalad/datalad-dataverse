@@ -11,7 +11,6 @@ from requests import (
     post,
 )
 from requests.auth import HTTPBasicAuth
-from shutil import which
 import sys
 
 from pyDataverse.api import DataAccessApi
@@ -27,9 +26,6 @@ from .utils import mangle_path
 # still available via its id from an older version of the dataverse dataset.
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
 FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
-
-# Needed to determine whether RENAMEEXPORT can be considered implemented.
-CURL_EXISTS = which('curl') is not None
 
 
 class OnlineDataverseDataset:
