@@ -138,7 +138,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         # available. An alternative would be to simply loop over the
         # records and have get_fileid_from_remotepath() generate the
         # last candidate.
-        file_id = stored_ids[0] if stored_ids \
+        file_id = stored_ids.pop() if stored_ids \
             else self._get_fileid_from_remotepath(remote_file, latest_only=True)
 
         self._download_file(file_id, local_file)

@@ -186,9 +186,10 @@ class DataverseRemote(SpecialRemote):
     def transfer_retrieve(self, key, file):
         stored_ids = self._get_annex_fileid_record(key)
         if stored_ids:
-            # Note, that for content retrieval it doesn't matter which ID we are
-            # downloading. Only content matters. Hence, first entry and be done.
-            file_id = stored_ids[0]
+            # For content retrieval it doesn't matter which ID we are
+            # downloading. Only content matters. Hence, first entry
+            # and be done.
+            file_id = stored_ids.pop()
         else:
             # Like in `self.checkpresent`, we fall back to path matching.
             # Delayed checking for availability from old versions is included.
@@ -210,74 +211,69 @@ class DataverseRemote(SpecialRemote):
     #
     # Helpers
     #
-    def _get_annex_fileid_record(self, key: str) -> list:
-        """Get the dataverse database id from the git-annex branch
+    def _get_annex_fileid_record(self, key: str) -> set:
+        """Get a Dataverse database file ID for a key from git-annex
 
         This is using the getstate/setstate special remote feature. Hence, a
-        stored id only exists, if the key was put to the dataverse instance by
+        stored ID only exists, if the key was put to the dataverse instance by
         this special remote.
-        Note, that what is stored is in fact a comma-separated list of IDs,
-        since this is required for export mode, where several copies of the same
-        content may need to exist on the dataverse end.
 
         Parameters
         ----------
         key: str
-            annex key to retrieve the id for
+          Annex key to retrieve the ID for
 
         Returns
         -------
-        list(int)
+        set(int)
+          A set is returned, because multiple file IDs can be stored
+          for each key (Dataverse assigns different IDs for each unique
+          combination of file content and associated metadata).
         """
         stored_id = self.annex.getstate(key)
-        return [int(n.strip()) for n in stored_id.split(',')]
+        return set(int(n.strip())
+                   for n in stored_id.split(',')
+                   if n.strip())
 
-    def _set_annex_fileid_record(self, key: str, ids: list):
+    def _set_annex_fileid_record(self, key: str, fileids: list | set) -> None:
         """Store a dataverse database id for a given key
 
         Parameters
         ----------
         key: str
-            annex key to store the id for
-        ids: list of int
-            dataverse database ids for `key`. Empty list to unset.
+          Annex key to store the id for
+        fileids: list|set of int
+          Dataverse database ID(s) for ``key``. Empty sequence to unset.
         """
-        self.annex.setstate(key, ", ".join([str(i) for i in ids]))
+        self.annex.setstate(key, ", ".join(str(i) for i in fileids))
 
-    def _add_annex_fileid_record(self, key: str, id: int):
+    def _add_annex_fileid_record(self, key: str, fileid: int) -> None:
         """Add a dataverse database ID to annex' record for `key`
 
         Parameters
         ----------
         key: str
-            annex key to store the id for
-        id: int
-            dataverse database id for `key`
+          Annex key to store the id for
+        fileid: int
+          Dataverse database ID for ``key``
         """
         r = self._get_annex_fileid_record(key)
-        r.append(id)
+        r.add(fileid)
         self._set_annex_fileid_record(key, r)
 
-    def _remove_annex_fileid_record(self, key, id):
+    def _remove_annex_fileid_record(self, key: str, fileid: int) -> None:
         """Remove a dataverse database ID from annex' record for `key`
 
         Parameters
         ----------
         key: str
-            annex key to store the id for
-        id: int
-            dataverse database id for `key`
+          Annex key to store the id for
+        fileid: int
+          Dataverse database ID for ``key``
         """
 
         r = self._get_annex_fileid_record(key)
-        try:
-            r.remove(id)
-        except ValueError:
-            self.message(f"Unable to remove {id} from {r}. (ValueError)",
-                         type='debug')
-            # If ID isn't in the list, that should be fine. At least no reason
-            # to error out.
-            pass
+        r.discard(fileid)
         self._set_annex_fileid_record(key, r)
 
     def _get_remotepath_for_key(self, key: str) -> PurePosixPath:
