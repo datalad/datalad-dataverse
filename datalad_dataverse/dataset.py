@@ -3,13 +3,19 @@ from __future__ import annotations
 from collections import namedtuple
 
 from pathlib import Path
+
+from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
-from requests import delete as delete_request
+from requests import (
+    delete as delete_request,
+    post as post_request,
+)
 from requests.auth import HTTPBasicAuth
-from shutil import which
 import sys
 
 from pyDataverse.api import DataAccessApi
+
+from .utils import mangle_path
 
 # Object to hold what's on dataverse's end for a given database id.
 # We need the paths in the latest version (if the id is part of that) in order
@@ -21,22 +27,25 @@ from pyDataverse.api import DataAccessApi
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
 FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
 
-# Needed to determine whether RENAMEEXPORT can be considered implemented.
-CURL_EXISTS = which('curl') is not None
-
 
 class OnlineDataverseDataset:
+    """Representation of Dataverse dataset in a remote instance.
+
+    Apart from providing an API for basic operations on such a dataset,
+    a main purpose of this class is the uniform and consistent mangling
+    of local DataLad datasets path to the corresponding counterparts
+    on Dataverse. Dataverse imposing strict limits to acceptably names
+    for `directoryLabel` and `label`. So strict, that it rules out anything
+    not representable by a subset of ASCII, and therefore any non-latin
+    alphabet. See the documentation of the ``mangle_path()`` function
+    for details.
+    """
     def __init__(self, api, dsid: str):
         # dataverse native API handle
         self._api = api
         self._dsid = dsid
 
         self._data_access_api = None
-        # store for reuse with data access API.
-        # we do not initialize that one here, because it is only used
-        # for file downloads
-        # TODO remove, available from self._api.api_token
-        self._token = None
         self._old_dataset_versions = None
         self._dataset_latest = None
         self._files_old = None
@@ -74,6 +83,7 @@ class OnlineDataverseDataset:
         -------
         int or None
         """
+        path = mangle_path(path)
         existing_id = [i for i, f in self.files_latest.items()
                        if f.path == path]
         if not latest_only and not existing_id:
@@ -91,10 +101,12 @@ class OnlineDataverseDataset:
         return fid in self.files_latest.keys()
 
     def has_path(self, path: Path) -> bool:
+        path = mangle_path(path)
         return path in [f.path for f in self.files_latest.values()] \
             or path in [f.path for f in self.files_old.values()]
 
     def has_path_in_latest_version(self, path: Path) -> bool:
+        path = mangle_path(path)
         return path in [f.path for f in self.files_latest.values()]
 
     def is_released_file(self, fid: int) -> bool:
@@ -103,11 +115,18 @@ class OnlineDataverseDataset:
                 or fid in self.files_old.keys())
 
     def download_file(self, fid: int, path: Path):
+        # pydataverse does not support streaming downloads
+        # https://github.com/gdcc/pyDataverse/issues/49
+        # the code below is nevertheless readied for such a
+        # scenario
         response = self.data_access_api.get_datafile(fid)
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:
-            f.write(response.content)
+            # `chunk_size=None` means
+            # "read data in whatever size the chunks are received"
+            for chunk in response.iter_content(chunk_size=None):
+                f.write(chunk)
 
     def remove_file(self, fid: int):
         status = delete_request(
@@ -124,6 +143,7 @@ class OnlineDataverseDataset:
                     local_path: Path,
                     remote_path: Path,
                     replace_id: int | None = None) -> int:
+        remote_path = mangle_path(remote_path)
         datafile = Datafile()
         # remote file metadata
         datafile.set({
@@ -177,18 +197,12 @@ class OnlineDataverseDataset:
           because of a missing dependency, or because the file in question
           cannot be renamed (included in an earlier version).
         """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise RuntimeError('renaming a file needs CURL')
-
         if rename_id is None and rename_path is None:
             raise ValueError('rename_id and rename_path cannot both be `None`')
+
+        # mangle_path for rename_path is done inside get_fileid_from_path()
+        # in the conditional below
+        new_path = mangle_path(new_path)
 
         if rename_id is None:
             # unclear to MIH why `latest_only=True`, presumably because
@@ -201,23 +215,62 @@ class OnlineDataverseDataset:
         if rename_id is None:
             raise RuntimeError(f"file {rename_path} cannot be renamed")
 
-        # TODO needs to move to OnlineDataverseDataset
         datafile = Datafile()
         datafile.set({
             # same as with upload `filename` and `label` must be redundant
             'label': new_path.name,
             'filename': new_path.name,
             'directoryLabel': str(new_path.parent),
-            'pid': self._doi,
+            'pid': self._dsid,
         })
 
-        proc = self._api.update_datafile_metadata(
+        response = self.update_file_metadata(
             rename_id,
             json_str=datafile.json(),
             is_filepid=False,
         )
-        if proc.returncode:
-            raise RuntimeError(f"Renaming failed: {proc.stderr}")
+        response.raise_for_status()
+
+        # the response-content on-success has something like this:
+        # {"label":"place.txt","directoryLabel":"fresh","description":"","restricted":false,"id":1843691}
+        # this would be enough to update `files_latest`, but not
+        # `dataset_latest`
+        # however, both are entangled, so better go with the safe choice and
+        # wipe it out until
+        # https://github.com/datalad/datalad-dataverse/issues/247
+        # is resolved.
+        self._files_latest = None
+        self._dataset_latest = None
+
+    def update_file_metadata(self,
+                             identifier,
+                             json_str=None,
+                             is_filepid=False):
+
+        base_str = self._api.base_url_api_native
+        if is_filepid:
+            query_str = "{0}/files/:persistentId/metadata?persistentId={1}".format(
+                base_str, identifier
+            )
+        else:
+            query_str = "{0}/files/{1}/metadata".format(base_str, identifier)
+
+        assert self._api.api_token
+        headers = {"X-Dataverse-key": self._api.api_token}
+
+        resp = post_request(
+            query_str,
+            files={'jsonData': (None, json_str.encode())},
+            headers=headers
+        )
+        if resp.status_code == 401:
+            error_msg = resp.json()["message"]
+            raise ApiAuthorizationError(
+                "ERROR: POST HTTP 401 - Authorization error {0}. MSG: {1}".format(
+                    query_str, error_msg
+                )
+            )
+        return resp
 
     #
     # Helpers
@@ -374,5 +427,3 @@ class OnlineDataverseDataset:
             Path(d.get('directoryLabel', '')) / d['dataFile']['filename'],
             False  # We just added - it can't be released
         )
-
-

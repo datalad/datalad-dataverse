@@ -15,13 +15,12 @@ command_suite = (
         # specification of a command, any number of commands can be defined
         (
             # importable module that contains the command implementation
-            'datalad_dataverse.create_sibling_dataverse',
+            'datalad_dataverse.add_sibling_dataverse',
             # name of the command class implementation in above module
-            'CreateSiblingDataverse',
-            # optional name of the command in the cmdline API
-            'create-sibling-dataverse',
-            # optional name of the command in the Python API
-            'create_sibling_dataverse'
+            'AddSiblingDataverse',
+            # must make CLI name explicit
+            # due to limitations of manpage generation
+            'add-sibling-dataverse',
         ),
     ]
 )
