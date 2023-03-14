@@ -8,7 +8,7 @@ from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
 from requests import (
     delete as delete_request,
-    post,
+    post as post_request,
 )
 from requests.auth import HTTPBasicAuth
 import sys
@@ -259,26 +259,19 @@ class OnlineDataverseDataset:
         if self._api.api_token:
             headers["X-Dataverse-key"] = self._api.api_token
 
-        try:
-            resp = post(
-                query_str,
-                files={'jsonData': (None, json_str.encode())},
-                headers=headers
-            )
-            if resp.status_code == 401:
-                error_msg = resp.json()["message"]
-                raise ApiAuthorizationError(
-                    "ERROR: POST HTTP 401 - Authorization error {0}. MSG: {1}".format(
-                        query_str, error_msg
-                    )
-                )
-            return resp
-        except ConnectionError:
-            raise ConnectionError(
-                "ERROR: POST - Could not establish connection to API: {0}".format(
-                    query_str
+        resp = post_request(
+            query_str,
+            files={'jsonData': (None, json_str.encode())},
+            headers=headers
+        )
+        if resp.status_code == 401:
+            error_msg = resp.json()["message"]
+            raise ApiAuthorizationError(
+                "ERROR: POST HTTP 401 - Authorization error {0}. MSG: {1}".format(
+                    query_str, error_msg
                 )
             )
+        return resp
 
     #
     # Helpers
