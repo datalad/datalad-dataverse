@@ -128,8 +128,17 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._upload_file(remote_file, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
-        stored_ids = self._get_annex_fileid_record(key)
-        if not stored_ids:
+        cand_ids = self._get_annex_fileid_record(key)
+        if not cand_ids:
+            # there are no IDs on record, but there may well be a file
+            # at the remote, otherwise git-annex would not call this
+            # here. Try lookup by path
+            file_id = self._get_fileid_from_remotepath(
+                remote_file, latest_only=True)
+            if file_id:
+                cand_ids.add(file_id)
+
+        if not cand_ids:
             raise RemoteError(f"Key {key} unavailable")
 
         # Content retrieval doesn't care where the content is coming
@@ -138,9 +147,7 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         # available. An alternative would be to simply loop over the
         # records and have get_fileid_from_remotepath() generate the
         # last candidate.
-        file_id = stored_ids.pop() if stored_ids \
-            else self._get_fileid_from_remotepath(remote_file, latest_only=True)
-
+        file_id = cand_ids.pop()
         self._download_file(file_id, local_file)
 
     def removeexport(self, key, remote_file):
