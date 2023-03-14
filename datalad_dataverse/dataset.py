@@ -189,16 +189,6 @@ class OnlineDataverseDataset:
           because of a missing dependency, or because the file in question
           cannot be renamed (included in an earlier version).
         """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise RuntimeError('renaming a file needs CURL')
-
         if rename_id is None and rename_path is None:
             raise ValueError('rename_id and rename_path cannot both be `None`')
 
@@ -226,19 +216,37 @@ class OnlineDataverseDataset:
             'pid': self._dsid,
         })
 
-        proc = self._api.update_datafile_metadata(
+        response = self.update_file_metadata(
             rename_id,
             json_str=datafile.json(),
             is_filepid=False,
         )
-        if proc.returncode:
-            raise RuntimeError(f"Renaming failed: {proc.stderr}")
+        response.raise_for_status()
 
         # https://github.com/datalad/datalad-dataverse/issues/236
         # we have no record to update the internal file list,
         # we must wipe it out
         self._files_latest = None
         self._dataset_latest = None
+
+    def update_file_metadata(self,
+                             identifier,
+                             json_str=None,
+                             is_filepid=False):
+
+        base_str = self._api.base_url_api_native
+        if is_filepid:
+            query_str = "{0}/files/:persistentId/metadata?persistentId={1}".format(
+                base_str, identifier
+            )
+        else:
+            query_str = "{0}/files/{1}/metadata".format(base_str, identifier)
+
+        return self._api.post_request(
+            url=query_str,
+            data=json_str,
+            auth=True
+        )
 
     #
     # Helpers
