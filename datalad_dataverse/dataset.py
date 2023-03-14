@@ -255,9 +255,8 @@ class OnlineDataverseDataset:
         else:
             query_str = "{0}/files/{1}/metadata".format(base_str, identifier)
 
-        headers = {}
-        if self._api.api_token:
-            headers["X-Dataverse-key"] = self._api.api_token
+        assert self._api.api_token
+        headers = {"X-Dataverse-key": self._api.api_token}
 
         resp = post_request(
             query_str,
