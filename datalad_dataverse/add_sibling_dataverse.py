@@ -1,7 +1,6 @@
 """High-level interface for creating a combi-target on a Dataverse server
  """
 
-import json
 import logging
 from typing import (
     Optional,
@@ -38,7 +37,6 @@ from datalad.support.constraints import (
 )
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
-from datalad.utils import Path
 
 from datalad_dataverse.utils import (
     get_api as get_dataverse_api,
@@ -480,89 +478,3 @@ def _add_storage_sibling(
         url=url,
         doi=doi,
     )
-
-
-def _get_ds_metadata(ds, metadata):
-    """Determine metadata for a given datalad dataset
-
-    Parameters
-    ----------
-    ds: Dataset
-    metadata: str or Path or dict
-    """
-
-    if not metadata:
-        mdata = _get_default_metadata(ds)
-    elif isinstance(metadata, dict):
-        # nothing to do here
-        mdata = metadata
-    elif isinstance(metadata, Path):
-        if not metadata.is_absolute():
-            metadata = ds.pathobj / metadata
-        with open(metadata, 'r') as f:
-            mdata = json.load(f)
-    else:
-        mdata = json.loads(metadata)
-
-    return mdata
-
-
-def _get_default_metadata(ds):
-    """Generate a default metadata dict for a given datalad dataset"""
-
-    # Just delegate every aspect of required metadata to its own function
-    # to be able to address them independently; May want to fuse them back in
-    # later.
-    return dict(title=_get_title_from_ds(ds),
-                author=_get_author_from_ds(ds),
-                datasetContact=_get_contact_from_ds(ds),
-                dsDescription=_get_description_from_ds(ds),
-                subject=_get_subject_from_ds(ds)
-                )
-
-
-def _get_title_from_ds(ds):
-    # return string
-    # TODO: Include relative path to superdataset?
-    #       Would require to pass down refds
-    return f"{ds.pathobj.name}: {ds.id}"
-
-
-def _get_author_from_ds(ds):
-    # return list of dict
-    # TODO: What other fields are valid?
-    # Idea: Last committer's git identity?
-    return [dict(authorName=ds.config.get("user.name", "myname"))]
-
-
-def _get_contact_from_ds(ds):
-    # return list of dict
-    # Same as author or user running the command?
-    # Just take active git identity:
-    return [dict(datasetContactEmail=ds.config.get("user.email",
-                                                   "myemail@example.com"),
-                 datasetContactName=ds.config.get("user.name",
-                                                  "myname"))]
-
-
-def _get_description_from_ds(ds):
-    # return list of dict
-    # Should somehow get the datalad-annex:: clone URL
-    description = f"""This is a datalad dataset put here with the
-    datalad-dataverse extension (https://github.com/datalad/datalad-dataverse).
-    You can datalad clone this dataset directly from this landing page's URL,
-    provided you have the datalad-dataverse extension installed.
-    For this to work you need to set the `datalad.extensions.load=dataverse`
-    config globally. Then a simple `datalad clone` should work.
-
-    This dataset has the datalad ID {ds.id}.
-    """
-    return [dict(dsDescriptionValue=description)]
-
-
-def _get_subject_from_ds(ds):
-    # return list of string
-    # See datalad_dataverse.utils.DATASET_SUBJECTS
-
-    # Nothing to derive that from for now, hence hardcoded:
-    return ['Other']
