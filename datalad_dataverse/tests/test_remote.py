@@ -77,10 +77,15 @@ def test_remote(dataverse_admin_credential_setup,
         repo.call_annex([
             'drop', '--from', 'mydv', 'somefile.txt',
         ])
-    # run git-annex own testsuite
-    ds.repo.call_annex([
-        'testremote', '--fast', 'mydv',
-    ])
+    # Temporarily disable this until
+    # https://github.com/datalad/datalad-dataverse/issues/127
+    # is sorted out. Possibly via
+    # https://git-annex.branchable.com/bugs/testremote_is_not_honoring_--backend
+    if not on_windows:
+        # run git-annex own testsuite
+        ds.repo.call_annex([
+            'testremote', '--fast', 'mydv',
+        ])
 
 
 def test_datalad_annex(dataverse_admin_credential_setup,
