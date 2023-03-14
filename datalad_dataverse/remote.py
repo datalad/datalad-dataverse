@@ -101,14 +101,20 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
     # Export API
     #
     def checkpresentexport(self, key, remote_file):
-        stored_id = self._get_annex_fileid_record(key)
-        if stored_id is not None:
-            # Only check latest version in export mode. Doesn't currently
-            # work for keys from older versions, since annex fails to even
-            # try. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351.
-            return self._dvds.has_fileid_in_latest_version(stored_id)
+        # Only check latest version of dataverse dataset here.
+        # Doesn't currently work for keys from older versions,
+        # because annex does not even call CHECKPRESENT
+        # https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351
+        stored_ids = self._get_annex_fileid_record(key)
+        if stored_ids:
+            return self._get_fileid_from_remotepath(
+                remote_file, latest_only=True) in stored_ids
         else:
-            # In export mode, we need to fix remote paths:
+            # TODO without a stored ID shouldn't the answer to CHECKPRESENT
+            # be False?
+            # https://github.com/datalad/datalad-dataverse/pull/237#discussion_r1135119335
+            # TODO check that datalad-annex clone test covers this,
+            # and remove.
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
@@ -122,16 +128,34 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         self._upload_file(remote_file, key, local_file, replace_id)
 
     def transferexport_retrieve(self, key, local_file, remote_file):
-        file_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_remotepath(remote_file, latest_only=True)
-        if file_id is None:
+        cand_ids = self._get_annex_fileid_record(key)
+        if not cand_ids:
+            # there are no IDs on record, but there may well be a file
+            # at the remote, otherwise git-annex would not call this
+            # here. Try lookup by path
+            file_id = self._get_fileid_from_remotepath(
+                remote_file, latest_only=True)
+            if file_id:
+                cand_ids.add(file_id)
+
+        if not cand_ids:
             raise RemoteError(f"Key {key} unavailable")
 
+        # Content retrieval doesn't care where the content is coming
+        # from. Hence, taking the first ID on record should suffice.
+        # TODO it may be that any one of the record fileid is not longer
+        # available. An alternative would be to simply loop over the
+        # records and have get_fileid_from_remotepath() generate the
+        # last candidate.
+        file_id = cand_ids.pop()
         self._download_file(file_id, local_file)
 
     def removeexport(self, key, remote_file):
-        rm_id = self._get_annex_fileid_record(key) \
-            or self._get_fileid_from_remotepath(remote_file, latest_only=True)
+        # For removal, path matching needs to be done, because we could have
+        # several copies (dataverse IDs) of the content. Need to remove the one
+        # that also matches the path.
+        rm_id = self._get_fileid_from_remotepath(remote_file, latest_only=True)
+        # _remove_file() takes care of removing the fileid record
         self._remove_file(key, rm_id)
 
     def renameexport(self, key, filename, new_filename):
@@ -141,10 +165,14 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
         Otherwise annex calls removeexport + transferexport_store, which
         does not scale well performance-wise.
         """
+        # We cannot rely on ID lookup, since there could be several. We need to
+        # match the path.
+        rename_id = self._get_fileid_from_remotepath(
+            filename, latest_only=True)
         try:
             self._dvds.rename_file(
                 new_path=new_filename,
-                rename_id=self._get_annex_fileid_record(key),
+                rename_id=rename_id,
                 rename_path=filename,
             )
         except RuntimeError as e:

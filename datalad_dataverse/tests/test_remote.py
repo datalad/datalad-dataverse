@@ -150,5 +150,4 @@ def test_export_identical_unsupported(
     ])
     flist = list_dataset_files(dataverse_admin_api, dataverse_dataset)
     identicals = get_dvfile_with_md5(flist, payload_md5, all_matching=True)
-    assert len(identicals) == 1, \
-        'Check if dataverse can handle identical file content under different names now'
+    assert len(identicals) == 2

@@ -9,4 +9,4 @@ Python module reference
 .. autosummary::
    :toctree: generated
 
-   create_sibling_dataverse
+   add_sibling_dataverse

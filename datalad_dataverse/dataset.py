@@ -119,11 +119,18 @@ class OnlineDataverseDataset:
                 or fid in self.files_old.keys())
 
     def download_file(self, fid: int, path: Path):
+        # pydataverse does not support streaming downloads
+        # https://github.com/gdcc/pyDataverse/issues/49
+        # the code below is nevertheless readied for such a
+        # scenario
         response = self.data_access_api.get_datafile(fid)
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:
-            f.write(response.content)
+            # `chunk_size=None` means
+            # "read data in whatever size the chunks are received"
+            for chunk in response.iter_content(chunk_size=None):
+                f.write(chunk)
 
     def remove_file(self, fid: int):
         status = delete_request(
