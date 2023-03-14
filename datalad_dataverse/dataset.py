@@ -231,9 +231,14 @@ class OnlineDataverseDataset:
         )
         response.raise_for_status()
 
-        # https://github.com/datalad/datalad-dataverse/issues/236
-        # we have no record to update the internal file list,
-        # we must wipe it out
+        # the response-content on-success has something like this:
+        # {"label":"place.txt","directoryLabel":"fresh","description":"","restricted":false,"id":1843691}
+        # this would be enough to update `files_latest`, but not
+        # `dataset_latest`
+        # however, both are entangled, so better go with the safe choice and
+        # wipe it out until
+        # https://github.com/datalad/datalad-dataverse/issues/247
+        # is resolved.
         self._files_latest = None
         self._dataset_latest = None
 
