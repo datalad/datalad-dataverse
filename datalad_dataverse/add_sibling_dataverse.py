@@ -69,7 +69,7 @@ class AddSiblingDataverse(Interface):
                  > ds = Dataset('.')
                  > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
              """,
-             code_cmd="datalad create-sibling-dataverse demo.dataverse.org -s dataverse",
+             code_cmd="datalad add-sibling-dataverse demo.dataverse.org -s dataverse",
         ),
     ]
 
