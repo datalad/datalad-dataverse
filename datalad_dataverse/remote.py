@@ -110,11 +110,9 @@ class DataverseRemote(ExportRemote, BaseDataverseRemote):
             return self._get_fileid_from_remotepath(
                 remote_file, latest_only=True) in stored_ids
         else:
-            # TODO without a stored ID shouldn't the answer to CHECKPRESENT
-            # be False?
-            # https://github.com/datalad/datalad-dataverse/pull/237#discussion_r1135119335
-            # TODO check that datalad-annex clone test covers this,
-            # and remove.
+            # Without a stored ID, we fall back to path matching. See
+            # https://github.com/datalad/datalad-dataverse/issues/246 for the
+            # rationale.
             return self._dvds.has_path_in_latest_version(remote_file)
 
     def transferexport_store(self, key, local_file, remote_file):
