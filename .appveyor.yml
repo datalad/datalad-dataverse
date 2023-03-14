@@ -60,18 +60,6 @@ environment:
     # List a CI run for each platform first, to have immediate access when there
     # is a need for debugging
 
-    # The docker setup is broken
-    #- ID: Ubu20docker
-    #  DTS: datalad_dataverse
-    #  APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
-    #  INSTALL_SYSPKGS: python3-virtualenv jq
-    #  # system git-annex is way too old, use better one
-    #  INSTALL_GITANNEX: git-annex -m datalad/git-annex:release
-    #  CODECOV_BINARY: https://uploader.codecov.io/latest/linux/codecov
-    #  # setting critically needed for launching the dataverse container
-    #  DEPLOY_DATAVERSE: 1
-    #  traefikhost: localhost
-    #  KNOWN2FAIL: 1
     # Ubuntu core tests
     - ID: Ubu20
       DTS: datalad_dataverse
@@ -189,12 +177,6 @@ install:
   - sh: tools/appveyor/install-git-annex ${INSTALL_GITANNEX}
   # enable the git-annex provisioned by the installer
   - "[ -f ${HOME}/dlinstaller_env.sh ] && . ${HOME}/dlinstaller_env.sh || true"
-  # Set up dataverse docker; sourced since it's exporting the API tokens:
-  - sh: "[ -n \"${DEPLOY_DATAVERSE}\" ] && source tools/ci/setup_docker_dataverse.sh $DOCKERHUB_TOKEN $DOCKERHUB_USERNAME || true"
-  # Show what we got after setup in case something is going wrong:
-  - sh: "[ -n \"${DEPLOY_DATAVERSE}\" ] && echo \"Received tokens: $DATAVERSE_TEST_APITOKEN_TESTADMIN $DATAVERSE_TEST_APITOKEN_USER1\" || true"
-  # Check we got a our dataverse and it's accessible with the admin token:
-  - sh: "[ i-n \"${DEPLOY_DATAVERSE}\" ] && curl \"http://localhost:8080/api/search?q=*&type=dataverse&key=${DATAVERSE_TEST_APITOKEN_TESTADMIN}\" || true"
 
 
 #before_build:
