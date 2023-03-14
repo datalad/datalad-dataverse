@@ -3,10 +3,14 @@ from __future__ import annotations
 from collections import namedtuple
 
 from pathlib import Path
+
+from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
-from requests import delete as delete_request
+from requests import (
+    delete as delete_request,
+    post as post_request,
+)
 from requests.auth import HTTPBasicAuth
-from shutil import which
 import sys
 
 from pyDataverse.api import DataAccessApi
@@ -22,9 +26,6 @@ from .utils import mangle_path
 # still available via its id from an older version of the dataverse dataset.
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
 FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
-
-# Needed to determine whether RENAMEEXPORT can be considered implemented.
-CURL_EXISTS = which('curl') is not None
 
 
 class OnlineDataverseDataset:
@@ -196,16 +197,6 @@ class OnlineDataverseDataset:
           because of a missing dependency, or because the file in question
           cannot be renamed (included in an earlier version).
         """
-        # Note: In opposition to other API methods, `update_datafile_metadata`
-        # is running `curl` in a subprocess. No idea why. As a consequence, this
-        # depends on the availability of curl and the return value is not (as in
-        # all other cases) a `requests.Response` object, but a
-        # `subprocess.CompletedProcess`.
-        # This apparently is planned to be changed in pydataverse 0.4.0:
-        # https://github.com/gdcc/pyDataverse/issues/88
-        if not CURL_EXISTS:
-            raise RuntimeError('renaming a file needs CURL')
-
         if rename_id is None and rename_path is None:
             raise ValueError('rename_id and rename_path cannot both be `None`')
 
@@ -233,19 +224,53 @@ class OnlineDataverseDataset:
             'pid': self._dsid,
         })
 
-        proc = self._api.update_datafile_metadata(
+        response = self.update_file_metadata(
             rename_id,
             json_str=datafile.json(),
             is_filepid=False,
         )
-        if proc.returncode:
-            raise RuntimeError(f"Renaming failed: {proc.stderr}")
+        response.raise_for_status()
 
-        # https://github.com/datalad/datalad-dataverse/issues/236
-        # we have no record to update the internal file list,
-        # we must wipe it out
+        # the response-content on-success has something like this:
+        # {"label":"place.txt","directoryLabel":"fresh","description":"","restricted":false,"id":1843691}
+        # this would be enough to update `files_latest`, but not
+        # `dataset_latest`
+        # however, both are entangled, so better go with the safe choice and
+        # wipe it out until
+        # https://github.com/datalad/datalad-dataverse/issues/247
+        # is resolved.
         self._files_latest = None
         self._dataset_latest = None
+
+    def update_file_metadata(self,
+                             identifier,
+                             json_str=None,
+                             is_filepid=False):
+
+        base_str = self._api.base_url_api_native
+        if is_filepid:
+            query_str = "{0}/files/:persistentId/metadata?persistentId={1}".format(
+                base_str, identifier
+            )
+        else:
+            query_str = "{0}/files/{1}/metadata".format(base_str, identifier)
+
+        assert self._api.api_token
+        headers = {"X-Dataverse-key": self._api.api_token}
+
+        resp = post_request(
+            query_str,
+            files={'jsonData': (None, json_str.encode())},
+            headers=headers
+        )
+        if resp.status_code == 401:
+            error_msg = resp.json()["message"]
+            raise ApiAuthorizationError(
+                "ERROR: POST HTTP 401 - Authorization error {0}. MSG: {1}".format(
+                    query_str, error_msg
+                )
+            )
+        return resp
 
     #
     # Helpers
