@@ -38,8 +38,7 @@ a Dataverse dataset landing page.
 ## Summary of functionality provided by this extension
 
 - Interoperability between DataLad and Dataverse version 5 (or later).
-- A `create-sibling-dataverse` command to initialize matching Dataverse datasets
-  for individual DataLad datasets.
+- A `add-sibling-dataverse` command to register a Dataverse dataset as remote sibling for a DataLad dataset.
 - A `git-annex-remote-dataverse` special remote implementation for storage and retrieval of data in Dataverse dataset via git-annex.
 - These two features combined enable the deposition and retrieveal of complete DataLad dataset on Dataverse, including version history and metadata. A direct `datalad clone` from a Dataverse dataset landing page is supported, and yields a fully functional DataLad dataset clone (Git repository).
 
