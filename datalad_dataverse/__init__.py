@@ -18,6 +18,9 @@ command_suite = (
             'datalad_dataverse.add_sibling_dataverse',
             # name of the command class implementation in above module
             'AddSiblingDataverse',
+            # must make CLI name explicit
+            # due to limitations of manpage generation
+            'add-sibling-dataverse',
         ),
     ]
 )
