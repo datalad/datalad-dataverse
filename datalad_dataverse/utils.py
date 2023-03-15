@@ -103,10 +103,11 @@ def get_api(url, credman, credential_name=None):
     cred = None
     if credential_name:
         # we can ask blindly first, caller seems to know what to do
-        cred = credman.get(
+        credential_name, cred = credman.obtain(
             name=credential_name,
+            prompt=f'A dataverse API token is required for access',
             # give to make legacy credentials accessible
-            _type_hint='token',
+            type_hint='token',
         )
     if not cred:
         creds = credman.query(
@@ -115,17 +116,6 @@ def get_api(url, credman, credential_name=None):
         )
         if creds:
             credential_name, cred = creds[0]
-    if not cred:
-        # credential query failed too, enable manual entry
-        cred = credman.get(
-            # this might still be None
-            name=credential_name,
-            _type_hint='token',
-            _prompt=f'A dataverse API token is required for access',
-            # inject anything we already know to make sure we store it
-            # at the very end, and can use it for discovery next time
-            realm=credential_realm,
-        )
     if cred is None or 'secret' not in cred:
         raise LookupError('No suitable credential found')
 
