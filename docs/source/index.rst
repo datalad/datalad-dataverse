@@ -30,6 +30,7 @@ Documentation overview
 
    intro
    settingup
+   tutorial
    contributing
    glossary
 

@@ -46,8 +46,16 @@ Installation
 Getting started
 ^^^^^^^^^^^^^^^
 
+.. admonition:: Tutorial
+
+   For detailed instructions, please refer to the :ref:`tutorial`.
+
+
 The ``datalad-dataverse`` software allows publishing a DataLad dataset to a Dataverse
-instance. First ensure that your dataset is packaged as a DataLad dataset:
+instance. First you have to create an empty Dataverse dataset with a dedicated DOI, which
+will be used in the code below (see how to do this in the :ref:`tutorial`).
+
+Next, ensure that your dataset is packaged as a DataLad dataset:
 
 .. code-block:: bash
    
@@ -59,10 +67,18 @@ Then create a dataverse `sibling` to the DataLad dataset:
    
     datalad add-sibling-dataverse -s dataverse -d [dataset_location] https://demo.dataverse.org doi:10.70122/MYT/ESTDOI
 
+Finally, push the DataLad dataset to Dataverse:
 
-.. admonition:: TODO
+.. code-block:: bash
+   
+    datalad push --to dataverse
 
-   Add basic datalad-dataverse commands for publishing to and cloning from dataverse
+Once the dataset is available on Dataverse, it can also be cloned using the Dataverse-provded DOI:
+
+.. code-block:: bash
+   
+    datalad clone https://doi.org/10.70122/MYT/ESTDOI
+
 
 .. admonition:: HELP! I'm new to this!
 
