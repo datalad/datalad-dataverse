@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections import namedtuple
-
+from dataclasses import dataclass
+import json
 from pathlib import Path
+import re
 
 from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
@@ -17,7 +18,8 @@ from pyDataverse.api import DataAccessApi
 
 from .utils import mangle_path
 
-# Object to hold what's on dataverse's end for a given database id.
+
+# Object to hold what's on dataverse's end for a given database file id.
 # We need the paths in the latest version (if the id is part of that) in order
 # to know whether we need to replace rather than just upload a file, and we need
 # to know whether an id is released, since that implies we can't replace it
@@ -25,7 +27,11 @@ from .utils import mangle_path
 # The latter meaning: It can be removed from the new DRAFT version, but it's
 # still available via its id from an older version of the dataverse dataset.
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
-FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
+@dataclass
+class FileIdRecord:
+    path: Path
+    is_released: bool
+    is_latest_version: bool
 
 
 class OnlineDataverseDataset:
@@ -46,10 +52,11 @@ class OnlineDataverseDataset:
         self._dsid = dsid
 
         self._data_access_api = None
-        self._old_dataset_versions = None
-        self._dataset_latest = None
-        self._files_old = None
-        self._files_latest = None
+        # mapping of dataverse database fileids to FileIdRecord
+        self._file_records = None
+        # flag whether a listing across all dataset versions
+        # was already retrieved and incorporated into the file_records
+        self._knows_all_versions = False
 
         # check if instance is readable and authenticated
         resp = api.get_info_version()
@@ -83,36 +90,54 @@ class OnlineDataverseDataset:
         -------
         int or None
         """
+        if not latest_only:
+            self._ensure_file_records_for_all_versions()
         path = mangle_path(path)
-        existing_id = [i for i, f in self.files_latest.items()
-                       if f.path == path]
-        if not latest_only and not existing_id:
-            existing_id = [i for i, f in self.files_old.items()
-                           if f.path == path]
-        return existing_id[0] if existing_id else None
+        # get all file id records that match the path, and are latest version,
+        # if desired
+        match_path = dict(
+            (i, f) for i, f in self._file_records_by_fileid.items()
+            if f.path == path
+            if latest_only is False or f.is_latest_version is True
+        )
+        if not match_path:
+            # no match
+            return None
+        else:
+            # any number of matches, report first one
+            return match_path.popitem()[0]
 
     def has_fileid(self, fid: int) -> bool:
-        # First, check latest version. Second, check older versions.
-        # This is to avoid requesting the full file list unless necessary.
-        return fid in self.files_latest.keys() \
-            or fid in self.files_old.keys()
+        self._ensure_file_records_for_all_versions()
+        return fid in self._file_records_by_fileid
 
     def has_fileid_in_latest_version(self, fid: int) -> bool:
-        return fid in self.files_latest.keys()
+        rec = self._file_records_by_fileid.get(fid)
+        if rec is None:
+            return False
+        else:
+            return rec.is_latest_version
 
     def has_path(self, path: Path) -> bool:
         path = mangle_path(path)
-        return path in [f.path for f in self.files_latest.values()] \
-            or path in [f.path for f in self.files_old.values()]
+        self._ensure_file_records_for_all_versions()
+        return path in set(
+            f.path for f in self._file_records_by_fileid.values()
+        )
 
     def has_path_in_latest_version(self, path: Path) -> bool:
         path = mangle_path(path)
-        return path in [f.path for f in self.files_latest.values()]
+        return path in set(
+            f.path for f in self._file_records_by_fileid.values()
+            if f.is_latest_version
+        )
 
     def is_released_file(self, fid: int) -> bool:
-        latest_rec = self.files_latest.get(fid)
-        return ((latest_rec and latest_rec.is_released)
-                or fid in self.files_old.keys())
+        rec = self._file_records_by_fileid.get(fid)
+        if rec is None:
+            return False
+        else:
+            return rec.is_released
 
     def download_file(self, fid: int, path: Path):
         # pydataverse does not support streaming downloads
@@ -137,7 +162,7 @@ class OnlineDataverseDataset:
         # http error handling
         status.raise_for_status()
         # This ID is not part of the latest version anymore.
-        self.remove_from_filelist(fid)
+        self._file_records_by_fileid.pop(fid, None)
 
     def upload_file(self,
                     local_path: Path,
@@ -177,13 +202,21 @@ class OnlineDataverseDataset:
         # If we replaced, `replaced_id` is not part of the latest version
         # anymore.
         if replace_id is not None:
-            self.remove_from_filelist(replace_id)
+            self._file_records_by_fileid.pop(replace_id, None)
 
-        uploaded_file = response.json()['data']['files'][0]
+        upload_rec = response.json()['data']['files'][0]
+        uploaded_df = upload_rec['dataFile']
         # update cache:
-        self.add_to_filelist(uploaded_file)
+        # make sure this property actually exists before assigning:
+        # (This may happen on `git-annex-copy --fast`)
+        self._file_records_by_fileid[uploaded_df['id']] = FileIdRecord(
+            Path(upload_rec.get('directoryLabel', '')) / \
+            uploaded_df['filename'],
+            is_released=False,   # We just added - it can't be released
+            is_latest_version=True,
+        )
         # return the database fileid of the upload
-        return uploaded_file['dataFile']['id']
+        return uploaded_df['id']
 
     def rename_file(self,
                     new_path: Path,
@@ -229,18 +262,23 @@ class OnlineDataverseDataset:
             json_str=datafile.json(),
             is_filepid=False,
         )
+        # TODO depending on the release status, we may have to remove
+        # the previous record from the internal listing
         response.raise_for_status()
 
         # the response-content on-success has something like this:
-        # {"label":"place.txt","directoryLabel":"fresh","description":"","restricted":false,"id":1843691}
-        # this would be enough to update `files_latest`, but not
-        # `dataset_latest`
-        # however, both are entangled, so better go with the safe choice and
-        # wipe it out until
-        # https://github.com/datalad/datalad-dataverse/issues/247
-        # is resolved.
-        self._files_latest = None
-        self._dataset_latest = None
+        # b'File Metadata update has been completed:
+        #   {"label":"place.txt","directoryLabel":"fresh",...,"id":1845936}
+        # pull it out
+        d = json.loads(
+            re.match(b'.*(?P<rec>{.*})$',
+                     response.content).groupdict()['rec']
+        )
+        self._file_records_by_fileid[d['id']] = FileIdRecord(
+            Path(d.get('directoryLabel', '')) / d['label'],
+            is_released=False,  # We just renamed - it can't be released
+            is_latest_version=True,
+        )
 
     def update_file_metadata(self,
                              identifier,
@@ -284,101 +322,81 @@ class OnlineDataverseDataset:
             )
         return self._data_access_api
 
-    @property
-    def old_dataset_versions(self):
-        """Full JSON record of the dataverse dataset.
+    def _ensure_file_records_for_all_versions(self) -> None:
+        if self._knows_all_versions:
+            return
 
-        This is requested once when relevant to look for a key that is not
-        present in the latest version of the dataverse dataset. In such case,
-        `files_old` is build from it.
-        """
+        # This delivers a full record of all known versions of this dataset.
+        # Hence, the file lists in the version entries may contain
+        # duplicates (unchanged files across versions).
+        versions = self._api.get_dataset_versions(self._dsid)
+        versions.raise_for_status()
 
-        if self._old_dataset_versions is None:
-            # This delivers a full record of all known versions of this dataset.
-            # Hence, the file lists in the version entries may contain
-            # duplicates (unchanged files across versions).
-            versions = self._api.get_dataset_versions(self._dsid)
-            versions.raise_for_status()
+        dataset_versions = versions.json()['data']
+        # Expected structure in self._dataset is a list of (version-)
+        # dictionaries, which should have a field 'files'. This again is a
+        # list of dicts like this:
+        #  {'description': '',
+        #   'label': 'third_file.md',
+        #   'restricted': False,
+        #   'directoryLabel': 'subdir2',
+        #   'version': 1,
+        #   'datasetVersionId': 72,
+        #   'dataFile': {'id': 682,
+        #   'persistentId': '',
+        #   'pidURL': '',
+        #   'filename': 'third_file.md',
+        #   'contentType': 'text/plain',
+        #   'filesize': 9,
+        #   'description': '',
+        #   'storageIdentifier': 'local://1821bc70e68-c3c9dedcfce6',
+        #   'rootDataFileId': -1,
+        #   'md5': 'd8d77109f4a24efc3bd53d7cabb7ee35',
+        #   'checksum': {'type': 'MD5',
+        #                'value': 'd8d77109f4a24efc3bd53d7cabb7ee35'},
+        #   'creationDate': '2022-07-20'}
 
-            self._old_dataset_versions = versions.json()['data']
-            # Expected structure in self._dataset is a list of (version-)
-            # dictionaries, which should have a field 'files'. This again is a
-            # list of dicts like this:
-            #  {'description': '',
-            #   'label': 'third_file.md',
-            #   'restricted': False,
-            #   'directoryLabel': 'subdir2',
-            #   'version': 1,
-            #   'datasetVersionId': 72,
-            #   'dataFile': {'id': 682,
-            #   'persistentId': '',
-            #   'pidURL': '',
-            #   'filename': 'third_file.md',
-            #   'contentType': 'text/plain',
-            #   'filesize': 9,
-            #   'description': '',
-            #   'storageIdentifier': 'local://1821bc70e68-c3c9dedcfce6',
-            #   'rootDataFileId': -1,
-            #   'md5': 'd8d77109f4a24efc3bd53d7cabb7ee35',
-            #   'checksum': {'type': 'MD5',
-            #                'value': 'd8d77109f4a24efc3bd53d7cabb7ee35'},
-            #   'creationDate': '2022-07-20'}
-
-            # Sort by version, so we can rely on the last entry to refer to the
-            # latest version.
-            # Note, that ('versionNumber', 'versionMinorNumber', 'versionState')
-            # would look like this:
-            # (None, None, 'DRAFT'), (2, 0, 'RELEASED'), (1, 0, 'RELEASED')
-            # and we need a possible DRAFT to have the greatest key WRT sorting.
-            self._old_dataset_versions.sort(
-                key=lambda v: (v.get('versionNumber') or sys.maxsize,
-                               v.get('versionMinorNumber') or sys.maxsize),
-                reverse=False)
-            # Remove "latest" - we already have that
-            self._old_dataset_versions = self._old_dataset_versions[:-1]
-
-        return self._old_dataset_versions
-
-    @property
-    def dataset_latest(self):
-        """JSON representation on the latest version of the dataverse dataset.
-
-        This is used to initialize `files_latest` and only requested once.
-        """
-
-        if self._dataset_latest is None:
-            dataset = self._api.get_dataset(
-                identifier=self._dsid,
-                version=":latest",
-            )
-            dataset.raise_for_status()
-            self._dataset_latest = dataset.json()['data']['latestVersion']
-        return self._dataset_latest
-
-    @property
-    def files_old(self):
-        """Files available from older dataverse dataset versions.
-
-        For quick lookup and deduplication, this is a dict {id: FileIdRecord}
-        """
-
-        if self._files_old is None:
-            self._files_old = {
-                f['dataFile']['id']: FileIdRecord(
-                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                    True  # older versions are always released
+        # Sort by version, so we can rely on the last entry to refer to the
+        # latest version.
+        # Note, that ('versionNumber', 'versionMinorNumber', 'versionState')
+        # would look like this:
+        # (None, None, 'DRAFT'), (2, 0, 'RELEASED'), (1, 0, 'RELEASED')
+        # and we need a possible DRAFT to have the greatest key WRT sorting.
+        dataset_versions.sort(
+            key=lambda v: (v.get('versionNumber') or sys.maxsize,
+                           v.get('versionMinorNumber') or sys.maxsize),
+            reverse=False)
+        self._file_records = {}
+        # iterate over all versions but the latest, and label the records
+        # as such
+        for version in dataset_versions[:-1]:
+            self._file_records.update(
+                self._get_file_records_from_version_listing(
+                    version,
+                    latest=False,
                 )
-                for file_lists in [
-                    (version['files'], version['versionState'])
-                    for version in self.old_dataset_versions
-                ]
-                for f in file_lists[0]
-            }
+            )
+        # and the latest version
+        self._file_records.update(self._get_file_records_from_version_listing(
+            dataset_versions[-1],
+            latest=True,
+        ))
+        # set flag to never run this code again
+        self._knows_all_versions = True
 
-        return self._files_old
+    def _get_file_records_from_version_listing(
+            self, version: dict, latest: bool) -> dict:
+        return {
+            f['dataFile']['id']: FileIdRecord(
+                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                version['versionState'] == "RELEASED",
+                is_latest_version=latest,
+            )
+            for f in version['files']
+        }
 
     @property
-    def files_latest(self):
+    def _file_records_by_fileid(self):
         """Cache of files in the latest version of the dataverse dataset.
 
         This refers to the DRAFT version (if there is any) or the latest
@@ -392,38 +410,19 @@ class OnlineDataverseDataset:
         changes herein w/o rerequesting the new state.
         """
 
-        if self._files_latest is None:
+        if self._file_records is None:
+            # we have a clean slate, populate with latest.
+            # if that is not sufficient, callers will need
+            # to call _ensure_file_records_for_all_versions()
+            # first
+            dataset = self._api.get_dataset(
+                identifier=self._dsid,
+                version=":latest",
+            )
+            dataset.raise_for_status()
             # Latest version in self.dataset is first entry.
-            self._files_latest = {
-                f['dataFile']['id']: FileIdRecord(
-                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                    self.dataset_latest['versionState'] == "RELEASED",
-                )
-                for f in self.dataset_latest['files']
-            }
-
-        return self._files_latest
-
-    def remove_from_filelist(self, id):
-        """Update self.files_latest after removal"""
-        # make sure this property actually exists before assigning:
-        # (This may happen when git-annex-export decides to remove a key w/o
-        # even considering checkpresent)
-        self.files_latest
-        self._files_latest.pop(id, None)
-
-    def add_to_filelist(self, d):
-        """Update self.files_latest after upload
-
-        d: dict
-          dataverse description dict of the file; this dict is in the list
-          'data.files' of the response to a successful upload
-        """
-        # make sure this property actually exists before assigning:
-        # (This may happen on `git-annex-copy --fast`)
-        self.files_latest
-
-        self._files_latest[d['dataFile']['id']] = FileIdRecord(
-            Path(d.get('directoryLabel', '')) / d['dataFile']['filename'],
-            False  # We just added - it can't be released
-        )
+            self._file_records = self._get_file_records_from_version_listing(
+                dataset.json()['data']['latestVersion'],
+                latest=True,
+            )
+        return self._file_records
