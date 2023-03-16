@@ -36,10 +36,6 @@ from datalad_next.constraints import (
 
 from datalad_next.constraints.dataset import EnsureDataset
 
-from datalad_dataverse.utils import (
-    get_api as get_dataverse_api,
-)
-
 __docformat__ = "restructuredtext"
 
 lgr = logging.getLogger('datalad.distributed.add_sibling_dataverse')
@@ -210,14 +206,6 @@ class AddSiblingDataverse(ValidatedInterface):
             if failed:
                 return
 
-        # 3. get API Token
-        credman = CredentialManager(ds.config)
-        api = get_dataverse_api(
-            dv_url,
-            credman,
-            credential_name=credential,
-        )
-
         # 5. use datalad-foreach-dataset command with a wrapper function to
         #    operate in a singe dataset to address recursive behavior and yield
         #    results from there
@@ -226,7 +214,7 @@ class AddSiblingDataverse(ValidatedInterface):
 
             return _add_sibling_dataverse(
                 ds=ds,
-                api=api,
+                url=dv_url,
                 credential_name=credential,
                 ds_pid=ds_pid,
                 mode=mode,
@@ -293,7 +281,7 @@ def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
 
 
 def _add_sibling_dataverse(
-        ds, api, credential_name, ds_pid,
+        ds, url, credential_name, ds_pid,
         *,
         mode='git-only',
         name=None,
@@ -306,7 +294,7 @@ def _add_sibling_dataverse(
     Parameters
     ----------
     ds: Dataset
-    api: pydataverse.api.NativeApi
+    url: Dataverse API Base URL
     ds_pid: dataverse dataset PID
     mode: str, optional
     name: str, optional
@@ -316,8 +304,6 @@ def _add_sibling_dataverse(
     # Set up the actual remotes
     # simplify downstream logic, export yes or no
     export_storage = 'filetree' in mode
-
-    url = api.base_url
 
     existing_siblings = [
         r[1] for r in _yield_ds_w_matching_siblings(
