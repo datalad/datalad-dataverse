@@ -316,6 +316,7 @@ def _add_sibling_dataverse(
             url=url,
             doi=ds_pid,
             name=storage_name,
+            credential_name=credential_name,
             export=export_storage,
             existing=existing,
             known=storage_name in existing_siblings,
@@ -412,13 +413,14 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export, existing,
 
 
 def _add_storage_sibling(
-        ds, url, doi, name, export, existing, known=False):
+        ds, url, doi, name, credential_name, export, existing, known=False):
     """
     Parameters
     ----------
     ds: Dataset
     url: str
     name: str
+    credential_name: str
     export: bool
     existing: {skip, error, reconfigure}
         (Presently unused)
@@ -445,6 +447,9 @@ def _add_storage_sibling(
         #https://github.com/datalad/datalad/issues/6634
         #"autoenable=true"
     ]
+    # supply the credential identifier, if it was explicitly given
+    if credential_name:
+        cmd_args.append(f"credential={credential_name}")
     ds.repo.call_annex(cmd_args)
     yield get_status_dict(
         ds=ds,
