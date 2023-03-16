@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from pathlib import (
+    Path,
+    PurePosixPath,
+)
 
 from pyDataverse.api import NativeApi
 
@@ -187,7 +190,7 @@ def format_doi(doi_in: str) -> str:
     return f'doi:{doi_in}'
 
 
-def mangle_path(path: str | Path) -> Path:
+def mangle_path(path: str | PurePosixPath) -> PurePosixPath:
     """Quote unsupported chars in all elements of a path
 
     Dataverse currently auto-removes a leading dot from directory names. It also
@@ -202,33 +205,30 @@ def mangle_path(path: str | Path) -> Path:
 
     Parameters
     ----------
-    path: str | Path
-        the path that should be mangled
+    path: str | PurePosixPath
+      the path that should be mangled, as a relative path in POSIX
+      notation
 
     Returns
     -------
-    Path
-        a path object with the un-mangled name
+    PurePosixPath
+      path object with the mangled name
     """
 
-    local_path = Path(path)
+    path = PurePosixPath(path)
 
-    # only directories are treated this way:
-    if not local_path.is_dir():
-        filename = _dataverse_filename_quote(local_path.name)
-        local_path = local_path.parent
-    else:
-        filename = None
+    filename = _dataverse_filename_quote(path.name)
+    dpath = path.parent
 
-    if local_path == Path("."):
+    if dpath == PurePosixPath("."):
         # `path` either is '.' or a file in '.'.
         # Nothing to do: '.' has no representation on dataverse anyway.
         # Note also, that Path(".").parts is an empty tuple for some reason,
         # hence the code block below must be protected against this case.
-        dataverse_path = local_path
+        dataverse_path = dpath
     else:
-        dataverse_path = Path(_dataverse_dirname_quote(local_path.parts[0]))
-        for pt in local_path.parts[1:]:
+        dataverse_path = PurePosixPath(_dataverse_dirname_quote(dpath.parts[0]))
+        for pt in dpath.parts[1:]:
             dataverse_path /= _dataverse_dirname_quote(pt)
 
     # re-append file if necessary
@@ -238,30 +238,30 @@ def mangle_path(path: str | Path) -> Path:
     return dataverse_path
 
 
-def unmangle_path(dataverse_path: str | Path) -> Path:
+def unmangle_path(dataverse_path: str | PurePosixPath) -> PurePosixPath:
     """Revert dataverse specific path name mangling
 
     This method undoes the quoting performed by ``mangle_path()``.
 
     Parameters
     ----------
-    dataverse_path: str | Path
-        the path that should be un-mangled
+    dataverse_path: str | PurePosixPath
+      the path that should be un-mangled
 
     Returns
     -------
-    Path
-        a path object with the un-mangled name
+    PurePosixPath
+      a path object with the un-mangled name
     """
-    dataverse_path = Path(dataverse_path)
-    if dataverse_path == Path("."):
+    dataverse_path = PurePosixPath(dataverse_path)
+    if dataverse_path == PurePosixPath("."):
         # `path` either is '.' or a file in '.'.
         # Nothing to do: '.' has no representation on dataverse anyway.
         # Note also, that Path(".").parts is an empty tuple for some reason,
         # hence the code block below must be protected against this case.
         result_path = dataverse_path
     else:
-        result_path = Path(_dataverse_unquote(dataverse_path.parts[0]))
+        result_path = PurePosixPath(_dataverse_unquote(dataverse_path.parts[0]))
         for pt in dataverse_path.parts[1:]:
             result_path /= _dataverse_unquote(pt)
     return result_path
