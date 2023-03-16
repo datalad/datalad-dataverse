@@ -22,7 +22,7 @@ The relevant requirements are listed below.
 
 Feature support
 ^^^^^^^^^^^^^^^^
-``datalad-dataverse`` is developed to be compatible with Dataverse (version 5.13), which
+``datalad-dataverse`` is developed to be compatible with Dataverse (`version 5.13`_), which
 has certain limitations when integrated with DataLad. In particular:
 
 - This extension does not support Dataverse versions prior to v5.13
