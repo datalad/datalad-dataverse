@@ -330,19 +330,21 @@ class OnlineDataverseDataset:
                 reverse=False)
             # Remove "latest" - we already have that
             old_dataset_versions = old_dataset_versions[:-1]
-            self._files_old = {
-                f['dataFile']['id']: FileIdRecord(
-                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                    True  # older versions are always released
+            self._files_old = {}
+            for version in old_dataset_versions:
+                self._files_old.update(
+                    self._get_file_records_from_version_listing(version)
                 )
-                for file_lists in [
-                    (version['files'], version['versionState'])
-                    for version in old_dataset_versions
-                ]
-                for f in file_lists[0]
-            }
-
         return self._files_old
+
+    def _get_file_records_from_version_listing(self, version: dict) -> dict:
+        return {
+            f['dataFile']['id']: FileIdRecord(
+                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                version['versionState'] == "RELEASED",
+            )
+            for f in version['files']
+        }
 
     @property
     def files_latest(self):
@@ -365,16 +367,10 @@ class OnlineDataverseDataset:
                 version=":latest",
             )
             dataset.raise_for_status()
-            dataset_latest = dataset.json()['data']['latestVersion']
             # Latest version in self.dataset is first entry.
-            self._files_latest = {
-                f['dataFile']['id']: FileIdRecord(
-                    Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                    dataset_latest['versionState'] == "RELEASED",
-                )
-                for f in dataset_latest['files']
-            }
-
+            self._files_latest = self._get_file_records_from_version_listing(
+                dataset.json()['data']['latestVersion']
+            )
         return self._files_latest
 
     def remove_from_filelist(self, id):
