@@ -1,7 +1,9 @@
 from itertools import product
 from pathlib import Path
+from unicodedata import lookup
 
 import pytest
+from unidecode import unidecode
 
 from ..utils import (
     _dataverse_dirname_quote,
@@ -14,6 +16,7 @@ from ..utils import (
 
 
 _test_paths = [
+    lookup("dog face") + lookup("cat face"),
     ".x",
     "_x",
     "..x",
@@ -32,6 +35,7 @@ _test_paths = [
     "._dir/x",
     "_.dir/x",
     "__dir/x",
+    "ä",
     "%%;;,_,?-&=",
 ]
 
@@ -49,18 +53,26 @@ def test_format_doi():
         format_doi(123)
 
 
+def _check_simplified_match(path, mangled_path):
+    result = [
+        True
+        if mangled_part.startswith('__not_representable')
+        else str(unmangle_path(mangled_part)) == unidecode(part)
+        for mangled_part, part in zip(mangled_path.parts, path.parts)
+    ]
+    assert all(result)
+
+
 def test_path_mangling_identity():
     for p in _test_paths + ['?;#:eee=2.txt']:
-        assert Path(p) == unmangle_path(mangle_path(p))
+        _check_simplified_match(Path(p), mangle_path(p))
 
 
 def test_path_mangling_sub_dirs():
     for p, q, r in product(_test_paths, _test_paths, _test_paths):
         path = Path(p) / q / r
         mangled_path = mangle_path(path)
-        for part in mangled_path.parts[:-1]:
-            assert part[0] != "."
-        assert unmangle_path(mangled_path) == path
+        _check_simplified_match(path, mangled_path)
 
 
 def test_file_quoting_identity():

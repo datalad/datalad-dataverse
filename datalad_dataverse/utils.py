@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from pyDataverse.api import NativeApi
+from unidecode import unidecode
 
 from datalad_next.utils import update_specialremote_credential
 
@@ -295,7 +296,8 @@ def _dataverse_dirname_quote(dirname: str) -> str:
     dataverse, it is encoded as well to prevent name collisions, for example,
     between ``.datalad`` and ``datalad``.
     """
-    quoted_dirname = _dataverse_quote(dirname, DATAVERSE_DIRNAME_SAFE)
+    ascii_dirname = unidecode(dirname) or f"_not_representable_{len(dirname)}"
+    quoted_dirname = _dataverse_quote(ascii_dirname, DATAVERSE_DIRNAME_SAFE)
     return _encode_leading_dot(quoted_dirname)
 
 
@@ -306,14 +308,15 @@ def _dataverse_filename_quote(filename: str) -> str:
     ``/``, ``:``, ``*``,  ``?``,  ``"``,  ``<``,  ``>``,  ``|``, ``;``,  and
     ``#``.
 
-    In order to be able to use the some decoding for file names and directory
+    In order to be able to use the same decoding for file names and directory
     names, we also encode leading dots in file names, although that is not
     strictly necessary with dataverse, because it would preserve the leading
     dots in file names.
 
 
     """
-    quoted_filename = _dataverse_quote(filename, DATAVERSE_FILENAME_SAFE)
+    ascii_filename = unidecode(filename) or f"_not_representable_{len(filename)}"
+    quoted_filename = _dataverse_quote(ascii_filename, DATAVERSE_FILENAME_SAFE)
     return _encode_leading_dot(quoted_filename)
 
 
