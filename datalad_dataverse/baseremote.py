@@ -119,15 +119,10 @@ class DataverseRemote(SpecialRemote):
         doi = self.annex.getconfig('doi')
         if not doi:
             raise ValueError('doi must be specified')
-        # standardize formating to minimize complexity downstream
+        # standardize formatting to minimize complexity downstream
         doi = format_doi(doi)
-        # we need an acces token, use the repo's configmanager to
-        # query for one
+        # we need an access token, use the repo's configmanager to query for one
         repo = AnnexRepo(self.annex.getgitdir())
-        # TODO the below is almost literally taken from
-        # the datalad-annex:: implementation in datalad-next
-        # this could become a comming helper
-        # TODO https://github.com/datalad/datalad-dataverse/issues/171
         credman = CredentialManager(repo.config)
         credential_name = self.annex.getconfig('credential')
         credential_realm = url.rstrip('/') + '/dataverse'
