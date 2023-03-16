@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import (
     Path,
+    PurePath,
     PurePosixPath,
 )
 
@@ -288,7 +289,8 @@ class DataverseRemote(SpecialRemote):
         PurePosixPath
           annex/<dirhash-lower>/<key>
         """
-        dirhash = self.annex.dirhash_lower(key)
+        # dirhash is reported in platform conventions by git-annex
+        dirhash = PurePath(self.annex.dirhash_lower(key))
         return PurePosixPath(
             'annex',
             dirhash,
