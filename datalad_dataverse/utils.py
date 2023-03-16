@@ -194,7 +194,7 @@ def mangle_path(path: str | PurePosixPath) -> PurePosixPath:
     """Quote unsupported chars in all elements of a path
 
     Dataverse currently auto-removes a leading dot from directory names. It also
-    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\`` in
+    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\\`` in
     directory names. File names may not contain the following characters:
     ``/``, ``:``, ``*``,  ``?``,  ``"``,  ``<``,  ``>``,  ``|``, ``;``,  and
     ``#``.
@@ -288,7 +288,7 @@ def _dataverse_dirname_quote(dirname: str) -> str:
     """ Encode dirname to only contain valid dataverse directory name characters
 
     Directory names in dataverse can only contain alphanum and ``_``, ``-``,
-    ``.``, `` ``, ``/``, and ``\``. All other characters are replaced by
+    ``.``, `` ``, ``/``, and ``\\``. All other characters are replaced by
     ``-<HEXCODE>`` where ``<HEXCODE>`` is a two digit hexadecimal.
 
     Because ``.``, i.e. dot, at the start of a directory name is ignored by
