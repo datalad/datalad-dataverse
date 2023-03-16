@@ -227,9 +227,9 @@ def mangle_path(path: str | PurePosixPath) -> PurePosixPath:
         # hence the code block below must be protected against this case.
         dataverse_path = dpath
     else:
-        dataverse_path = PurePosixPath(_dataverse_dirname_quote(dpath.parts[0]))
-        for pt in dpath.parts[1:]:
-            dataverse_path /= _dataverse_dirname_quote(pt)
+        dataverse_path = PurePosixPath(
+            *[_dataverse_dirname_quote(pt) for pt in dpath.parts]
+        )
 
     # re-append file if necessary
     if filename:
@@ -261,9 +261,9 @@ def unmangle_path(dataverse_path: str | PurePosixPath) -> PurePosixPath:
         # hence the code block below must be protected against this case.
         result_path = dataverse_path
     else:
-        result_path = PurePosixPath(_dataverse_unquote(dataverse_path.parts[0]))
-        for pt in dataverse_path.parts[1:]:
-            result_path /= _dataverse_unquote(pt)
+        result_path = PurePosixPath(
+            *[_dataverse_unquote(pt) for pt in dataverse_path.parts]
+        )
     return result_path
 
 
