@@ -46,8 +46,6 @@ class OnlineDataverseDataset:
         self._dsid = dsid
 
         self._data_access_api = None
-        self._old_dataset_versions = None
-        self._dataset_latest = None
         self._files_old = None
         self._files_latest = None
 
@@ -240,7 +238,6 @@ class OnlineDataverseDataset:
         # https://github.com/datalad/datalad-dataverse/issues/247
         # is resolved.
         self._files_latest = None
-        self._dataset_latest = None
 
     def update_file_metadata(self,
                              identifier,
@@ -285,22 +282,19 @@ class OnlineDataverseDataset:
         return self._data_access_api
 
     @property
-    def old_dataset_versions(self):
-        """Full JSON record of the dataverse dataset.
+    def files_old(self):
+        """Files available from older dataverse dataset versions.
 
-        This is requested once when relevant to look for a key that is not
-        present in the latest version of the dataverse dataset. In such case,
-        `files_old` is build from it.
+        For quick lookup and deduplication, this is a dict {id: FileIdRecord}
         """
-
-        if self._old_dataset_versions is None:
+        if self._files_old is None:
             # This delivers a full record of all known versions of this dataset.
             # Hence, the file lists in the version entries may contain
             # duplicates (unchanged files across versions).
             versions = self._api.get_dataset_versions(self._dsid)
             versions.raise_for_status()
 
-            self._old_dataset_versions = versions.json()['data']
+            old_dataset_versions = versions.json()['data']
             # Expected structure in self._dataset is a list of (version-)
             # dictionaries, which should have a field 'files'. This again is a
             # list of dicts like this:
@@ -330,39 +324,12 @@ class OnlineDataverseDataset:
             # would look like this:
             # (None, None, 'DRAFT'), (2, 0, 'RELEASED'), (1, 0, 'RELEASED')
             # and we need a possible DRAFT to have the greatest key WRT sorting.
-            self._old_dataset_versions.sort(
+            old_dataset_versions.sort(
                 key=lambda v: (v.get('versionNumber') or sys.maxsize,
                                v.get('versionMinorNumber') or sys.maxsize),
                 reverse=False)
             # Remove "latest" - we already have that
-            self._old_dataset_versions = self._old_dataset_versions[:-1]
-
-        return self._old_dataset_versions
-
-    @property
-    def dataset_latest(self):
-        """JSON representation on the latest version of the dataverse dataset.
-
-        This is used to initialize `files_latest` and only requested once.
-        """
-
-        if self._dataset_latest is None:
-            dataset = self._api.get_dataset(
-                identifier=self._dsid,
-                version=":latest",
-            )
-            dataset.raise_for_status()
-            self._dataset_latest = dataset.json()['data']['latestVersion']
-        return self._dataset_latest
-
-    @property
-    def files_old(self):
-        """Files available from older dataverse dataset versions.
-
-        For quick lookup and deduplication, this is a dict {id: FileIdRecord}
-        """
-
-        if self._files_old is None:
+            old_dataset_versions = old_dataset_versions[:-1]
             self._files_old = {
                 f['dataFile']['id']: FileIdRecord(
                     Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
@@ -370,7 +337,7 @@ class OnlineDataverseDataset:
                 )
                 for file_lists in [
                     (version['files'], version['versionState'])
-                    for version in self.old_dataset_versions
+                    for version in old_dataset_versions
                 ]
                 for f in file_lists[0]
             }
@@ -393,13 +360,19 @@ class OnlineDataverseDataset:
         """
 
         if self._files_latest is None:
+            dataset = self._api.get_dataset(
+                identifier=self._dsid,
+                version=":latest",
+            )
+            dataset.raise_for_status()
+            dataset_latest = dataset.json()['data']['latestVersion']
             # Latest version in self.dataset is first entry.
             self._files_latest = {
                 f['dataFile']['id']: FileIdRecord(
                     Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
-                    self.dataset_latest['versionState'] == "RELEASED",
+                    dataset_latest['versionState'] == "RELEASED",
                 )
-                for f in self.dataset_latest['files']
+                for f in dataset_latest['files']
             }
 
         return self._files_latest
