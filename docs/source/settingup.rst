@@ -57,7 +57,7 @@ Then create a dataverse `sibling` to the DataLad dataset:
 
 .. code-block:: bash
    
-    datalad add-sibling-dataverse -s dataverse -d [dataset_location] demo.dataverse.org
+    datalad add-sibling-dataverse -s dataverse -d [dataset_location] https://demo.dataverse.org doi:10.70122/MYT/ESTDOI
 
 
 .. admonition:: TODO
