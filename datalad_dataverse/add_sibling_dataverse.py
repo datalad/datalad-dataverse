@@ -10,16 +10,7 @@ from urllib.parse import (
     quote as urlquote,
 )
 
-from datalad.distribution.dataset import (
-    Dataset,
-    EnsureDataset,
-    datasetmethod,
-    require_dataset,
-)
-from datalad.interface.base import (
-    Interface,
-    build_doc,
-)
+from datalad.distribution.dataset import Dataset
 from datalad.interface.common_opts import (
     recursion_flag,
     recursion_limit
@@ -30,14 +21,10 @@ from datalad.interface.utils import (
     eval_results,
 )
 from datalad.support.param import Parameter
-from datalad.support.constraints import (
-    EnsureChoice,
-    EnsureNone,
-    EnsureStr,
-)
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
-from datalad_next.credman import CredentialManager
 from datalad_next.commands import (
+    build_doc,
+    datasetmethod,
     EnsureCommandParameterization,
     ValidatedInterface,
 )
