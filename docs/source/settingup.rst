@@ -18,17 +18,20 @@ The relevant requirements are listed below.
        If you don't have DataLad_ and its underlying tools (`git`_, `git-annex`_) installed yet, please follow the instructions from `the datalad handbook <http://handbook.datalad.org/en/latest/intro/installation.html>`_.
 
 
+.. _feature_support:
+
+Feature support
+^^^^^^^^^^^^^^^^
+``datalad-dataverse`` is developed to be compatible with Dataverse (version 5.13), which
+has certain limitations when integrated with DataLad. In particular:
+
+- This extension does not support Dataverse versions prior to v5.13
+- This extension does not support unicode in filenames
+- Support for handling previously published Dataverse datasets is experimental
+
+
 Installation
 ^^^^^^^^^^^^
-
-.. attention:: **This extension is undergoing continous development and is in alpha stage!**
-
-   Nevertheless, thanks for your interest in this piece of software! If you want to work with it
-   productively, we recommend that you come back in a few weeks, when we had some post-hackathon
-   time to package it up properly and complete documentation and tutorials. We didn't quite make it
-   to the release during the Hackathon, so regard the instructions below as how it will work in the
-   future.
-
 
 ``datalad-dataverse`` is a Python package available on `pypi <https://pypi.org/project/datalad-dataverse/>`_ and installable via pip_.
 
@@ -43,12 +46,23 @@ Installation
 Getting started
 ^^^^^^^^^^^^^^^
 
-Here's the gist of some of this extension's functionality.
-Checkout the Tutorial for more detailed demonstrations.
+The ``datalad-dataverse`` software allows publishing a DataLad dataset to a Dataverse
+instance. First ensure that your dataset is packaged as a DataLad dataset:
 
-.. attention:: **This extension is undergoing continous development and is in alpha stage!**
+.. code-block:: bash
+   
+    datalad create -d [dataset_location] --force
 
-   Sadly, there is no gist and no tutorial yet - come back a bit later, or help us create one :)
+Then create a dataverse `sibling` to the DataLad dataset:
+
+.. code-block:: bash
+   
+    datalad add-sibling-dataverse -s dataverse -d [dataset_location] demo.dataverse.org
+
+
+.. admonition:: TODO
+
+   Add basic datalad-dataverse commands for publishing to and cloning from dataverse
 
 .. admonition:: HELP! I'm new to this!
 

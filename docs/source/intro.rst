@@ -54,9 +54,9 @@ What can I use this extension for?
 You can use this extension to publish and share your dataset via Dataverse_, and you can use it to clone published DataLad datasets from Dataverse_.
 Here is some inspiration on what you could do:
 
-- Publish your study (including its version history, data, code, results, and provenance) as a DataLad dataset to Dataverse to share it with collaborators or get a DOI for it.
-- Share a published datasets' URL with colleagues and collaborators to give them easy access to your work with a single ``datalad clone``.
-- Clone a friend's DataLad dataset -- from Dataverse!
+- **Publish your study** (including its version history, data, code, results, and provenance) as a DataLad dataset to Dataverse to share it with collaborators or get a DOI for it.
+- **Share a published dataset's URL** with colleagues and collaborators to give them easy access to your work with a single ``datalad clone``.
+- **Clone a friend's DataLad dataset** -- from Dataverse!
 
 
 ``datalad-dataverse`` comes with a range of hidden convenience functions for Dataverse interactions.
@@ -71,3 +71,4 @@ What can I **not** use this extension for?
 - Dataverse installations may have upload or storage limits - exceeding those limits is not possible with this tool. However, you will be able to at least publish the revision history of your dataset even if annexed files are too large.
 - The starting point for working with this extension is a (published) DataLad dataset, not a regular Dataverse dataset.
   This extension will not transform normal Dataverse datasets projects into DataLad datasets, but expose DataLad datasets as Dataverse datasets.
+- Please see the :ref:`feature support <feature_support>` section for particulars of what is and is not supported by this extension package.

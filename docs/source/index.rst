@@ -21,11 +21,6 @@ from `OHBM BrainHack 2022 <https://github.com/ohbm/hackathon2022/issues/43>`__,
 and is the result of a wonderful collaboration between `many awesome people <https://github.com/datalad/datalad-dataverse#contributors->`__.
 If you want to get in touch or on board as well, please see our :ref:`contributing guidelines <contribute>`.
 
-.. attention:: **This extension is undergoing continous development and is in alpha stage!**
-
-   Nevertheless, thanks for your interest in this piece of software! If you want to work with it
-   productively, we recommend that you come back in a few weeks, when we had some post-hackathon
-   time to package it up properly and complete documentation and tutorials.
 
 Documentation overview
 ======================
