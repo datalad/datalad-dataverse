@@ -67,17 +67,20 @@ Then create a dataverse `sibling` to the DataLad dataset:
    
     datalad add-sibling-dataverse -s dataverse -d [dataset_location] https://demo.dataverse.org doi:10.70122/MYT/ESTDOI
 
+This command will report both the URL of the dataverse instance and its DOI as well as a long URL starting with ``datalad-annex::``.
+This URL is what will be relevant for cloning the dataset from DataVerse.
+
 Finally, push the DataLad dataset to Dataverse:
 
 .. code-block:: bash
    
     datalad push --to dataverse
 
-Once the dataset is available on Dataverse, it can also be cloned using the Dataverse-provded DOI:
+Once the dataset is available on Dataverse, it can also be cloned using the ``datalad-annex::`` URL provided by ``add-sibling-dataverse``:
 
 .. code-block:: bash
    
-    datalad clone https://doi.org/10.70122/MYT/ESTDOI
+    datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=https%3A//demo.dataverse.org&doi=doi:10.70122/MYT/ESTDOI'
 
 
 .. admonition:: HELP! I'm new to this!
