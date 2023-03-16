@@ -3,6 +3,7 @@ from pathlib import Path
 from unicodedata import lookup
 
 import pytest
+from unidecode import unidecode
 
 from ..utils import (
     _dataverse_dirname_quote,
@@ -34,6 +35,7 @@ _test_paths = [
     "._dir/x",
     "_.dir/x",
     "__dir/x",
+    "ä",
     "%%;;,_,?-&=",
 ]
 
@@ -55,7 +57,7 @@ def _check_simplified_match(path, mangled_path):
     result = [
         True
         if mangled_part.startswith('__not_representable')
-        else str(unmangle_path(mangled_part)) == part
+        else str(unmangle_path(mangled_part)) == unidecode(part)
         for mangled_part, part in zip(mangled_path.parts, path.parts)
     ]
     assert all(result)
