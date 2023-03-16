@@ -30,6 +30,7 @@ from .utils import mangle_path
 class FileIdRecord:
     path: Path
     is_released: bool
+    is_latest_version: bool
 
 
 class OnlineDataverseDataset:
@@ -337,15 +338,18 @@ class OnlineDataverseDataset:
             self._files_old = {}
             for version in old_dataset_versions:
                 self._files_old.update(
-                    self._get_file_records_from_version_listing(version)
+                    self._get_file_records_from_version_listing(
+                        version, latest=False)
                 )
         return self._files_old
 
-    def _get_file_records_from_version_listing(self, version: dict) -> dict:
+    def _get_file_records_from_version_listing(
+            self, version: dict, latest: bool) -> dict:
         return {
             f['dataFile']['id']: FileIdRecord(
                 Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
                 version['versionState'] == "RELEASED",
+                is_latest_version=latest,
             )
             for f in version['files']
         }
@@ -373,7 +377,8 @@ class OnlineDataverseDataset:
             dataset.raise_for_status()
             # Latest version in self.dataset is first entry.
             self._files_latest = self._get_file_records_from_version_listing(
-                dataset.json()['data']['latestVersion']
+                dataset.json()['data']['latestVersion'],
+                latest=True,
             )
         return self._files_latest
 
@@ -398,5 +403,6 @@ class OnlineDataverseDataset:
 
         self._files_latest[d['dataFile']['id']] = FileIdRecord(
             Path(d.get('directoryLabel', '')) / d['dataFile']['filename'],
-            False  # We just added - it can't be released
+            is_released=False,  # We just added - it can't be released
+            is_latest_version=True,
         )
