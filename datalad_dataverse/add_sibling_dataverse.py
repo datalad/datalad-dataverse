@@ -37,6 +37,17 @@ from datalad.support.constraints import (
 )
 from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.credman import CredentialManager
+from datalad_next.commands import (
+    EnsureCommandParameterization,
+    ValidatedInterface,
+)
+from datalad_next.constraints import (
+    EnsureChoice,
+    EnsureStr,
+    EnsureURL
+)
+
+from datalad_next.constraints.dataset import EnsureDataset
 
 from datalad_dataverse.utils import (
     get_api as get_dataverse_api,
@@ -48,7 +59,7 @@ lgr = logging.getLogger('datalad.distributed.add_sibling_dataverse')
 
 
 @build_doc
-class AddSiblingDataverse(Interface):
+class AddSiblingDataverse(ValidatedInterface):
     """Create a dataset sibling(-tandem) on a Dataverse instance.
 
     Dataverse is a web application to share and cite research data.
@@ -71,31 +82,40 @@ class AddSiblingDataverse(Interface):
         ),
     ]
 
+    _validator_ = EnsureCommandParameterization(dict(
+        dv_url=EnsureURL(required=['scheme']),
+        ds_pid=EnsureStr(),
+        dataset=EnsureDataset(installed=True, purpose="add dataverse sibling"),
+        name=EnsureStr(),
+        storage_name=EnsureStr(),
+        existing=EnsureChoice('skip', 'error', 'reconfigure'),
+        mode=EnsureChoice(
+                'annex', 'filetree', 'annex-only', 'filetree-only',
+                'git-only')),
+        validate_defaults=("dataset",)
+    )
+
     _params_ = dict(
         dv_url=Parameter(
             args=("dv_url",),
             metavar='URL',
-            doc="URL identifying the dataverse instance to connect to",
-            constraints=EnsureStr()),
+            doc="URL identifying the dataverse instance to connect to",),
         ds_pid=Parameter(
             args=("ds_pid",),
-            constraints=EnsureStr(),
             doc="""""",
         ),
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""specify the dataset to process.  If
             no dataset is given, an attempt is made to identify the dataset
-            based on the current working directory""",
-            constraints=EnsureDataset() | EnsureNone()),
+            based on the current working directory""",),
         name=Parameter(
             args=('-s', '--name',),
             metavar='NAME',
             doc="""name of the sibling. If none is given, the hostname-part
             of the URL will be used.
             With `recursive`, the same name will be used to label all
-            the subdatasets' siblings.""",
-            constraints=EnsureStr() | EnsureNone()),
+            the subdatasets' siblings.""",),
         storage_name=Parameter(
             args=("--storage-name",),
             metavar="NAME",
@@ -103,8 +123,7 @@ class AddSiblingDataverse(Interface):
             Must not be identical to the sibling name. If not specified,
             defaults to the sibling name plus '-storage' suffix. If only
             a storage sibling is created, this setting is ignored, and
-            the primary sibling name is used.""",
-            constraints=EnsureStr() | EnsureNone()),
+            the primary sibling name is used.""",),
         credential=Parameter(
             args=("--credential",),
             metavar='NAME',
@@ -122,7 +141,6 @@ class AddSiblingDataverse(Interface):
         ),
         existing=Parameter(
             args=("--existing",),
-            constraints=EnsureChoice('skip', 'error', 'reconfigure'),
             doc="""action to perform, if a (storage) sibling is already
             configured under the given name.
             In this case, sibling creation can be skipped ('skip') or the
@@ -132,9 +150,6 @@ class AddSiblingDataverse(Interface):
         recursion_limit=recursion_limit,
         mode=Parameter(
             args=("--mode",),
-            constraints=EnsureChoice(
-                'annex', 'filetree', 'annex-only', 'filetree-only',
-                'git-only'),
             doc="""
             TODO: Not sure yet, what modes we can/want support here.
 
@@ -182,11 +197,8 @@ class AddSiblingDataverse(Interface):
             recursive: bool = False,
             recursion_limit: Optional[int] = None,
     ):
-        # Make sure we actually have a dataset to operate on
-        ds = require_dataset(
-            dataset,
-            check_installed=True,
-            purpose='create Dataverse sibling(s)')
+        # dataset is a next' DatasetParameter
+        ds = dataset.ds
 
         # shared result properties
         res_kwargs = dict(
