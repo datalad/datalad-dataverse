@@ -102,7 +102,7 @@ class DataverseRemote(SpecialRemote):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
-        self.configs['dlacredential'] = \
+        self.configs['credential'] = \
             'Identifier used to retrieve an API token from a local ' \
             'credential store'
         # dataverse dataset interface
@@ -129,7 +129,7 @@ class DataverseRemote(SpecialRemote):
         # this could become a comming helper
         # TODO https://github.com/datalad/datalad-dataverse/issues/171
         credman = CredentialManager(repo.config)
-        credential_name = self.annex.getconfig('dlacredential')
+        credential_name = self.annex.getconfig('credential')
         # we keep this here to not have OnlineDataverseDataset
         # have to deal with datalad-specific
         api = get_api(

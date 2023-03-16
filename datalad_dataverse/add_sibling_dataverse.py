@@ -383,7 +383,7 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export, existing,
     if credential_name:
         # we need to quote the credential name too.
         # e.g., it is not uncommon for credentials to be named after URLs
-        remote_url += f'&dlacredential={urlquote(credential_name)}'
+        remote_url += f'&credential={urlquote(credential_name)}'
 
     # announce the sibling to not have an annex (we have a dedicated
     # storage sibling for that) to avoid needless annex-related processing
