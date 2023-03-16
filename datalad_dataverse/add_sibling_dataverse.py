@@ -235,8 +235,6 @@ class AddSiblingDataverse(ValidatedInterface):
             for partial_result in res.get('result', []):
                 yield dict(res_kwargs, **partial_result)
 
-        # 6. TODO: if everything went well, save credential?
-
     @staticmethod
     def custom_result_renderer(res, **kwargs):
         from datalad.ui import ui
