@@ -176,7 +176,6 @@ class DataverseRemote(SpecialRemote):
         replace_id = self._get_fileid_from_key(key, latest_only=True)
 
         self._upload_file(
-            # TODO must be PurePosixPath
             remote_path=self._get_remotepath_for_key(key),
             key=key,
             local_file=local_file,
@@ -328,7 +327,7 @@ class DataverseRemote(SpecialRemote):
 
     def _get_fileid_from_remotepath(
             self,
-            path: Path,
+            path: PurePosixPath,
             *,
             latest_only: bool) -> int | None:
         return self._dvds.get_fileid_from_path(path, latest_only=latest_only)
