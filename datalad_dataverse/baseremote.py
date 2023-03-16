@@ -20,7 +20,7 @@ from datalad_next.datasets import LegacyAnnexRepo as AnnexRepo
 
 from .dataset import OnlineDataverseDataset
 from .utils import (
-    get_api,
+    get_native_api,
     format_doi,
 )
 
@@ -102,7 +102,7 @@ class DataverseRemote(SpecialRemote):
         super().__init__(*args)
         self.configs['url'] = 'The Dataverse URL for the remote'
         self.configs['doi'] = 'DOI to the dataset'
-        self.configs['dlacredential'] = \
+        self.configs['credential'] = \
             'Identifier used to retrieve an API token from a local ' \
             'credential store'
         # dataverse dataset interface
@@ -119,26 +119,36 @@ class DataverseRemote(SpecialRemote):
         doi = self.annex.getconfig('doi')
         if not doi:
             raise ValueError('doi must be specified')
-        # standardize formating to minimize complexity downstream
+        # standardize formatting to minimize complexity downstream
         doi = format_doi(doi)
-        # we need an acces token, use the repo's configmanager to
-        # query for one
+        # we need an access token, use the repo's configmanager to query for one
         repo = AnnexRepo(self.annex.getgitdir())
-        # TODO the below is almost literally taken from
-        # the datalad-annex:: implementation in datalad-next
-        # this could become a comming helper
-        # TODO https://github.com/datalad/datalad-dataverse/issues/171
         credman = CredentialManager(repo.config)
-        credential_name = self.annex.getconfig('dlacredential')
+        credential_name = self.annex.getconfig('credential')
+        credential_realm = url.rstrip('/') + '/dataverse'
+        credential_name, cred = credman.obtain(
+            name=credential_name if credential_name else None,
+            prompt=f'A dataverse API token is required for access. '
+                   f'Find it at {url} by clicking on your name at the top '
+                   f'right corner and then clicking on API Token',
+            # give to make legacy credentials accessible
+            type_hint='token',
+            expected_props=['secret'],
+            query_props={'realm': credential_realm},
+        )
+        # the cred must have a secret at this point as it was in expected_props
+        apitoken = cred['secret']
         # we keep this here to not have OnlineDataverseDataset
         # have to deal with datalad-specific
-        api = get_api(
+        api = get_native_api(
             url,
-            credman,
-            credential_name=credential_name,
+            apitoken,
         )
         # TODO this can raise, capture and raise proper error
         self._dvds = OnlineDataverseDataset(api, doi)
+        # save the credential, now that it has successfully been used
+        credman.set(credential_name, _lastused=True, **cred)
+
 
     def initremote(self):
         """
