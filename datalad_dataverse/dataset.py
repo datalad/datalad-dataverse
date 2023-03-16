@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from pathlib import Path
+from pathlib import (
+    Path,
+    PurePosixPath,
+)
 import re
 
 from pyDataverse.api import ApiAuthorizationError
@@ -29,7 +32,7 @@ from .utils import mangle_path
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
 @dataclass
 class FileIdRecord:
-    path: Path
+    path: PurePosixPath
     is_released: bool
     is_latest_version: bool
 
@@ -71,7 +74,7 @@ class OnlineDataverseDataset:
             raise RuntimeError("Cannot find dataset")
 
     def get_fileid_from_path(
-            self, path: Path, *, latest_only: bool) -> int | None:
+            self, path: PurePosixPath, *, latest_only: bool) -> int | None:
         """Get the id of a file, that matches a given path
 
         The path is interpreted as the conjunction of a ``directoryLabel`` and
@@ -79,7 +82,7 @@ class OnlineDataverseDataset:
 
         Parameters
         ----------
-        path: Path
+        path: PurePosixPath
         latest_only: bool
             Whether to only consider the latest version on dataverse. If
             `False`, matching against older versions will only be performed
@@ -118,14 +121,14 @@ class OnlineDataverseDataset:
         else:
             return rec.is_latest_version
 
-    def has_path(self, path: Path) -> bool:
+    def has_path(self, path: PurePosixPath) -> bool:
         path = mangle_path(path)
         self._ensure_file_records_for_all_versions()
         return path in set(
             f.path for f in self._file_records_by_fileid.values()
         )
 
-    def has_path_in_latest_version(self, path: Path) -> bool:
+    def has_path_in_latest_version(self, path: PurePosixPath) -> bool:
         path = mangle_path(path)
         return path in set(
             f.path for f in self._file_records_by_fileid.values()
@@ -166,7 +169,7 @@ class OnlineDataverseDataset:
 
     def upload_file(self,
                     local_path: Path,
-                    remote_path: Path,
+                    remote_path: PurePosixPath,
                     replace_id: int | None = None) -> int:
         remote_path = mangle_path(remote_path)
         datafile = Datafile()
@@ -210,7 +213,7 @@ class OnlineDataverseDataset:
         # make sure this property actually exists before assigning:
         # (This may happen on `git-annex-copy --fast`)
         self._file_records_by_fileid[uploaded_df['id']] = FileIdRecord(
-            Path(upload_rec.get('directoryLabel', '')) / \
+            PurePosixPath(upload_rec.get('directoryLabel', '')) / \
             uploaded_df['filename'],
             is_released=False,   # We just added - it can't be released
             is_latest_version=True,
@@ -219,9 +222,9 @@ class OnlineDataverseDataset:
         return uploaded_df['id']
 
     def rename_file(self,
-                    new_path: Path,
+                    new_path: PurePosixPath,
                     rename_id: int | None = None,
-                    rename_path: Path | None = None):
+                    rename_path: PurePosixPath | None = None):
         """
         Raises
         ------
@@ -275,7 +278,7 @@ class OnlineDataverseDataset:
                      response.content).groupdict()['rec']
         )
         self._file_records_by_fileid[d['id']] = FileIdRecord(
-            Path(d.get('directoryLabel', '')) / d['label'],
+            PurePosixPath(d.get('directoryLabel', '')) / d['label'],
             is_released=False,  # We just renamed - it can't be released
             is_latest_version=True,
         )
@@ -388,7 +391,8 @@ class OnlineDataverseDataset:
             self, version: dict, latest: bool) -> dict:
         return {
             f['dataFile']['id']: FileIdRecord(
-                Path(f.get('directoryLabel', '')) / f['dataFile']['filename'],
+                PurePosixPath(f.get('directoryLabel', '')) / \
+                f['dataFile']['filename'],
                 version['versionState'] == "RELEASED",
                 is_latest_version=latest,
             )

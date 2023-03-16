@@ -1,5 +1,5 @@
 from itertools import product
-from pathlib import Path
+from pathlib import PurePosixPath
 
 import pytest
 
@@ -51,12 +51,12 @@ def test_format_doi():
 
 def test_path_mangling_identity():
     for p in _test_paths + ['?;#:eee=2.txt']:
-        assert Path(p) == unmangle_path(mangle_path(p))
+        assert PurePosixPath(p) == unmangle_path(mangle_path(p))
 
 
 def test_path_mangling_sub_dirs():
     for p, q, r in product(_test_paths, _test_paths, _test_paths):
-        path = Path(p) / q / r
+        path = PurePosixPath(p) / q / r
         mangled_path = mangle_path(path)
         for part in mangled_path.parts[:-1]:
             assert part[0] != "."
