@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import namedtuple
+from dataclasses import dataclass
 
 from pathlib import Path
 
@@ -17,7 +17,8 @@ from pyDataverse.api import DataAccessApi
 
 from .utils import mangle_path
 
-# Object to hold what's on dataverse's end for a given database id.
+
+# Object to hold what's on dataverse's end for a given database file id.
 # We need the paths in the latest version (if the id is part of that) in order
 # to know whether we need to replace rather than just upload a file, and we need
 # to know whether an id is released, since that implies we can't replace it
@@ -25,7 +26,10 @@ from .utils import mangle_path
 # The latter meaning: It can be removed from the new DRAFT version, but it's
 # still available via its id from an older version of the dataverse dataset.
 # This namedtuple is meant to be the value type of a dict with ids as its keys:
-FileIdRecord = namedtuple("FileIdRecord", ["path", "is_released"])
+@dataclass
+class FileIdRecord:
+    path: Path
+    is_released: bool
 
 
 class OnlineDataverseDataset:
