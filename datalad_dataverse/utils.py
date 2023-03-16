@@ -324,12 +324,13 @@ def _dataverse_quote(name: str,
     """ Encode name to only contain characters from the set ``safe``
 
     All characters that are not in the ``safe`` set and the escape character
-    ``esc`` are replaced by ``<esc><HEXCODE>`` where ``<HEXCODE>`` is a
-    two digit hexadecimal representation of the code of the character
+    ``<esc><HEXCODE><esc>`` where ``<HEXCODE>`` is a hexadecimal representation
+    of the unicode of the character.
 
+    If any character is escaped, the escape character itself is also escaped,
+    otherwise escape characters are not escaped
     The escape character must be in the safe set and character codes must
-    be in the interval 0 ... 127. We also assume the hexdigits are in the
-    safe set.
+    be larger than 0.
 
     Parameters
     ----------
@@ -343,11 +344,11 @@ def _dataverse_quote(name: str,
     Returns
     -------
     str
-        The name in which all non-safe characters are escaped
+        The name in which all non-safe characters and the ``esc`` are escaped
     """
 
     def verify_range(character: str) -> bool:
-        if 0 <= ord(character) <= 127:
+        if 0 <= ord(character):
             return True
         raise ValueError(
             f"Out of range character '{character}'"
@@ -355,8 +356,10 @@ def _dataverse_quote(name: str,
         )
 
     assert esc in safe
+    assert set("0123456789abcdefABCDEF").issubset(safe)
+
     return "".join([
-        f"{esc}{ord(c):02X}" if c not in safe or c == esc else c
+        f"{esc}{ord(c):X}{esc}" if c not in safe or c == esc else c
         for c in name
         if verify_range(c)
     ])
@@ -418,25 +421,24 @@ def _dataverse_unquote_escaped(quoted_name: str,
     """ Revert the quoting done in ``dataverse_quote()`` """
     try:
         unquoted_name = ""
-        state = 0
+        decoding = False
         for index, character in enumerate(quoted_name):
-            if state == 0:
+            if not decoding:
                 if character == esc:
-                    state = 1
-                    code = 0
+                    decoding = True
+                    value = 0
                 else:
                     unquoted_name += character
-            elif state == 1:
-                state = 2
-                code = 16 * int(character, 16)
             else:
-                state = 0
-                code += int(character, 16)
-                unquoted_name += chr(code)
+                if character == esc:
+                    decoding = False
+                    unquoted_name += chr(value)
+                else:
+                    value = value * 16 + int(character, 16)
     except Exception as e:
         raise ValueError("Dataverse quoting error in:" + quoted_name) from e
 
-    if state != 0:
+    if decoding is True:
         raise ValueError("Dataverse quoting error in:" + quoted_name)
 
     return unquoted_name

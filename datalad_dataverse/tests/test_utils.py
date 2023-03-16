@@ -1,3 +1,5 @@
+import unicodedata
+import unicodedata
 from itertools import product
 from pathlib import PurePosixPath
 
@@ -11,6 +13,9 @@ from ..utils import (
     mangle_path,
     unmangle_path
 )
+
+
+dog_cat = unicodedata.lookup('dog face') + unicodedata.lookup('cat face')
 
 
 _test_paths = [
@@ -33,6 +38,9 @@ _test_paths = [
     "_.dir/x",
     "__dir/x",
     "%%;;,_,?-&=",
+    "?;#:eee=2.txt",
+    "überfüllt",
+    dog_cat
 ]
 
 
@@ -73,3 +81,8 @@ def test_dir_quoting_leading_dot():
         q = _dataverse_dirname_quote(p)
         assert q[0] != "."
         assert p == _dataverse_unquote(q)
+
+
+def test_unicode_quoting_leading_dot():
+    for p in ["\u20ac", "ööl-ins-feuäär", dog_cat]:
+        assert p == _dataverse_unquote(_dataverse_dirname_quote(p))
