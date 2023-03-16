@@ -123,7 +123,7 @@ class BuildManPage(Command):
         dist = self.distribution
         #homepage = dist.get_url()
         #appname = self._parser.prog
-        appname = 'datalad'
+        appname = 'datalad-dataverse'
 
         cfg = read_configuration(
             opj(dirname(dirname(__file__)), 'setup.cfg'))['metadata']
