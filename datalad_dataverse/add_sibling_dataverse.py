@@ -91,7 +91,9 @@ class AddSiblingDataverse(ValidatedInterface):
         existing=EnsureChoice('skip', 'error', 'reconfigure'),
         mode=EnsureChoice(
                 'annex', 'filetree', 'annex-only', 'filetree-only',
-                'git-only')),
+                'git-only'),
+        trust_level=EnsureChoice('trusted', 'semitrusted', 'untrusted') | EnsureNone()
+    ),
         validate_defaults=("dataset",)
     )
 
@@ -179,6 +181,12 @@ class AddSiblingDataverse(ValidatedInterface):
             together, a publication dependency on the storage sibling is
             configured for the regular sibling in the local dataset clone.
             """),
+        trust_level=Parameter(
+            args=("--trust-level",),
+            metavar="TRUST-LEVEL",
+            doc="""specify a trust level for the storage sibling. If not
+        specified, the default git-annex trust level is used. 'trust'
+        should be used with care (see the git-annex-trust man page).""", )
     )
 
     @staticmethod
@@ -196,6 +204,7 @@ class AddSiblingDataverse(ValidatedInterface):
             existing: str = 'error',
             recursive: bool = False,
             recursion_limit: Optional[int] = None,
+            trust_level: Optional[str] = None,
     ):
         # dataset is a next' DatasetParameter
         ds = dataset.ds
@@ -246,6 +255,7 @@ class AddSiblingDataverse(ValidatedInterface):
                 name=name,
                 storage_name=storage_name,
                 existing=existing,
+                trust_level=trust_level,
             )
         for res in ds.foreach_dataset(
                 _dummy,
@@ -312,6 +322,7 @@ def _add_sibling_dataverse(
         name=None,
         storage_name=None,
         existing='error',
+        trust_level=None,
 ):
     """
     meant to be executed via foreach-dataset
@@ -347,6 +358,7 @@ def _add_sibling_dataverse(
             name=storage_name,
             export=export_storage,
             existing=existing,
+            trust_level=trust_level,
             known=storage_name in existing_siblings,
         )
 
@@ -445,7 +457,8 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export,
 
 
 def _add_storage_sibling(
-        ds, url, doi, name, export, existing, known=False):
+        ds, url, doi, name, export, existing, trust_level=None,
+        known=False):
     """
     Parameters
     ----------
@@ -458,6 +471,9 @@ def _add_storage_sibling(
     known: bool
         Flag whether the sibling is a known remote (no implied
         necessary existance of content on the remote).
+    trust_level: {trusted, semitrusted, untrusted, None}
+        git annex trust level for the storage remote. Uses git-annex
+        default when set to None.
     """
     if known and existing == 'skip':
         yield _get_skip_sibling_result(name, ds, 'storage')
@@ -479,6 +495,8 @@ def _add_storage_sibling(
         #"autoenable=true"
     ]
     ds.repo.call_annex(cmd_args)
+    if trust_level is not None:
+        ds.config.set(f'remote.{name}.annex-trustlevel', trust_level, scope='local')
     yield get_status_dict(
         ds=ds,
         status='ok',

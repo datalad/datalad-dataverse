@@ -113,3 +113,61 @@ def test_workflow(dataverse_admin_api,
 
     cloned_repo.enable_remote('special_remote')
     cloned_ds.get(str(cloned_ds.pathobj / "subdir" / "newname.md"), **ckwa)
+
+@pytest.mark.parametrize("trust_level", ["trusted", "semitrusted", "untrusted", None])
+def test_trustlevel(dataverse_admin_api,
+                    dataverse_admin_credential_setup,
+                    dataverse_demoinstance_url,
+                    dataverse_instance_url,
+                    dataverse_dataset,
+                    existing_dataset,
+                    *, trust_level):
+    ds = existing_dataset
+    payload = 'content'
+    payload_fname = 'somefile.txt'
+    (ds.pathobj / payload_fname).write_text(payload)
+    ds.save(**ckwa)
+
+    dspid = dataverse_dataset
+    # smoke test for trust levels
+    results = ds.add_sibling_dataverse(
+        dv_url=dataverse_instance_url,
+        ds_pid=dspid,
+        name='git_remote',
+        storage_name='special_remote',
+        mode='annex',
+        existing='error',
+        recursive=False,
+        recursion_limit=None,
+        credential="dataverse",
+        trust_level=trust_level,
+        **ckwa)
+    # make sure this worked
+    assert_result_count(results, 0, status='error')
+    assert_result_count(results, 1,
+                        status='ok',
+                        action='add_sibling_dataverse')
+    assert_result_count(results, 1,
+                        status='ok',
+                        action='add_sibling_dataverse.storage')
+    ds.push(to='git_remote')
+    # is the config as we expect it?
+    if trust_level is not None:
+        assert ds.config.get(f'remote.special_remote.annex-trustlevel',
+                             trust_level)
+    else:
+        # if trust_level is None, there shouldn't be a config entry
+        assert not ds.config.get(f'remote.special_remote.annex-trustlevel',
+                                 trust_level)
+    # now check if drop has the expected safety mechanisms
+    if trust_level == 'untrusted':
+        res = ds.drop('somefile.txt', on_failure='ignore', **ckwa)
+        assert_result_count(res, 1, status='error', action='drop')
+        # now with reckless
+        res = ds.drop('somefile.txt', reckless='availability',
+                      on_failure='ignore', **ckwa)
+        assert_result_count(res, 1, status='ok', action='drop')
+    else:
+        # dropping should work fine
+        res = ds.drop('somefile.txt', on_failure='ignore', **ckwa)
+        assert_result_count(res, 1, status='ok', action='drop')
