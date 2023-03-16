@@ -349,9 +349,8 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _add_git_sibling(ds, url, doi, name, credential_name, export,
-                        existing,
-                        known, publish_depends=None):
+def _add_git_sibling(ds, url, doi, name, credential_name, export, existing,
+                     known, publish_depends=None):
     """
     Parameters
     ----------
