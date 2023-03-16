@@ -14,25 +14,6 @@ from datalad_next.utils import update_specialremote_credential
 __docformat__ = "numpy"
 
 
-# This cannot currently be queried for via public API. See gh-27
-DATASET_SUBJECTS = [
-    'Agricultural Sciences',
-    'Arts and Humanities',
-    'Astronomy and Astrophysics',
-    'Business and Management',
-    'Chemistry',
-    'Computer and Information Science',
-    'Earth and Environmental Sciences',
-    'Engineering',
-    'Law',
-    'Mathematical Sciences',
-    'Medicine, Health and Life Sciences',
-    'Physics',
-    'Social Sciences',
-    'Other',
-]
-
-
 # We do not consider ``.`` to be safe in a dirname because
 # dataverse will ignore it, if it is the first character in
 # a directory name.
