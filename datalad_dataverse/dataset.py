@@ -162,7 +162,7 @@ class OnlineDataverseDataset:
         # http error handling
         status.raise_for_status()
         # This ID is not part of the latest version anymore.
-        self.remove_from_filelist(fid)
+        self._file_records_by_fileid.pop(fid, None)
 
     def upload_file(self,
                     local_path: Path,
@@ -202,13 +202,21 @@ class OnlineDataverseDataset:
         # If we replaced, `replaced_id` is not part of the latest version
         # anymore.
         if replace_id is not None:
-            self.remove_from_filelist(replace_id)
+            self._file_records_by_fileid.pop(replace_id, None)
 
-        uploaded_file = response.json()['data']['files'][0]
+        upload_rec = response.json()['data']['files'][0]
+        uploaded_df = upload_rec['dataFile']
         # update cache:
-        self.add_to_filelist(uploaded_file)
+        # make sure this property actually exists before assigning:
+        # (This may happen on `git-annex-copy --fast`)
+        self._file_records_by_fileid[uploaded_df['id']] = FileIdRecord(
+            Path(upload_rec.get('directoryLabel', '')) / \
+            uploaded_df['filename'],
+            is_released=False,   # We just added - it can't be released
+            is_latest_version=True,
+        )
         # return the database fileid of the upload
-        return uploaded_file['dataFile']['id']
+        return uploaded_df['id']
 
     def rename_file(self,
                     new_path: Path,
@@ -254,6 +262,8 @@ class OnlineDataverseDataset:
             json_str=datafile.json(),
             is_filepid=False,
         )
+        # TODO depending on the release status, we may have to remove
+        # the previous record from the internal listing
         response.raise_for_status()
 
         # the response-content on-success has something like this:
@@ -416,25 +426,3 @@ class OnlineDataverseDataset:
                 latest=True,
             )
         return self._file_records
-
-    def remove_from_filelist(self, id):
-        """Update self.files_latest after removal"""
-        # make sure this property actually exists before assigning:
-        # (This may happen when git-annex-export decides to remove a key w/o
-        # even considering checkpresent)
-        self._file_records_by_fileid.pop(id, None)
-
-    def add_to_filelist(self, d):
-        """Update self.files_latest after upload
-
-        d: dict
-          dataverse description dict of the file; this dict is in the list
-          'data.files' of the response to a successful upload
-        """
-        # make sure this property actually exists before assigning:
-        # (This may happen on `git-annex-copy --fast`)
-        self._file_records_by_fileid[d['dataFile']['id']] = FileIdRecord(
-            Path(d.get('directoryLabel', '')) / d['dataFile']['filename'],
-            is_released=False,  # We just added - it can't be released
-            is_latest_version=True,
-        )
