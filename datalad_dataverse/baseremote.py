@@ -100,11 +100,11 @@ class DataverseRemote(SpecialRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.configs['url'] = 'The Dataverse URL for the remote'
-        self.configs['doi'] = 'DOI to the dataset'
+        self.configs['url'] = 'URL of the Dataverse site'
+        self.configs['doi'] = \
+            'DOI-style persistent identifier of the Dataverse dataset'
         self.configs['credential'] = \
-            'Identifier used to retrieve an API token from a local ' \
-            'credential store'
+            'name of a DataLad credential with a Dataverse API token to use'
         # dataverse dataset interface
         self._dvds = None
 
