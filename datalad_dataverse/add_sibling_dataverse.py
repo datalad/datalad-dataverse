@@ -6,6 +6,7 @@ from __future__ import annotations
 __docformat__ = "numpy"
 
 import logging
+from pathlib import PurePosixPath
 from urllib.parse import quote as urlquote
 
 from datalad_next.commands import (
@@ -76,6 +77,12 @@ class AddSiblingDataverse(ValidatedInterface):
             args=("ds_pid",),
             doc="""""",
         ),
+        root_path=Parameter(
+            args=('--root-path',),
+            metavar='PATH',
+            doc="""optional alternative root path for the sibling inside the
+            Dataverse dataset. This can be used to represent multiple DataLad
+            datasets within a single Dataverse dataset without conflict."""),
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""specify the dataset to process.  If
@@ -156,6 +163,7 @@ class AddSiblingDataverse(ValidatedInterface):
             dv_url: str,
             ds_pid: str,
             *,
+            root_path: PurePosixPath | None = None,
             dataset: DatasetParameter | None = None,
             name: str = 'dataverse',
             storage_name: str | None = None,
@@ -191,6 +199,7 @@ class AddSiblingDataverse(ValidatedInterface):
                 url=dv_url,
                 credential_name=credential,
                 ds_pid=ds_pid,
+                root_path=root_path,
                 mode=mode,
                 name=name,
                 storage_name=storage_name,
@@ -227,6 +236,7 @@ class AddSiblingDataverse(ValidatedInterface):
 def _add_sibling_dataverse(
         ds, url, credential_name, ds_pid,
         *,
+        root_path=None,
         mode='git-only',
         name=None,
         storage_name=None,
@@ -256,6 +266,7 @@ def _add_sibling_dataverse(
         ds=ds,
         url=url,
         doi=ds_pid,
+        root_path=root_path,
         credential_name=credential_name,
         export=export_storage,
         existing=existing,
@@ -292,7 +303,7 @@ def _get_skip_sibling_result(name, ds, type_):
 
 def _add_git_sibling(
         *,
-        ds, url, doi, name, credential_name, export, existing,
+        ds, url, doi, root_path, name, credential_name, export, existing,
         known, publish_depends=None):
     """
     Parameters
@@ -328,6 +339,9 @@ def _add_git_sibling(
         # e.g., it is not uncommon for credentials to be named after URLs
         remote_url += f'&credential={urlquote(credential_name)}'
 
+    if root_path:
+        remote_url += f'&rootpath={urlquote(str(root_path))}'
+
     # announce the sibling to not have an annex (we have a dedicated
     # storage sibling for that) to avoid needless annex-related processing
     # and speculative whining by `siblings()`
@@ -355,8 +369,9 @@ def _add_git_sibling(
 
 
 def _add_storage_sibling(
-        *,
-        ds, url, doi, name, credential_name, export, existing, known=False):
+    *, ds, url, doi, root_path, name, credential_name, export, existing,
+    known=False,
+):
     """
     Parameters
     ----------
@@ -393,6 +408,9 @@ def _add_storage_sibling(
     # supply the credential identifier, if it was explicitly given
     if credential_name:
         cmd_args.append(f"credential={credential_name}")
+    if root_path:
+        cmd_args.append(f"rootpath={root_path}")
+
     ds.repo.call_annex(cmd_args)
     yield get_status_dict(
         ds=ds,

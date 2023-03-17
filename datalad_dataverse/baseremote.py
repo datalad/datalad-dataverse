@@ -100,11 +100,13 @@ class DataverseRemote(SpecialRemote):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.configs['url'] = 'The Dataverse URL for the remote'
-        self.configs['doi'] = 'DOI to the dataset'
+        self.configs['url'] = 'URL of the Dataverse site'
+        self.configs['doi'] = \
+            'DOI-style persistent identifier of the Dataverse dataset'
+        self.configs['rootpath'] = \
+            'optional alternative root path to use in the Dataverse dataset'
         self.configs['credential'] = \
-            'Identifier used to retrieve an API token from a local ' \
-            'credential store'
+            'name of a DataLad credential with a Dataverse API token to use'
         # dataverse dataset interface
         self._dvds = None
 
@@ -119,6 +121,7 @@ class DataverseRemote(SpecialRemote):
         doi = self.annex.getconfig('doi')
         if not doi:
             raise ValueError('doi must be specified')
+        dv_root_path = self.annex.getconfig('rootpath')
         # standardize formatting to minimize complexity downstream
         doi = format_doi(doi)
         # we need an access token, use the repo's configmanager to query for one
@@ -145,10 +148,9 @@ class DataverseRemote(SpecialRemote):
             apitoken,
         )
         # TODO this can raise, capture and raise proper error
-        self._dvds = OnlineDataverseDataset(api, doi)
+        self._dvds = OnlineDataverseDataset(api, doi, root_path=dv_root_path)
         # save the credential, now that it has successfully been used
         credman.set(credential_name, _lastused=True, **cred)
-
 
     def initremote(self):
         """

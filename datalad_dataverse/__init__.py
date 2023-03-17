@@ -32,7 +32,7 @@ register_config(
     description="Convenience conversion of Dataverse dataset landing page "
     "URLs to git-cloneable 'datalad-annex::'-type URLs. It enables cloning "
     "from dataset webpage directly, and implies a remote sibling in 'annex' "
-    "mode (i.e., with keys, not exports) "
+    "mode (i.e., with keys, not exports) and no alternative root path being used"
     "See https://docs.datalad.org/design/url_substitution.html for details",
     dialog='question',
     scope='global',
