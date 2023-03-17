@@ -18,17 +18,20 @@ The relevant requirements are listed below.
        If you don't have DataLad_ and its underlying tools (`git`_, `git-annex`_) installed yet, please follow the instructions from `the datalad handbook <http://handbook.datalad.org/en/latest/intro/installation.html>`_.
 
 
+.. _feature_support:
+
+Feature support
+^^^^^^^^^^^^^^^^
+``datalad-dataverse`` is developed to be compatible with Dataverse (`version 5.13`_), which
+has certain limitations when integrated with DataLad. In particular:
+
+- This extension does not support Dataverse versions prior to v5.13
+- This extension does not support unicode in filenames
+- Support for handling previously published Dataverse datasets is experimental
+
+
 Installation
 ^^^^^^^^^^^^
-
-.. attention:: **This extension is undergoing continous development and is in alpha stage!**
-
-   Nevertheless, thanks for your interest in this piece of software! If you want to work with it
-   productively, we recommend that you come back in a few weeks, when we had some post-hackathon
-   time to package it up properly and complete documentation and tutorials. We didn't quite make it
-   to the release during the Hackathon, so regard the instructions below as how it will work in the
-   future.
-
 
 ``datalad-dataverse`` is a Python package available on `pypi <https://pypi.org/project/datalad-dataverse/>`_ and installable via pip_.
 
@@ -43,12 +46,42 @@ Installation
 Getting started
 ^^^^^^^^^^^^^^^
 
-Here's the gist of some of this extension's functionality.
-Checkout the Tutorial for more detailed demonstrations.
+.. admonition:: Tutorial
 
-.. attention:: **This extension is undergoing continous development and is in alpha stage!**
+   For detailed instructions, please refer to the :ref:`tutorial`.
 
-   Sadly, there is no gist and no tutorial yet - come back a bit later, or help us create one :)
+
+The ``datalad-dataverse`` software allows publishing a DataLad dataset to a Dataverse
+instance. First you have to create an empty Dataverse dataset with a dedicated DOI, which
+will be used in the code below (see how to do this in the :ref:`tutorial`).
+
+Next, ensure that your dataset is packaged as a DataLad dataset:
+
+.. code-block:: bash
+   
+    datalad create -d [dataset_location] --force
+
+Then create a dataverse `sibling` to the DataLad dataset:
+
+.. code-block:: bash
+   
+    datalad add-sibling-dataverse -s dataverse -d [dataset_location] https://demo.dataverse.org doi:10.70122/MYT/ESTDOI
+
+This command will report both the URL of the dataverse instance and its DOI as well as a long URL starting with ``datalad-annex::``.
+This URL is what will be relevant for cloning the dataset from DataVerse.
+
+Finally, push the DataLad dataset to Dataverse:
+
+.. code-block:: bash
+   
+    datalad push --to dataverse
+
+Once the dataset is available on Dataverse, it can also be cloned using the ``datalad-annex::`` URL provided by ``add-sibling-dataverse``:
+
+.. code-block:: bash
+   
+    datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=https%3A//demo.dataverse.org&doi=doi:10.70122/MYT/ESTDOI'
+
 
 .. admonition:: HELP! I'm new to this!
 
