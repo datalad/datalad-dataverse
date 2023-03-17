@@ -61,11 +61,11 @@ class AddSiblingDataverse(ValidatedInterface):
         dict(
             text="Add a dataverse dataset sibling for sharing and citing",
             code_py="""\
-            >>> ds = Dataset('.')
-            >>> ds.add_sibling_dataverse(
-            ...   url='https://demo.dataverse.org',
-            ...   name='dataverse',
-            ...   ds_pid='doi:10.5072/FK2/PMPMZM')
+            > ds = Dataset('.')
+            > ds.add_sibling_dataverse(
+            .   url='https://demo.dataverse.org',
+            .   name='dataverse',
+            .   ds_pid='doi:10.5072/FK2/PMPMZM')
             """,
             code_cmd="""\
             datalad add-sibling-dataverse \\
