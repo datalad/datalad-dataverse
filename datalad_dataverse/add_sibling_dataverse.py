@@ -251,30 +251,29 @@ def _add_sibling_dataverse(
     # simplify downstream logic, export yes or no
     export_storage = 'filetree' in mode
 
+    # identical kwargs for both sibing types
+    kwa = dict(
+        ds=ds,
+        url=url,
+        doi=ds_pid,
+        credential_name=credential_name,
+        export=export_storage,
+        existing=existing,
+    )
     if mode != 'git-only':
         yield from _add_storage_sibling(
-            ds=ds,
-            url=url,
-            doi=ds_pid,
             name=storage_name,
-            credential_name=credential_name,
-            export=export_storage,
-            existing=existing,
             known=storage_name in sibling_conflicts,
+            **kwa
         )
 
     if mode not in ('annex-only', 'filetree-only'):
         yield from _add_git_sibling(
-            ds=ds,
-            url=url,
-            doi=ds_pid,
             name=name,
-            credential_name=credential_name,
-            export=export_storage,
-            existing=existing,
             known=name in sibling_conflicts,
             publish_depends=storage_name if mode != 'git-only'
-            else None
+            else None,
+            **kwa
         )
 
 
@@ -291,8 +290,10 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _add_git_sibling(ds, url, doi, name, credential_name, export, existing,
-                     known, publish_depends=None):
+def _add_git_sibling(
+        *,
+        ds, url, doi, name, credential_name, export, existing,
+        known, publish_depends=None):
     """
     Parameters
     ----------
@@ -354,6 +355,7 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export, existing,
 
 
 def _add_storage_sibling(
+        *,
         ds, url, doi, name, credential_name, export, existing, known=False):
     """
     Parameters
