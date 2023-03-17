@@ -33,7 +33,7 @@ lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
 @build_doc
 class AddSiblingDataverse(ValidatedInterface):
-    """Create a dataset sibling(-tandem) on a Dataverse instance.
+    """Add a dataset sibling(-tandem) connecting to a Dataverse dataset.
 
     Dataverse is a web application to share and cite research data.
 
@@ -43,15 +43,18 @@ class AddSiblingDataverse(ValidatedInterface):
     In order to be able to use this command, a personal access token has to be
     generated on the Dataverse platform. You can find it by clicking on your
     name at the top right corner, and then clicking on Api Token>Create Token.
+
+    Furthermore, a dataset on such a dataverse instance has to already exist in
+    order to add it as a sibling to a DataLad dataset.
     """
 
     _examples_ = [
-        dict(text="Create a dataverse dataset sibling for sharing and citing",
+        dict(text="add a dataverse dataset sibling for sharing and citing",
              code_py="""\
                  > ds = Dataset('.')
-                 > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse')
+                 > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse', ds_pid='doi:10.5072/FK2/PMPMZM')
              """,
-             code_cmd="datalad add-sibling-dataverse demo.dataverse.org -s dataverse",
+             code_cmd="datalad add-sibling-dataverse demo.dataverse.org doi:10.5072/FK2/PMPMZM -s dataverse",
         ),
     ]
 
@@ -75,7 +78,12 @@ class AddSiblingDataverse(ValidatedInterface):
             doc="URL identifying the dataverse instance to connect to",),
         ds_pid=Parameter(
             args=("ds_pid",),
-            doc="""""",
+            doc="""Persistent identifier of the dataverse dataset to connect to.
+            This can be found on the dataset's page. Either right at the top
+            underneath the title of the dataset as an URL or in the dataset's
+            metadata. Both formats (doi:10.5072/FK2/PMPMZM and
+            https://doi.org/10.5072/FK2/PMPMZM) are supported for this
+            parameter.""",
         ),
         root_path=Parameter(
             args=('--root-path',),
@@ -139,10 +147,10 @@ class AddSiblingDataverse(ValidatedInterface):
             that is capable of storing any number of historical file versions
             using a content hash layout ('annex'|'annex-only'), the 'filetree'
             mode can used.
-            This mode offers a human-readable data organization on the WebDAV
+            This mode offers a human-readable data organization on the dataverse
             remote that matches the file tree of a dataset (branch).
-            However, it can, consequently, only store a single version of each
-            file in the file tree.
+            Note, however, that dataverse comes with restrictions on what file
+            and directory names are possible.
             This mode is useful for depositing a single dataset
             snapshot for consumption without DataLad. The 'filetree' mode
             nevertheless allows for cloning such a single-version dataset,
