@@ -145,7 +145,8 @@ filetree mode
 *************
 
 ``--mode filetree`` is an export mode, i.e., it will mirror a snapshot of the current state of your :term:`DataLad dataset` to Dataverse.
-This is more human readable on Dataverse, but a clone
+This is more human readable on Dataverse, but wouldn't include historical versions of your annexed files.
+The Git history of your dataset is included in this mode, too.
 
 .. code-block:: bash
 
