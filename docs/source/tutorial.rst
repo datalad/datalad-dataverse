@@ -40,6 +40,7 @@ It already has a DOI, and you can find it under the ``Metadata`` tab as "Persist
 
 .. image:: ./_static/tutorial/dv_obtain_doi.png
 
+
 Finally, make a note of the **URL** of your dataverse instance (e.g., ``https://demo.dataverse.org``), and the **DOI** of your draft dataset.
 You will need this information for :ref:`step 3 <3>`.
 
@@ -96,9 +97,18 @@ You'll find this token if you follow the instructions in the prompt under your u
 
 .. image:: ./_static/tutorial/dv_token.png
 
-If authentication with the token was successful, it will be saved into your system's keyring.
-If you have accounts on several different dataverse instances or multiple users with different tokens, you can use and store several tokens with the ``--credential`` parameter of the command.
-For example, ``datalad add-sibling-dataverse https://demo.dataverse.org doi:10.70122/FK2/NQPP6A --credential demo-dataverse`` will search for a previously used credential ``demo-dataverse``, or prompt for a token if it can't find one and save it after success.
+If authentication with the token was successful, it will be saved into your
+system's keyring.  If you have accounts on several different dataverse
+instances or multiple users with different tokens, you can use and store
+several tokens with the ``--credential`` parameter of the command.  For
+example::
+
+  datalad add-sibling-dataverse \
+    --credential demo-dataverse \
+    https://demo.dataverse.org doi:10.70122/FK2/NQPP6A
+
+will search for a previously used credential ``demo-dataverse``, or prompt for
+a token if it can't find one and save it after success.
 
 The ``datalad add-sibling-dataverse`` command needs at least two pieces of information: The **URL** of your Dataverse instance, and a **persistent identifier** of the draft :term:`Dataverse dataset` created in :ref:`step 1 <1>`.
 Depending on what you want to transfer to Dataverse, you also need to configure the command with the correct ``--mode``.
