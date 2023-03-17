@@ -1,5 +1,5 @@
 .. include:: ./links.inc
-.. _intro:
+.. _faq:
 
 FAQ
 ===
