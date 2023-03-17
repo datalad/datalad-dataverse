@@ -33,42 +33,55 @@ lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
 @build_doc
 class AddSiblingDataverse(ValidatedInterface):
-    """Add a dataset sibling(-tandem) connecting to a Dataverse dataset.
+    """Add a Dataverse dataset as a sibling(-tandem)
 
     Dataverse is a web application to share and cite research data.
 
-    Research data published in Dataverse receives an academic citation which
-    allows to grant full credit and increases visibility of your work.
+    This command registers an existing Dataverse dataset as a sibling of a
+    DataLad dataset. Both dataset version history and file content can then be
+    deposited at a Dataverse site via the standard ``push`` command.
+
+    If a DataLad's dataset version history was deposited on Dataverse, a
+    dataset can also be cloned from Dataverse again, via the standard ``clone``
+    command.
 
     In order to be able to use this command, a personal access token has to be
     generated on the Dataverse platform. You can find it by clicking on your
     name at the top right corner, and then clicking on Api Token>Create Token.
-
-    Furthermore, a dataset on such a dataverse instance has to already exist in
-    order to add it as a sibling to a DataLad dataset.
     """
 
     _examples_ = [
-        dict(text="add a dataverse dataset sibling for sharing and citing",
-             code_py="""\
-                 > ds = Dataset('.')
-                 > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse', ds_pid='doi:10.5072/FK2/PMPMZM')
-             """,
-             code_cmd="datalad add-sibling-dataverse demo.dataverse.org doi:10.5072/FK2/PMPMZM -s dataverse",
+        dict(
+            text="add a dataverse dataset sibling for sharing and citing",
+            code_py="""\
+            >>> ds = Dataset('.')
+            >>> ds.add_sibling_dataverse(
+            ...   url='https://demo.dataverse.org',
+            ...   name='dataverse',
+            ...   ds_pid='doi:10.5072/FK2/PMPMZM')
+            """,
+            code_cmd="""\
+            datalad add-sibling-dataverse \\
+              -s dataverse \\
+              https://demo.dataverse.org doi:10.5072/FK2/PMPMZM \\
+            """,
         ),
     ]
 
-    _validator_ = EnsureCommandParameterization(dict(
-        dv_url=EnsureURL(required=['scheme']),
-        ds_pid=EnsureStr(),
-        dataset=EnsureDataset(installed=True, purpose="add dataverse sibling"),
-        name=EnsureStr(),
-        storage_name=EnsureStr(),
-        existing=EnsureChoice('skip', 'error', 'reconfigure'),
-        mode=EnsureChoice(
+    _validator_ = EnsureCommandParameterization(
+        param_constraints=dict(
+            dv_url=EnsureURL(required=['scheme']),
+            ds_pid=EnsureStr(),
+            dataset=EnsureDataset(
+                installed=True, purpose="add dataverse sibling"),
+            name=EnsureStr(),
+            storage_name=EnsureStr(),
+            existing=EnsureChoice('skip', 'error', 'reconfigure'),
+            mode=EnsureChoice(
                 'annex', 'filetree', 'annex-only', 'filetree-only',
-                'git-only')),
-        validate_defaults=("dataset",)
+                'git-only')
+        ),
+        validate_defaults=("dataset",),
     )
 
     _params_ = dict(
@@ -77,7 +90,7 @@ class AddSiblingDataverse(ValidatedInterface):
             metavar='URL',
             doc="URL identifying the dataverse instance to connect to",),
         ds_pid=Parameter(
-            args=("ds_pid",),
+            args=("PID",),
             doc="""Persistent identifier of the dataverse dataset to connect to.
             This can be found on the dataset's page. Either right at the top
             underneath the title of the dataset as an URL or in the dataset's
@@ -90,7 +103,8 @@ class AddSiblingDataverse(ValidatedInterface):
             metavar='PATH',
             doc="""optional alternative root path for the sibling inside the
             Dataverse dataset. This can be used to represent multiple DataLad
-            datasets within a single Dataverse dataset without conflict."""),
+            datasets within a single Dataverse dataset without conflict.
+            Must be given in POSIX notation."""),
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""specify the dataset to process.  If
@@ -126,6 +140,7 @@ class AddSiblingDataverse(ValidatedInterface):
         ),
         existing=Parameter(
             args=("--existing",),
+            choices=('skip', 'reconfigure', 'error'),
             doc="""action to perform, if a (storage) sibling is already
             configured under the given name.
             In this case, sibling creation can be skipped ('skip') or the
@@ -133,6 +148,8 @@ class AddSiblingDataverse(ValidatedInterface):
             command be instructed to fail ('error').""", ),
         mode=Parameter(
             args=("--mode",),
+            choices=('annex', 'filetree', 'annex-only', 'filetree-only',
+                     'git-only'),
             doc="""
             TODO: Not sure yet, what modes we can/want support here.
 
