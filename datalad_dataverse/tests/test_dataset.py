@@ -4,7 +4,10 @@ These tests (should) somewhat close mirror the ones fpr pydataverse.
 At least as long as we are using that API layer.
 """
 
-from pathlib import PurePosixPath
+from pathlib import (
+    Path,
+    PurePosixPath,
+)
 import json
 
 from datalad_next.tests.utils import md5sum
@@ -58,7 +61,7 @@ def test_file_handling(
 
 
 def check_rename_file(odd, fileid, name='place.txt'):
-    new_path = PurePosixPath('fresh') / name
+    new_path = PurePosixPath(*(('fresh',) + Path(name).parts))
     assert not odd.has_path(new_path)
     assert odd.has_fileid(fileid)
     odd.rename_file(new_path, fileid)
