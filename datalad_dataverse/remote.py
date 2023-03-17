@@ -1,3 +1,5 @@
+"""git-annex special remote with export capabilities"""
+
 from __future__ import annotations
 
 from annexremote import ExportRemote
@@ -12,90 +14,12 @@ from .baseremote import DataverseRemote as BaseDataverseRemote
 
 
 class DataverseRemote(ExportRemote, BaseDataverseRemote):
-    """Special remote to interface dataverse datasets.
+    """Special remote to interface dataverse datasets with export-cabilities
 
-    There are two modes of operation:
-    - "Regular" special remote (configured with exporttree=false; default),
-      where a flat ist of annex keys is put into that dataverse dataset and
-    - export remote (configured with exporttree=yes), where the actual worktree
-      is put into the dataverse dataset
+    The class extends the base implementation with a git-annex EXPORT protocol
+    extension for special remotes.
 
-    Dataverse
-    ---------
-
-    Dataverse datasets come with their own versioning. A version is created upon
-    publishing a draft version. When a change is pushed, it is altering an
-    already existing draft version or - if none existed - the push (implicitly)
-    creates a new draft version. Publishing is not part of this special remotes
-    operations as it has no means to "discover" that this should happen (it only
-    communicates with git-annex on a per-file basis and does not even know what
-    annex command ran).
-
-    Files put on dataverse have a database ID associated with them, while there
-    "path" in the dataverse dataset is treated as metadata to that file. The ID
-    is persistent, but not technically a content identifier as it is not created
-    from the content like hash. However, once files are published (by being part
-    of a published dataset version) those IDs can serve as a content identifier
-    for practical purposes, since they are not going to change anymore. There's
-    no "real" guarantee for that, but in reality changing it would require some
-    strange DB migration to be performed on the side of the respective dataverse
-    instance. Note, however, that a file can be pushed into a draft version and
-    replaced/removed before it was ever published. In that case the ID of an
-    annex key could be changed. Hence, to some extent the special remote needs
-    to be aware of whether an annex key and its ID was part of a released
-    version of the dataverse dataset in order to make use of those IDs.
-
-    Recording the IDs allows accessing older versions of a file even in export
-    mode, as well as faster accessing keys for download. The latter is because
-    the API requires the ID, and a path based approach would therefore require
-    looking up the ID first (adding a request). Therefore, the special remote
-    records the IDs of annex keys and tries to rely on them if possible.
-
-    There is one more trap to mention with dataverse and that is its limitations
-    to directory and file names.
-    See https://github.com/IQSS/dataverse/issues/8807#issuecomment-1164434278
-
-    Regular special remote
-    ----------------------
-
-    In principle the regular special remote simply maintains a flat list of
-    annex keys in the dataverse dataset, where the presented file names are the
-    anney keys. Therefore, it is feasible to simply rely on the remote path of a
-    key when checking for its presence. However, as laid out above, it is faster
-    to utilize knowledge about the database ID, so the idea is to use path
-    matching only as a fallback.
-
-    Export remote
-    -------------
-
-    In export mode the special remote can not conclude the annex key from a
-    remote path in general. In order to be able to access versions of a file
-    that are not part of the latest version (draft or not) of the dataverse
-    dataset, reliance on recorded database IDs is crucial.
-
-    Implementation note
-    -------------------
-
-    The special remote at first only retrieves a record of what is in the latest
-    version (draft or not) of the dataverse dataset including an annotation of
-    content on whether it is released. This annotation is crucial, since it has
-    implications on what to record should changes be pushed to it.
-    For example:
-    It is not possible to actually remove content from a released version. That
-    means, if annex asks the special remote to remove content, it can only make
-    sure that the respective key is not part of the current draft anymore. Its
-    ID, however, remains on record. If the content was not released yet, it is
-    actually gone and the ID is taken off the record.
-
-    This record is retrieved lazily when first required, but only once (avoiding
-    an additional per-key request) and then updated locally when changes are
-    pushed. (Note, that we know that we only ever push into a draft version)
-    In case of checking the presence of a key that does not appear to be part of
-    the latest version, a request for such a record on all known dataverse
-    dataset versions is made. Again, this is lazy and only one request. This may
-    potentially be a relatively expensive request, but the introduced latency by
-    having smaller but possibly much more requests is likely a lot more
-    expensive.
+    It does not implement IMPORTTREE.
     """
     #
     # Export API
