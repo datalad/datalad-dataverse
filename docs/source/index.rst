@@ -48,7 +48,6 @@ Commands and API
 
    cmdline
    modref
-   faq
 
 Acknowledgements
 ================
