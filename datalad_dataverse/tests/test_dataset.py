@@ -4,10 +4,7 @@ These tests (should) somewhat close mirror the ones fpr pydataverse.
 At least as long as we are using that API layer.
 """
 
-from pathlib import (
-    Path,
-    PurePosixPath,
-)
+from pathlib import PurePosixPath
 import json
 
 from datalad_next.tests.utils import md5sum
@@ -36,8 +33,7 @@ def test_file_handling(
 
     path_info = dict()
     for path in paths:
-        if path.parent != tmp_path:
-            path.parent.mkdir()
+        path.parent.mkdir(parents=True, exist_ok=True)
         relative_path = path.relative_to(tmp_path)
         fcontent = 'content of: ' + str(relative_path)
         path.write_text(fcontent)
@@ -54,14 +50,15 @@ def test_file_handling(
         path_to_check = relative_path.parent / 'mykey'
         fileid = check_replace_file(odd, fileid, path_to_check, tmp_path)
         check_rename_file(
-            odd, fileid, name=str(relative_path.parent / ('ren' + path.name))
+            odd, fileid,
+            name=PurePosixPath(relative_path.parent / ('ren' + path.name))
         )
         check_remove(odd, fileid, PurePosixPath(path.name))
         check_duplicate_file_deposition(odd, tmp_path)
 
 
-def check_rename_file(odd, fileid, name='place.txt'):
-    new_path = PurePosixPath(*(('fresh',) + Path(name).parts))
+def check_rename_file(odd, fileid, name=PurePosixPath('place.txt')):
+    new_path = PurePosixPath('fresh' / name)
     assert not odd.has_path(new_path)
     assert odd.has_fileid(fileid)
     odd.rename_file(new_path, fileid)
