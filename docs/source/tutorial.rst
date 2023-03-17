@@ -232,6 +232,21 @@ Once you have this URL, anyone with an account on the Dataverse instance and the
    | 		datalad siblings -d "/tmp/my-clone" enable -s dataverse-storage
    install(ok): /tmp/tmp/my-clone-of-annex-mode (dataset)
 
+.. note::
+
+   As a convenience it is also possible to use the URL of a Dataverse dataset landing
+   page directly for ``clone``::
+
+     datalad clone \
+       https://demo.dataverse.org/dataset.xhtml?persistentId=doi:10.70122/FK2/IPNGCY
+
+   Internally, it will be converted into the format shown above. This is
+   intended to be used for one-off interactive cloning. For scripted access it
+   is advisable to use the detailed format above, because changes in dataset
+   layout and API are less likely to have an impact on this method, whereas the
+   behavior of the convenience method may change in the future.
+
+
 Afterwards, enable the special remote in the clone with the provided command, and retrieve file content using ``datalad get``:
 
 .. code-block:: bash
