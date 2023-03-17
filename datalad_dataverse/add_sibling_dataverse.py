@@ -33,53 +33,75 @@ lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
 @build_doc
 class AddSiblingDataverse(ValidatedInterface):
-    """Add a dataset sibling(-tandem) connecting to a Dataverse dataset.
+    """Add a Dataverse dataset as a sibling(-tandem)
 
     Dataverse is a web application to share and cite research data.
 
-    Research data published in Dataverse receives an academic citation which
-    allows to grant full credit and increases visibility of your work.
+    This command registers an existing Dataverse dataset as a sibling of a
+    DataLad dataset. Both dataset version history and file content can then be
+    deposited at a Dataverse site via the standard ``push`` command.
+
+    Dataverse imposes strict limits on directory names (and to some degree also
+    file name). Therefore, names of files that conflict with these rules (e.g.,
+    a directory name with any character not found in the English alphabet) are
+    mangled on-push. This mangling does not impact file names in the DataLad
+    dataset (also not for clones from Dataverse). See the package documentation
+    for details.
+
+    If a DataLad's dataset version history was deposited on Dataverse, a
+    dataset can also be cloned from Dataverse again, via the standard ``clone``
+    command.
 
     In order to be able to use this command, a personal access token has to be
     generated on the Dataverse platform. You can find it by clicking on your
-    name at the top right corner, and then clicking on Api Token>Create Token.
-
-    Furthermore, a dataset on such a dataverse instance has to already exist in
-    order to add it as a sibling to a DataLad dataset.
+    name at the top right corner, and then clicking on API Token>Create Token.
     """
 
     _examples_ = [
-        dict(text="add a dataverse dataset sibling for sharing and citing",
-             code_py="""\
-                 > ds = Dataset('.')
-                 > ds.add_sibling_dataverse(url='https://demo.dataverse.org', name='dataverse', ds_pid='doi:10.5072/FK2/PMPMZM')
-             """,
-             code_cmd="datalad add-sibling-dataverse demo.dataverse.org doi:10.5072/FK2/PMPMZM -s dataverse",
+        dict(
+            text="Add a dataverse dataset sibling for sharing and citing",
+            code_py="""\
+            >>> ds = Dataset('.')
+            >>> ds.add_sibling_dataverse(
+            ...   url='https://demo.dataverse.org',
+            ...   name='dataverse',
+            ...   ds_pid='doi:10.5072/FK2/PMPMZM')
+            """,
+            code_cmd="""\
+            datalad add-sibling-dataverse \\
+              -s dataverse \\
+              https://demo.dataverse.org doi:10.5072/FK2/PMPMZM \\
+            """,
         ),
     ]
 
-    _validator_ = EnsureCommandParameterization(dict(
-        dv_url=EnsureURL(required=['scheme']),
-        ds_pid=EnsureStr(),
-        dataset=EnsureDataset(installed=True, purpose="add dataverse sibling"),
-        name=EnsureStr(),
-        storage_name=EnsureStr(),
-        existing=EnsureChoice('skip', 'error', 'reconfigure'),
-        mode=EnsureChoice(
+    _validator_ = EnsureCommandParameterization(
+        param_constraints=dict(
+            dv_url=EnsureURL(required=['scheme']),
+            ds_pid=EnsureStr(),
+            dataset=EnsureDataset(
+                installed=True, purpose="add dataverse sibling"),
+            name=EnsureStr(),
+            storage_name=EnsureStr(),
+            existing=EnsureChoice('skip', 'error', 'reconfigure'),
+            mode=EnsureChoice(
                 'annex', 'filetree', 'annex-only', 'filetree-only',
-                'git-only')),
-        validate_defaults=("dataset",)
+                'git-only')
+        ),
+        validate_defaults=("dataset",),
     )
 
     _params_ = dict(
         dv_url=Parameter(
             args=("dv_url",),
             metavar='URL',
-            doc="URL identifying the dataverse instance to connect to",),
+            doc="""URL identifying the dataverse instance to connect to
+            (e.g., https://demo.dataverse.org)""",),
         ds_pid=Parameter(
-            args=("ds_pid",),
-            doc="""Persistent identifier of the dataverse dataset to connect to.
-            This can be found on the dataset's page. Either right at the top
+            args=("PID",),
+            doc="""Persistent identifier of the dataverse dataset to
+            use as a sibling. This PID can be found on the dataset's
+            landing page on Dataverse. Either right at the top
             underneath the title of the dataset as an URL or in the dataset's
             metadata. Both formats (doi:10.5072/FK2/PMPMZM and
             https://doi.org/10.5072/FK2/PMPMZM) are supported for this
@@ -90,10 +112,11 @@ class AddSiblingDataverse(ValidatedInterface):
             metavar='PATH',
             doc="""optional alternative root path for the sibling inside the
             Dataverse dataset. This can be used to represent multiple DataLad
-            datasets within a single Dataverse dataset without conflict."""),
+            datasets within a single Dataverse dataset without conflict.
+            Must be given in POSIX notation."""),
         dataset=Parameter(
             args=("-d", "--dataset"),
-            doc="""specify the dataset to process.  If
+            doc="""specify the dataset to add the sibling to.  If
             no dataset is given, an attempt is made to identify the dataset
             based on the current working directory""",),
         name=Parameter(
@@ -115,17 +138,13 @@ class AddSiblingDataverse(ValidatedInterface):
             doc="""
             name of the credential providing an API token for the dataverse
             installation of your choice, to be used for authorization.
-            The credential can be supplied via
-            configuration setting 'datalad.credential.<name>.token', or
-            environment variable DATALAD_CREDENTIAL_<NAME>_TOKEN, or will
-            be queried from the active credential store using the provided
-            name. If none is provided, the last-used credential for the
-            dataverse url will be used. Only if a credential name was given, it 
-            will be encoded in the URL of the created dataverse Git remote, 
-            credential auto-discovery will be performed on each remote access.""",
+            If no credential is given or known, a credential discovery will
+            attempted based on the Dataverse URL. If no credential can be
+            found, a token is prompted for.""",
         ),
         existing=Parameter(
             args=("--existing",),
+            choices=('skip', 'reconfigure', 'error'),
             doc="""action to perform, if a (storage) sibling is already
             configured under the given name.
             In this case, sibling creation can be skipped ('skip') or the
@@ -133,31 +152,23 @@ class AddSiblingDataverse(ValidatedInterface):
             command be instructed to fail ('error').""", ),
         mode=Parameter(
             args=("--mode",),
+            choices=('annex', 'filetree', 'annex-only', 'filetree-only',
+                     'git-only'),
             doc="""
-            TODO: Not sure yet, what modes we can/want support here.
-
-            Siblings can be created in various modes:
-            full-featured sibling tandem, one for a dataset's Git history
-            and one storage sibling to host any number of file versions
-            ('annex').
-            A single sibling for the Git history only ('git-only').
-            A single annex sibling for multi-version file storage only
-            ('annex-only').
-            As an alternative to the standard (annex) storage sibling setup
-            that is capable of storing any number of historical file versions
-            using a content hash layout ('annex'|'annex-only'), the 'filetree'
-            mode can used.
-            This mode offers a human-readable data organization on the dataverse
-            remote that matches the file tree of a dataset (branch).
-            Note, however, that dataverse comes with restrictions on what file
-            and directory names are possible.
-            This mode is useful for depositing a single dataset
-            snapshot for consumption without DataLad. The 'filetree' mode
-            nevertheless allows for cloning such a single-version dataset,
-            because the full dataset history can still be pushed to the WebDAV
-            server.
-            Git history hosting can also be turned off for this setup
-            ('filetree-only').
+            Different sibling setups with varying ability to accept file
+            content and dataset versions are supported:
+            'annex' for a sibling tandem, one for a dataset's Git history
+            and one storage sibling to host any number of file versions;
+            'git-only' for a single sibling for the Git history only;
+            'annex-only' for a single annex sibling for multi-version file
+            storage, but no dataset Git history;
+            'filetree' for a human-readable data organization on the dataverse
+            end that matches the file tree of a dataset branch. This mode
+            is useful for depositing a single dataset snapshot for consumption
+            without DataLad. A dataset's Git history is included in the export
+            and enabled cloning from Dataverse.
+            'filetree-only' disables the Git history export, and removes the
+            ability to clone from Dataverse.
             When both a storage sibling and a regular sibling are created
             together, a publication dependency on the storage sibling is
             configured for the regular sibling in the local dataset clone.
@@ -171,13 +182,13 @@ class AddSiblingDataverse(ValidatedInterface):
             dv_url: str,
             ds_pid: str,
             *,
-            root_path: PurePosixPath | None = None,
             dataset: DatasetParameter | None = None,
             name: str = 'dataverse',
             storage_name: str | None = None,
             mode: str = 'annex',
             credential: str | None = None,
             existing: str = 'error',
+            root_path: PurePosixPath | None = None,
     ):
         # dataset is a next' DatasetParameter
         ds = dataset.ds

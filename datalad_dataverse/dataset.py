@@ -1,3 +1,5 @@
+"""Dataverse IO abstraction"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -54,6 +56,18 @@ class OnlineDataverseDataset:
     root path for all dataset operations. It will not be possible to upload,
     download, rename (etc) files from outside this prefix scope, or across
     scopes.
+
+    On initialization only a record of what is in the latest version (draft or
+    not) of the dataverse dataset is retrived, including an annotation of
+    content on whether it is released. This annotation is crucial, since it has
+    implications on what to record should changes be uploaded.  For
+    example: It is not possible to actually remove content from a released
+    version.
+
+    This record is later maintained locally when changes are made without ever
+    requesting a full update again. In case of checking the presence of a file
+    that does not appear to be part of the latest version, a request for such a
+    record on all known dataverse dataset versions is made.
     """
     def __init__(self, api, dsid: str, root_path: str | None = None):
         # dataverse native API handle
