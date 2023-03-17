@@ -10,6 +10,7 @@ import json
 from datalad_next.tests.utils import md5sum
 
 from ..dataset import OnlineDataverseDataset as ODD
+from ..utils import mangle_path
 
 
 def test_file_handling(
@@ -44,8 +45,8 @@ def test_file_handling(
     check_duplicate_file_deposition(odd, tmp_path)
 
 
-def check_rename_file(odd, fileid):
-    new_path = PurePosixPath('fresh') / 'place.txt'
+def check_rename_file(odd, fileid, name='place.txt'):
+    new_path = PurePosixPath('fresh') / name
     assert not odd.has_path(new_path)
     assert odd.has_fileid(fileid)
     odd.rename_file(new_path, fileid)
@@ -150,7 +151,7 @@ def check_file_metadata_update(api, dsid, odd, fileid, fpath):
     # the original metadata for this file on dataverse
     om = _get_md(fileid)
     # this is a subset of what `upload_datafile()` reported
-    assert om['label'] == fpath.name
+    assert om['label'] == str(mangle_path(fpath.name))
     assert om['description'] == ''
     assert om['restricted'] is False
     # this is "the id of the file metadata version" according to the docs
@@ -192,5 +193,51 @@ def check_file_metadata_update(api, dsid, odd, fileid, fpath):
 
     # 'label' and 'filename' are one and the same thing
     _update_md(fileid, {'label': 'mykey'}, om['id'])
-    mm = api.get_datafiles_metadata(dsid).json()['data'][0]
-    assert mm['label'] == mm['dataFile']['filename'] == 'mykey'
+    mm = api.get_datafiles_metadata(dsid).json()['data']
+    info = [m for m in mm if m['label'] == 'mykey'][0]
+    assert info['label'] == info['dataFile']['filename'] == 'mykey'
+    old = [m for m in mm if m['label'] == mangle_path(fpath.name)]
+    assert old == []
+
+
+def test_name_mangling(
+        tmp_path,
+        dataverse_admin_api,
+        dataverse_dataaccess_api,
+        dataverse_dataset,
+):
+    odd = ODD(dataverse_admin_api, dataverse_dataset)
+
+    paths = (
+        tmp_path / ".dot-in-front" 'c1.txt',
+        tmp_path / " space-in-front" 'c2.txt',
+        tmp_path / "-minus-in-front" 'c3.txt',
+        tmp_path / "Ö-in-front" 'c4.txt',
+        tmp_path / ".Ö-dot-Ö-in-front" 'c5.txt',
+        tmp_path / " Ö-space-Ö-in-front" 'c6.txt',
+    )
+
+    path_info = dict()
+    for path in paths:
+        if path.parent != tmp_path:
+            path.parent.mkdir()
+        fcontent = path.name
+        path.write_text(path.name)
+        src_md5 = md5sum(path)
+        fileid = check_upload(odd, fcontent, path, src_md5)
+        path_info[path] = (src_md5, fileid)
+
+    for path, (src_md5, fileid) in path_info.items():
+        check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
+
+        check_file_metadata_update(
+            dataverse_admin_api,
+            dataverse_dataset,
+            odd,
+            fileid,
+            path)
+
+        fileid = check_replace_file(odd, fileid, tmp_path)
+        check_rename_file(odd, fileid, name="ren" + path.name)
+        check_remove(odd, fileid, PurePosixPath(path.name))
+        check_duplicate_file_deposition(odd, tmp_path)
