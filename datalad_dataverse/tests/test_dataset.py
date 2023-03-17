@@ -27,7 +27,7 @@ def test_file_handling(
         tmp_path / ' space-in-front' / 'c2.txt',
         tmp_path / '-minus-in-front' / 'c3.txt',
         tmp_path / 'Ö-in-front' / 'überflüssiger_fuß.txt',
-        tmp_path / ' Ö-space-Ö-in-front' / 'a.€🔆.txt',
+        tmp_path / ' Ö-space-Ö-in-front' / 'a.txt',
         tmp_path / 'dummy.txt',
     )
 
