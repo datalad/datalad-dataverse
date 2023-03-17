@@ -1,5 +1,7 @@
 import pytest
 
+from pathlib import PurePosixPath
+
 from datalad.api import clone
 
 from datalad_next.tests.utils import assert_result_count
@@ -75,6 +77,79 @@ def test_asdv_addpushclone(
     # we got the same thing
     assert ds_repo.get_hexsha(ds_repo.get_corresponding_branch()) == \
         cloned_repo.get_hexsha(cloned_repo.get_corresponding_branch())
+
+
+def test_asdv_multiple_ds(
+    dataverse_admin_credential_setup,
+    dataverse_instance_url,
+    dataverse_dataset,
+    existing_dataset,
+    tmp_path,
+):
+    dspid = dataverse_dataset
+
+    ds = existing_dataset
+    ds_repo = ds.repo
+    # create two-levels of nested datasets
+    subds = ds.create('subds', **ckwa)
+    subsubds = ds.create(subds.pathobj / 'subsubds', **ckwa)
+
+    # now add siblings for all of them in the same dataverse dataset
+    common_add_args = dict(
+        ckwa,
+        dv_url=dataverse_instance_url,
+        ds_pid=dspid,
+        credential="dataverse",
+    )
+
+    res = ds.add_sibling_dataverse(**common_add_args)
+    clone_url = [
+        r['url'] for r in res
+        if r['action'] == "add_sibling_dataverse"
+    ][0]
+
+    # deposit all subdatasets regardless of nesting level under their
+    # (UU)ID. This is nohow mandatory or the best way. It could also
+    # be by relative path, or someother measure. But this gives
+    # a conflict free layout
+    for d in (subds, subsubds):
+        d.add_sibling_dataverse(
+            root_path=d.id,
+            **common_add_args,
+        )
+
+    # let the superdataset know about the origination of subdatasets
+    # to enable a recursive installation
+    ds.configuration(
+        'set',
+        spec=[(
+            'datalad.get.subdataset-source-candidate-100dv',
+            clone_url + '&rootpath={id}',
+        )],
+        scope='branch',
+        **ckwa
+    )
+    # safe the config update
+    ds.save(**ckwa)
+
+    ds.push(to='dataverse', recursive=True, **ckwa)
+
+    # And we should be able to clone
+    cloned_ds = clone(
+        source=clone_url,
+        path=tmp_path,
+        result_xfm='datasets',
+        **ckwa
+    )
+    # and perform a recursive get of subdatasets
+    cloned_ds.get(get_data=False, recursive=True, **ckwa)
+    # and we have two subdatasets (all levels)
+    assert_result_count(
+        cloned_ds.subdatasets(state='present', recursive=True, **ckwa),
+        2,
+        type='dataset',
+        status='ok',
+    )
 
 
 # TODO despaghettify this monster

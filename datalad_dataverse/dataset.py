@@ -48,11 +48,21 @@ class OnlineDataverseDataset:
     not representable by a subset of ASCII, and therefore any non-latin
     alphabet. See the documentation of the ``mangle_path()`` function
     for details.
+
+    If ``root_path`` is set, then all paths in the scope of the Dataverse
+    dataset will be prefixed with this path. This establishes an alternative
+    root path for all dataset operations. It will not be possible to upload,
+    download, rename (etc) files from outside this prefix scope, or across
+    scopes.
     """
-    def __init__(self, api, dsid: str):
+    def __init__(self, api, dsid: str, root_path: str | None = None):
         # dataverse native API handle
         self._api = api
         self._dsid = dsid
+        # unconditional prefix of `directoryLabel` for any remote deposit
+        # in POSIX notation
+        # (filter out '')
+        self._root_path = PurePosixPath(root_path) if root_path else None
 
         self._data_access_api = None
         # mapping of dataverse database fileids to FileIdRecord
@@ -95,7 +105,7 @@ class OnlineDataverseDataset:
         """
         if not latest_only:
             self._ensure_file_records_for_all_versions()
-        path = mangle_path(path)
+        path = self._mangle_path(path)
         # get all file id records that match the path, and are latest version,
         # if desired
         match_path = dict(
@@ -122,14 +132,14 @@ class OnlineDataverseDataset:
             return rec.is_latest_version
 
     def has_path(self, path: PurePosixPath) -> bool:
-        path = mangle_path(path)
+        path = self._mangle_path(path)
         self._ensure_file_records_for_all_versions()
         return path in set(
             f.path for f in self._file_records_by_fileid.values()
         )
 
     def has_path_in_latest_version(self, path: PurePosixPath) -> bool:
-        path = mangle_path(path)
+        path = self._mangle_path(path)
         return path in set(
             f.path for f in self._file_records_by_fileid.values()
             if f.is_latest_version
@@ -171,7 +181,7 @@ class OnlineDataverseDataset:
                     local_path: Path,
                     remote_path: PurePosixPath,
                     replace_id: int | None = None) -> int:
-        remote_path = mangle_path(remote_path)
+        remote_path = self._mangle_path(remote_path)
         datafile = Datafile()
         # remote file metadata
         datafile.set({
@@ -238,7 +248,7 @@ class OnlineDataverseDataset:
 
         # mangle_path for rename_path is done inside get_fileid_from_path()
         # in the conditional below
-        new_path = mangle_path(new_path)
+        new_path = self._mangle_path(new_path)
 
         if rename_id is None:
             # unclear to MIH why `latest_only=True`, presumably because
@@ -324,6 +334,14 @@ class OnlineDataverseDataset:
                 api_token=self._api.api_token,
             )
         return self._data_access_api
+
+    def _mangle_path(self, path: str | PurePosixPath) -> PurePosixPath:
+        if self._root_path:
+            # we cannot use mangle_path() directly for type conversion,
+            # because we have to add a root_path first in order to ensure
+            # that it gets mangled properly too, in case it needs to
+            path = self._root_path / PurePosixPath(path)
+        return mangle_path(path)
 
     def _ensure_file_records_for_all_versions(self) -> None:
         if self._knows_all_versions:
