@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from pathlib import (
+    Path,
+    PurePosixPath,
+)
 
 from pyDataverse.api import NativeApi
 
@@ -9,25 +12,6 @@ from datalad_next.utils import update_specialremote_credential
 
 
 __docformat__ = "numpy"
-
-
-# This cannot currently be queried for via public API. See gh-27
-DATASET_SUBJECTS = [
-    'Agricultural Sciences',
-    'Arts and Humanities',
-    'Astronomy and Astrophysics',
-    'Business and Management',
-    'Chemistry',
-    'Computer and Information Science',
-    'Earth and Environmental Sciences',
-    'Engineering',
-    'Law',
-    'Mathematical Sciences',
-    'Medicine, Health and Life Sciences',
-    'Physics',
-    'Social Sciences',
-    'Other',
-]
 
 
 # We do not consider ``.`` to be safe in a dirname because
@@ -63,87 +47,6 @@ def get_native_api(baseurl, token):
       The pyDataverse API wrapper
     """
     return NativeApi(baseurl, token)
-
-
-def get_api(url, credman, credential_name=None):
-    """Get authenticated API access to a dataverse instance
-
-    Parameters
-    ----------
-    url: str
-      Base URL of the target dataverse deployment.
-    credman: CredentialManager
-      For querying credentials based on a given name, or an authentication
-      realm determined from the specified URL
-    credential_name: str, optional
-      If given, the name will be used to identify a credential for API
-      authentication. If that fails, or no name is given, an attempt to
-      identify a credential based on the dataverse URL will be made.
-
-    Returns
-    -------
-    NativeApi
-      The pyDataverse API wrapper. The token used for authentication is
-      available via the `.api_token` accessor.
-
-    Raises
-    ------
-    LookupError
-      When no credential could be determined, either by name or by realm.
-
-    HTTPError
-      If making a simple API version request using the determined credential
-      fails, the exception from `requests.raise_for_status()` is passed
-      through.
-    """
-    # TODO the below is almost literally taken from
-    # the datalad-annex:: implementation in datalad-next
-    # this could become a common helper
-    credential_realm = url.rstrip('/') + '/dataverse'
-    cred = None
-    if credential_name:
-        # we can ask blindly first, caller seems to know what to do
-        credential_name, cred = credman.obtain(
-            name=credential_name,
-            prompt=f'A dataverse API token is required for access',
-            # give to make legacy credentials accessible
-            type_hint='token',
-        )
-    if not cred:
-        creds = credman.query(
-            _sortby='last-used',
-            realm=credential_realm,
-        )
-        if creds:
-            credential_name, cred = creds[0]
-    if cred is None or 'secret' not in cred:
-        raise LookupError('No suitable credential found')
-
-    # connect to dataverse instance
-    api = get_native_api(
-        baseurl=url,
-        token=cred['secret'],
-    )
-    # make one cheap request to ensure that the token is
-    # in-principle working -- we won't be able to verify all necessary
-    # permissions for all possible operations anyways
-    api.get_info_version().raise_for_status()
-
-    update_specialremote_credential(
-        'dataverse',
-        credman,
-        credential_name,
-        cred,
-        credtype_hint='token',
-        duplicate_hint=
-        'Specify a credential name via the dlacredential= '
-        'special remote parameter, and/or configure a credential '
-        'with the datalad-credentials command{}'.format(
-            f' with a `realm={cred["realm"]}` property'
-            if 'realm' in cred else ''),
-    )
-    # store for reuse with data access API
-    return api
 
 
 def format_doi(doi_in: str) -> str:
@@ -187,11 +90,11 @@ def format_doi(doi_in: str) -> str:
     return f'doi:{doi_in}'
 
 
-def mangle_path(path: str | Path) -> Path:
+def mangle_path(path: str | PurePosixPath) -> PurePosixPath:
     """Quote unsupported chars in all elements of a path
 
     Dataverse currently auto-removes a leading dot from directory names. It also
-    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\`` in
+    only allows the characters ``_``, ``-``, ``.``, ``/``, and ``\\`` in
     directory names. File names may not contain the following characters:
     ``/``, ``:``, ``*``,  ``?``,  ``"``,  ``<``,  ``>``,  ``|``, ``;``,  and
     ``#``.
@@ -202,34 +105,31 @@ def mangle_path(path: str | Path) -> Path:
 
     Parameters
     ----------
-    path: str | Path
-        the path that should be mangled
+    path: str | PurePosixPath
+      the path that should be mangled, as a relative path in POSIX
+      notation
 
     Returns
     -------
-    Path
-        a path object with the un-mangled name
+    PurePosixPath
+      path object with the mangled name
     """
 
-    local_path = Path(path)
+    path = PurePosixPath(path)
 
-    # only directories are treated this way:
-    if not local_path.is_dir():
-        filename = _dataverse_filename_quote(local_path.name)
-        local_path = local_path.parent
-    else:
-        filename = None
+    filename = _dataverse_filename_quote(path.name)
+    dpath = path.parent
 
-    if local_path == Path("."):
+    if dpath == PurePosixPath("."):
         # `path` either is '.' or a file in '.'.
         # Nothing to do: '.' has no representation on dataverse anyway.
         # Note also, that Path(".").parts is an empty tuple for some reason,
         # hence the code block below must be protected against this case.
-        dataverse_path = local_path
+        dataverse_path = dpath
     else:
-        dataverse_path = Path(_dataverse_dirname_quote(local_path.parts[0]))
-        for pt in local_path.parts[1:]:
-            dataverse_path /= _dataverse_dirname_quote(pt)
+        dataverse_path = PurePosixPath(
+            *[_dataverse_dirname_quote(pt) for pt in dpath.parts]
+        )
 
     # re-append file if necessary
     if filename:
@@ -238,32 +138,32 @@ def mangle_path(path: str | Path) -> Path:
     return dataverse_path
 
 
-def unmangle_path(dataverse_path: str | Path) -> Path:
+def unmangle_path(dataverse_path: str | PurePosixPath) -> PurePosixPath:
     """Revert dataverse specific path name mangling
 
     This method undoes the quoting performed by ``mangle_path()``.
 
     Parameters
     ----------
-    dataverse_path: str | Path
-        the path that should be un-mangled
+    dataverse_path: str | PurePosixPath
+      the path that should be un-mangled
 
     Returns
     -------
-    Path
-        a path object with the un-mangled name
+    PurePosixPath
+      a path object with the un-mangled name
     """
-    dataverse_path = Path(dataverse_path)
-    if dataverse_path == Path("."):
+    dataverse_path = PurePosixPath(dataverse_path)
+    if dataverse_path == PurePosixPath("."):
         # `path` either is '.' or a file in '.'.
         # Nothing to do: '.' has no representation on dataverse anyway.
         # Note also, that Path(".").parts is an empty tuple for some reason,
         # hence the code block below must be protected against this case.
         result_path = dataverse_path
     else:
-        result_path = Path(_dataverse_unquote(dataverse_path.parts[0]))
-        for pt in dataverse_path.parts[1:]:
-            result_path /= _dataverse_unquote(pt)
+        result_path = PurePosixPath(
+            *[_dataverse_unquote(pt) for pt in dataverse_path.parts]
+        )
     return result_path
 
 
@@ -288,7 +188,7 @@ def _dataverse_dirname_quote(dirname: str) -> str:
     """ Encode dirname to only contain valid dataverse directory name characters
 
     Directory names in dataverse can only contain alphanum and ``_``, ``-``,
-    ``.``, `` ``, ``/``, and ``\``. All other characters are replaced by
+    ``.``, `` ``, ``/``, and ``\\``. All other characters are replaced by
     ``-<HEXCODE>`` where ``<HEXCODE>`` is a two digit hexadecimal.
 
     Because ``.``, i.e. dot, at the start of a directory name is ignored by
@@ -324,12 +224,13 @@ def _dataverse_quote(name: str,
     """ Encode name to only contain characters from the set ``safe``
 
     All characters that are not in the ``safe`` set and the escape character
-    ``esc`` are replaced by ``<esc><HEXCODE>`` where ``<HEXCODE>`` is a
-    two digit hexadecimal representation of the code of the character
+    ``<esc><HEXCODE><esc>`` where ``<HEXCODE>`` is a hexadecimal representation
+    of the unicode of the character.
 
+    If any character is escaped, the escape character itself is also escaped,
+    otherwise escape characters are not escaped
     The escape character must be in the safe set and character codes must
-    be in the interval 0 ... 127. We also assume the hexdigits are in the
-    safe set.
+    be larger than 0.
 
     Parameters
     ----------
@@ -343,11 +244,11 @@ def _dataverse_quote(name: str,
     Returns
     -------
     str
-        The name in which all non-safe characters are escaped
+        The name in which all non-safe characters and the ``esc`` are escaped
     """
 
     def verify_range(character: str) -> bool:
-        if 0 <= ord(character) <= 127:
+        if 0 <= ord(character):
             return True
         raise ValueError(
             f"Out of range character '{character}'"
@@ -355,8 +256,10 @@ def _dataverse_quote(name: str,
         )
 
     assert esc in safe
+    assert set("0123456789abcdefABCDEF").issubset(safe)
+
     return "".join([
-        f"{esc}{ord(c):02X}" if c not in safe or c == esc else c
+        f"{esc}{ord(c):X}{esc}" if c not in safe or c == esc else c
         for c in name
         if verify_range(c)
     ])
@@ -418,25 +321,24 @@ def _dataverse_unquote_escaped(quoted_name: str,
     """ Revert the quoting done in ``dataverse_quote()`` """
     try:
         unquoted_name = ""
-        state = 0
+        decoding = False
         for index, character in enumerate(quoted_name):
-            if state == 0:
+            if not decoding:
                 if character == esc:
-                    state = 1
-                    code = 0
+                    decoding = True
+                    value = 0
                 else:
                     unquoted_name += character
-            elif state == 1:
-                state = 2
-                code = 16 * int(character, 16)
             else:
-                state = 0
-                code += int(character, 16)
-                unquoted_name += chr(code)
+                if character == esc:
+                    decoding = False
+                    unquoted_name += chr(value)
+                else:
+                    value = value * 16 + int(character, 16)
     except Exception as e:
         raise ValueError("Dataverse quoting error in:" + quoted_name) from e
 
-    if state != 0:
+    if decoding is True:
         raise ValueError("Dataverse quoting error in:" + quoted_name)
 
     return unquoted_name

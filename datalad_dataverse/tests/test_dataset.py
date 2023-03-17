@@ -4,10 +4,7 @@ These tests (should) somewhat close mirror the ones fpr pydataverse.
 At least as long as we are using that API layer.
 """
 
-from pathlib import (
-    Path,
-    PurePosixPath,
-)
+from pathlib import PurePosixPath
 import json
 
 from datalad_next.tests.utils import md5sum
@@ -42,7 +39,7 @@ def test_file_handling(
 
     check_rename_file(odd, fileid)
 
-    check_remove(odd, fileid, Path(fpath.name))
+    check_remove(odd, fileid, PurePosixPath(fpath.name))
 
     check_duplicate_file_deposition(odd, tmp_path)
 
@@ -96,7 +93,7 @@ def check_duplicate_file_deposition(odd, tmp_path):
 
 def check_upload(odd, fcontent, fpath, src_md5):
     # the simplest possible upload, just a source file name
-    remote_path = Path(fpath.name)
+    remote_path = PurePosixPath(fpath.name)
     file_id = odd.upload_file(fpath, remote_path)
     # internal consistency
     assert odd.has_fileid(file_id)

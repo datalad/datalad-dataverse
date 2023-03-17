@@ -9,22 +9,12 @@ from datalad_next.exceptions import CommandError
 ckwa = dict(result_renderer='disabled')
 
 
-# TODO despaghettify this monster
-@pytest.mark.parametrize("mode", ["annex", "filetree"])
-def test_workflow(dataverse_admin_api,
-                  dataverse_admin_credential_setup,
-                  dataverse_demoinstance_url,
-                  dataverse_instance_url,
-                  dataverse_dataset,
-                  existing_dataset,
-                  tmp_path,
-                  *, mode):
-    clone_path = tmp_path / 'clone'
-
-    # some local dataset to play with
+def test_asdv_invalid_calls(
+        dataverse_admin_credential_setup,
+        dataverse_instance_url,
+        existing_dataset,
+):
     ds = existing_dataset
-    (ds.pathobj / 'somefile.txt').write_text('content')
-    ds.save(**ckwa)
 
     with pytest.raises(CommandError) as ve:
         ds.add_sibling_dataverse(
@@ -35,7 +25,74 @@ def test_workflow(dataverse_admin_api,
         )
     assert 'doi:no-ffing-datalad-way-this-exists not found' in str(ve.value)
 
+
+@pytest.mark.parametrize("mode", ["annex", "filetree"])
+def test_asdv_addpushclone(
+    dataverse_admin_credential_setup,
+    dataverse_instance_url,
+    dataverse_dataset,
+    existing_dataset,
+    tmp_path,
+    *,
+    mode,
+):
+    dspid = dataverse_dataset
+
+    # some local dataset to play with
+    ds = existing_dataset
     ds_repo = ds.repo
+    (ds.pathobj / 'somefile.txt').write_text('content')
+    ds.save(**ckwa)
+
+    # use everything on default, except a dedicated credential
+    # for this test and the test param itself
+    res = ds.add_sibling_dataverse(
+        dv_url=dataverse_instance_url,
+        ds_pid=dspid,
+        mode=mode,
+        credential="dataverse",
+        **ckwa
+    )
+
+    # one result reported the URL
+    clone_url = [
+        r['url'] for r in res
+        if r['action'] == "add_sibling_dataverse"
+    ][0]
+
+    # push should establish something cloneable at dataverse
+    # 'dataverse' is the default remote name
+    ds.push(to='dataverse', **ckwa)
+
+    # And we should be able to clone
+    cloned_ds = clone(
+        source=clone_url,
+        path=tmp_path / 'clone',
+        result_xfm='datasets',
+        **ckwa
+    )
+    cloned_repo = cloned_ds.repo
+    # we got the same thing
+    assert ds_repo.get_hexsha(ds_repo.get_corresponding_branch()) == \
+        cloned_repo.get_hexsha(cloned_repo.get_corresponding_branch())
+
+
+# TODO despaghettify this monster
+@pytest.mark.parametrize("mode", ["annex", "filetree"])
+def test_workflow(dataverse_admin_credential_setup,
+                  dataverse_instance_url,
+                  dataverse_dataset,
+                  existing_dataset,
+                  tmp_path,
+                  *, mode):
+    clone_path = tmp_path / 'clone'
+
+    # some local dataset to play with
+    ds = existing_dataset
+    ds_repo = ds.repo
+    (ds.pathobj / 'somefile.txt').write_text('content')
+    ds.save(**ckwa)
+
     dspid = dataverse_dataset
 
     results = ds.add_sibling_dataverse(
@@ -45,8 +102,6 @@ def test_workflow(dataverse_admin_api,
         storage_name='special_remote',
         mode=mode,
         existing='error',
-        recursive=False,
-        recursion_limit=None,
         credential="dataverse",
         **ckwa
     )

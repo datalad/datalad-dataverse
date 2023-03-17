@@ -1,5 +1,7 @@
+import unicodedata
+import unicodedata
 from itertools import product
-from pathlib import Path
+from pathlib import PurePosixPath
 
 import pytest
 
@@ -11,6 +13,9 @@ from ..utils import (
     mangle_path,
     unmangle_path
 )
+
+
+dog_cat = unicodedata.lookup('dog face') + unicodedata.lookup('cat face')
 
 
 _test_paths = [
@@ -33,6 +38,9 @@ _test_paths = [
     "_.dir/x",
     "__dir/x",
     "%%;;,_,?-&=",
+    "?;#:eee=2.txt",
+    "überfüllt",
+    dog_cat
 ]
 
 
@@ -51,12 +59,12 @@ def test_format_doi():
 
 def test_path_mangling_identity():
     for p in _test_paths + ['?;#:eee=2.txt']:
-        assert Path(p) == unmangle_path(mangle_path(p))
+        assert PurePosixPath(p) == unmangle_path(mangle_path(p))
 
 
 def test_path_mangling_sub_dirs():
     for p, q, r in product(_test_paths, _test_paths, _test_paths):
-        path = Path(p) / q / r
+        path = PurePosixPath(p) / q / r
         mangled_path = mangle_path(path)
         for part in mangled_path.parts[:-1]:
             assert part[0] != "."
@@ -73,3 +81,8 @@ def test_dir_quoting_leading_dot():
         q = _dataverse_dirname_quote(p)
         assert q[0] != "."
         assert p == _dataverse_unquote(q)
+
+
+def test_unicode_quoting_leading_dot():
+    for p in ["\u20ac", "ööl-ins-feuäär", dog_cat]:
+        assert p == _dataverse_unquote(_dataverse_dirname_quote(p))

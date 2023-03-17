@@ -1,61 +1,33 @@
 """High-level interface for creating a combi-target on a Dataverse server
  """
 
-import logging
-from typing import (
-    Optional,
-    Union,
-)
-from urllib.parse import (
-    quote as urlquote,
-)
+from __future__ import annotations
 
-from datalad.distribution.dataset import (
-    Dataset,
-    EnsureDataset,
-    datasetmethod,
-    require_dataset,
-)
-from datalad.interface.base import (
-    Interface,
-    build_doc,
-)
-from datalad.interface.common_opts import (
-    recursion_flag,
-    recursion_limit
-)
-from datalad.interface.results import get_status_dict
-from datalad.interface.utils import (
-    generic_result_renderer,
-    eval_results,
-)
-from datalad.support.param import Parameter
-from datalad.support.constraints import (
-    EnsureChoice,
-    EnsureNone,
-    EnsureStr,
-)
-from datalad.distribution.utils import _yield_ds_w_matching_siblings
-from datalad_next.credman import CredentialManager
+__docformat__ = "numpy"
+
+import logging
+from urllib.parse import quote as urlquote
+
 from datalad_next.commands import (
     EnsureCommandParameterization,
+    Parameter,
     ValidatedInterface,
+    build_doc,
+    datasetmethod,
+    generic_result_renderer,
+    get_status_dict,
+    eval_results,
 )
 from datalad_next.constraints import (
+    DatasetParameter,
     EnsureChoice,
     EnsureStr,
     EnsureURL
 )
-
 from datalad_next.constraints.dataset import EnsureDataset
 
-from datalad_dataverse.utils import (
-    get_api as get_dataverse_api,
-)
 
-__docformat__ = "restructuredtext"
-
-lgr = logging.getLogger('datalad.distributed.add_sibling_dataverse')
+lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
 
 @build_doc
@@ -113,9 +85,7 @@ class AddSiblingDataverse(ValidatedInterface):
             args=('-s', '--name',),
             metavar='NAME',
             doc="""name of the sibling. If none is given, the hostname-part
-            of the URL will be used.
-            With `recursive`, the same name will be used to label all
-            the subdatasets' siblings.""",),
+            of the URL will be used.""",),
         storage_name=Parameter(
             args=("--storage-name",),
             metavar="NAME",
@@ -146,8 +116,6 @@ class AddSiblingDataverse(ValidatedInterface):
             In this case, sibling creation can be skipped ('skip') or the
             sibling (re-)configured ('reconfigure') in the dataset, or the
             command be instructed to fail ('error').""", ),
-        recursive=recursion_flag,
-        recursion_limit=recursion_limit,
         mode=Parameter(
             args=("--mode",),
             doc="""
@@ -188,14 +156,12 @@ class AddSiblingDataverse(ValidatedInterface):
             dv_url: str,
             ds_pid: str,
             *,
-            dataset: Optional[Union[str, Dataset]] = None,
-            name: Optional[str] = 'dataverse',
-            storage_name: Optional[str] = None,
+            dataset: DatasetParameter | None = None,
+            name: str = 'dataverse',
+            storage_name: str | None = None,
             mode: str = 'annex',
-            credential: Optional[str] = None,
+            credential: str | None = None,
             existing: str = 'error',
-            recursive: bool = False,
-            recursion_limit: Optional[int] = None,
     ):
         # dataset is a next' DatasetParameter
         ds = dataset.ds
@@ -210,57 +176,28 @@ class AddSiblingDataverse(ValidatedInterface):
         if mode != 'git-only' and not storage_name:
             storage_name = "{}-storage".format(name)
 
-        if existing == 'error':
-            failed = False
-            for r in _fail_on_existing_sibling(
-                    ds,
-                    (name, storage_name),
-                    recursive=recursive,
-                    recursion_limit=recursion_limit,
-                    **res_kwargs):
-                failed = True
-                yield r
-            if failed:
-                return
+        sibling_names = set(
+            r['name'] for r in ds.siblings(result_renderer='disabled'))
+        sibling_conflicts = \
+            set((name, storage_name)).intersection(sibling_names)
+        # TODO this should be implemented as a joint-validation
+        # if instructed to error on any existing sibling with a
+        # matching name, do immediately
+        if existing == 'error' and sibling_conflicts:
+            raise ValueError('found existing siblings with conflicting names')
 
-        # 3. get API Token
-        credman = CredentialManager(ds.config)
-        api = get_dataverse_api(
-            dv_url,
-            credman,
-            credential_name=credential,
-        )
-
-        # 5. use datalad-foreach-dataset command with a wrapper function to
-        #    operate in a singe dataset to address recursive behavior and yield
-        #    results from there
-        def _dummy(ds, refds, **kwargs):
-            """wrapper for use with foreach-dataset"""
-
-            return _add_sibling_dataverse(
+        for res in _add_sibling_dataverse(
                 ds=ds,
-                api=api,
+                url=dv_url,
                 credential_name=credential,
                 ds_pid=ds_pid,
                 mode=mode,
                 name=name,
                 storage_name=storage_name,
                 existing=existing,
-            )
-        for res in ds.foreach_dataset(
-                _dummy,
-                return_type='generator',
-                result_renderer='disabled',
-                recursive=recursive,
-                # recursive False is not enough to disable recursion
-                # https://github.com/datalad/datalad/issues/6659
-                recursion_limit=0 if not recursive else recursion_limit,
+                sibling_conflicts=sibling_conflicts,
         ):
-            # unwind result generator
-            for partial_result in res.get('result', []):
-                yield dict(res_kwargs, **partial_result)
-
-        # 6. TODO: if everything went well, save credential?
+            yield dict(res_kwargs, **res)
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
@@ -287,31 +224,14 @@ class AddSiblingDataverse(ValidatedInterface):
         ))
 
 
-def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
-                              **res_kwargs):
-    """yield error results whenever sibling(s) with one of `names` already
-    exists"""
-
-    for dpath, sname in _yield_ds_w_matching_siblings(
-            ds, names, recursive=recursive, recursion_limit=recursion_limit):
-
-        yield get_status_dict(
-            status='error',
-            message=("a sibling %r is already configured in dataset %r",
-                     sname, dpath),
-            type='sibling',
-            name=sname,
-            ds=ds,
-            **res_kwargs)
-
-
 def _add_sibling_dataverse(
-        ds, api, credential_name, ds_pid,
+        ds, url, credential_name, ds_pid,
         *,
         mode='git-only',
         name=None,
         storage_name=None,
         existing='error',
+        sibling_conflicts=set(),
 ):
     """
     meant to be executed via foreach-dataset
@@ -319,49 +239,41 @@ def _add_sibling_dataverse(
     Parameters
     ----------
     ds: Dataset
-    api: pydataverse.api.NativeApi
+    url: Dataverse API Base URL
     ds_pid: dataverse dataset PID
     mode: str, optional
     name: str, optional
     storage_name: str, optional
     existing: str, optional
+    sibling_conflicts: set, optional
     """
     # Set up the actual remotes
     # simplify downstream logic, export yes or no
     export_storage = 'filetree' in mode
 
-    url = api.base_url
-
-    existing_siblings = [
-        r[1] for r in _yield_ds_w_matching_siblings(
-            ds,
-            (name, storage_name),
-            recursive=False)
-    ]
-
+    # identical kwargs for both sibing types
+    kwa = dict(
+        ds=ds,
+        url=url,
+        doi=ds_pid,
+        credential_name=credential_name,
+        export=export_storage,
+        existing=existing,
+    )
     if mode != 'git-only':
         yield from _add_storage_sibling(
-            ds=ds,
-            url=url,
-            doi=ds_pid,
             name=storage_name,
-            export=export_storage,
-            existing=existing,
-            known=storage_name in existing_siblings,
+            known=storage_name in sibling_conflicts,
+            **kwa
         )
 
     if mode not in ('annex-only', 'filetree-only'):
         yield from _add_git_sibling(
-            ds=ds,
-            url=url,
-            doi=ds_pid,
             name=name,
-            credential_name=credential_name,
-            export=export_storage,
-            existing=existing,
-            known=name in existing_siblings,
+            known=name in sibling_conflicts,
             publish_depends=storage_name if mode != 'git-only'
-            else None
+            else None,
+            **kwa
         )
 
 
@@ -378,9 +290,10 @@ def _get_skip_sibling_result(name, ds, type_):
     )
 
 
-def _add_git_sibling(ds, url, doi, name, credential_name, export,
-                        existing,
-                        known, publish_depends=None):
+def _add_git_sibling(
+        *,
+        ds, url, doi, name, credential_name, export, existing,
+        known, publish_depends=None):
     """
     Parameters
     ----------
@@ -410,13 +323,10 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export,
             url=urlquote(url),
             doi=doi)
 
-    # TODO: This seems to depend on making the dataverse special remote known
-    #       to datalad-next's git rmeote helper. Or may be not, can'T quite
-    #       figure it right now:
-    # if credential_name:
-    #     # we need to quote the credential name too.
-    #     # e.g., it is not uncommon for credentials to be named after URLs
-    #     remote_url += f'&dlacredential={urlquote(credential_name)}'
+    if credential_name:
+        # we need to quote the credential name too.
+        # e.g., it is not uncommon for credentials to be named after URLs
+        remote_url += f'&credential={urlquote(credential_name)}'
 
     # announce the sibling to not have an annex (we have a dedicated
     # storage sibling for that) to avoid needless annex-related processing
@@ -445,13 +355,15 @@ def _add_git_sibling(ds, url, doi, name, credential_name, export,
 
 
 def _add_storage_sibling(
-        ds, url, doi, name, export, existing, known=False):
+        *,
+        ds, url, doi, name, credential_name, export, existing, known=False):
     """
     Parameters
     ----------
     ds: Dataset
     url: str
     name: str
+    credential_name: str
     export: bool
     existing: {skip, error, reconfigure}
         (Presently unused)
@@ -478,6 +390,9 @@ def _add_storage_sibling(
         #https://github.com/datalad/datalad/issues/6634
         #"autoenable=true"
     ]
+    # supply the credential identifier, if it was explicitly given
+    if credential_name:
+        cmd_args.append(f"credential={credential_name}")
     ds.repo.call_annex(cmd_args)
     yield get_status_dict(
         ds=ds,
