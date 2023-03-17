@@ -4,4 +4,3 @@ pytest-cov
 coverage
 sphinx
 sphinx_rtd_theme
-git+https://github.com/datalad/datalad-next#egg=datalad_next
