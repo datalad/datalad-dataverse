@@ -46,7 +46,7 @@ Commands and API
 
    cmdline
    modref
-
+   faq
 
 
 Indices and tables
