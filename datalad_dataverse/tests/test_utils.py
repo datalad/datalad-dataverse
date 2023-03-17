@@ -76,13 +76,15 @@ def test_file_quoting_identity():
         assert p == _dataverse_unquote(_dataverse_filename_quote(p))
 
 
-def test_dir_quoting_leading_dot():
-    for p in [".a", "..a", "_a", "_.a", "__a"]:
+def test_dir_quoting_leading_char():
+    for p in [".a", "..a", "_a", "_.a", "__a", " a", "_ a", "-a", "- a", "-.a"]:
         q = _dataverse_dirname_quote(p)
-        assert q[0] != "."
+        assert q[0] not in (".", "-", " ")
         assert p == _dataverse_unquote(q)
 
 
 def test_unicode_quoting_leading_dot():
-    for p in ["\u20ac", "ööl-ins-feuäär", dog_cat]:
-        assert p == _dataverse_unquote(_dataverse_dirname_quote(p))
+    for p in ["über", "\u20ac", "ööl-ins-feuäär", dog_cat]:
+        q = _dataverse_dirname_quote(p)
+        assert q[0] not in (".", "-", " ")
+        assert p == _dataverse_unquote(q)

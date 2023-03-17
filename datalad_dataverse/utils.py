@@ -29,12 +29,14 @@ DATAVERSE_FILENAME_SAFE = {
     and chr(c) not in ('/', ':', '*', '?', '"', '<', '>', '|', ';', '#')
 }
 
+DEFAULT_ESC_CHAR = "-"
 
 TO_ENCODE = {
     '.': '_.',
+    '-': '_-',
+    ' ': '_ ',
     '_': '__'
 }
-
 
 TO_DECODE = {v: k for k, v in TO_ENCODE.items()}
 
@@ -167,13 +169,33 @@ def unmangle_path(dataverse_path: str | PurePosixPath) -> PurePosixPath:
     return result_path
 
 
-def _encode_leading_dot(name: str) -> str:
-    """ Encode a leading dot in the name in a revertable way
+def _encode_leading_char(name: str) -> str:
+    """ Encode some leading chars in the name in a revertable way
+
+    Dataverse will swallow all " ", ".", and "-" in the beginning of a
+    directory name. This method quotes them in a revertable way
 
     Parameters
     ----------
     name: str
-        the name in which a leading dot should be replaced
+        the name in which a "forbidden" leading char should be replaced
+
+    Returns
+    -------
+    str:
+        `name` without "forbidden" leading chars
+
+    """
+    return TO_ENCODE.get(name[0], name[0]) + name[1:]
+
+
+def _decode_leading_char(dataverse_name: str) -> str:
+    """ Undo the encoding performed by `_encode_leading_char()`
+
+    Parameters
+    ----------
+    encoded_name: str
+        the name with a possibly encoded leading char
 
     Returns
     -------
@@ -181,7 +203,9 @@ def _encode_leading_dot(name: str) -> str:
         `name` without leading dots
 
     """
-    return TO_ENCODE.get(name[0], name[0]) + name[1:]
+    if len(dataverse_name) >= 2 and dataverse_name[:2] in TO_DECODE:
+        return TO_DECODE[dataverse_name[:2]] + dataverse_name[2:]
+    return dataverse_name
 
 
 def _dataverse_dirname_quote(dirname: str) -> str:
@@ -196,7 +220,7 @@ def _dataverse_dirname_quote(dirname: str) -> str:
     between ``.datalad`` and ``datalad``.
     """
     quoted_dirname = _dataverse_quote(dirname, DATAVERSE_DIRNAME_SAFE)
-    return _encode_leading_dot(quoted_dirname)
+    return _encode_leading_char(quoted_dirname)
 
 
 def _dataverse_filename_quote(filename: str) -> str:
@@ -214,12 +238,12 @@ def _dataverse_filename_quote(filename: str) -> str:
 
     """
     quoted_filename = _dataverse_quote(filename, DATAVERSE_FILENAME_SAFE)
-    return _encode_leading_dot(quoted_filename)
+    return _encode_leading_char(quoted_filename)
 
 
 def _dataverse_quote(name: str,
                      safe: set[str],
-                     esc: str = "-"
+                     esc: str = DEFAULT_ESC_CHAR
                      ) -> str:
     """ Encode name to only contain characters from the set ``safe``
 
@@ -266,7 +290,7 @@ def _dataverse_quote(name: str,
 
 
 def _dataverse_unquote(quoted_name: str,
-                       esc: str = "-"
+                       esc: str = DEFAULT_ESC_CHAR
                        ) -> str:
     """ Revert leading dot encoding and non safe-character quoting
 
@@ -288,13 +312,12 @@ def _dataverse_unquote(quoted_name: str,
     ValueError:
         see description of `_dataverse_unquote_escaped`
     """
-    if len(quoted_name) >= 2 and quoted_name[:2] in TO_DECODE:
-        quoted_name = TO_DECODE[quoted_name[:2]] + quoted_name[2:]
-    return _dataverse_unquote_escaped(quoted_name, esc)
+    escaped_name = _decode_leading_char(quoted_name)
+    return _dataverse_unquote_escaped(escaped_name, esc)
 
 
 def _dataverse_unquote_escaped(quoted_name: str,
-                               esc: str = "-"
+                               esc: str = DEFAULT_ESC_CHAR
                                ) -> str:
     """ Revert the quoting done in ``dataverse_quote()``
 
