@@ -1,37 +1,31 @@
 """High-level interface for creating a combi-target on a Dataverse server
  """
 
-import logging
-from typing import (
-    Optional,
-    Union,
-)
-from urllib.parse import (
-    quote as urlquote,
-)
+from __future__ import annotations
 
-from datalad.distribution.dataset import Dataset
-from datalad.interface.results import get_status_dict
-from datalad.interface.utils import (
-    generic_result_renderer,
-    eval_results,
-)
-from datalad.support.param import Parameter
+__docformat__ = "numpy"
+
+import logging
+from urllib.parse import quote as urlquote
+
 from datalad_next.commands import (
+    EnsureCommandParameterization,
+    Parameter,
+    ValidatedInterface,
     build_doc,
     datasetmethod,
-    EnsureCommandParameterization,
-    ValidatedInterface,
+    generic_result_renderer,
+    get_status_dict,
+    eval_results,
 )
 from datalad_next.constraints import (
+    DatasetParameter,
     EnsureChoice,
     EnsureStr,
     EnsureURL
 )
-
 from datalad_next.constraints.dataset import EnsureDataset
 
-__docformat__ = "restructuredtext"
 
 lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
@@ -162,11 +156,11 @@ class AddSiblingDataverse(ValidatedInterface):
             dv_url: str,
             ds_pid: str,
             *,
-            dataset: Optional[Union[str, Dataset]] = None,
-            name: Optional[str] = 'dataverse',
-            storage_name: Optional[str] = None,
+            dataset: DatasetParameter | None = None,
+            name: str = 'dataverse',
+            storage_name: str | None = None,
             mode: str = 'annex',
-            credential: Optional[str] = None,
+            credential: str | None = None,
             existing: str = 'error',
     ):
         # dataset is a next' DatasetParameter
