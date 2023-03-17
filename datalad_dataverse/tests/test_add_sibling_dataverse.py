@@ -45,8 +45,6 @@ def test_workflow(dataverse_admin_api,
         storage_name='special_remote',
         mode=mode,
         existing='error',
-        recursive=False,
-        recursion_limit=None,
         credential="dataverse",
         **ckwa
     )

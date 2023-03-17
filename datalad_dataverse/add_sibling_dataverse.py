@@ -11,10 +11,6 @@ from urllib.parse import (
 )
 
 from datalad.distribution.dataset import Dataset
-from datalad.interface.common_opts import (
-    recursion_flag,
-    recursion_limit
-)
 from datalad.interface.results import get_status_dict
 from datalad.interface.utils import (
     generic_result_renderer,
@@ -96,9 +92,7 @@ class AddSiblingDataverse(ValidatedInterface):
             args=('-s', '--name',),
             metavar='NAME',
             doc="""name of the sibling. If none is given, the hostname-part
-            of the URL will be used.
-            With `recursive`, the same name will be used to label all
-            the subdatasets' siblings.""",),
+            of the URL will be used.""",),
         storage_name=Parameter(
             args=("--storage-name",),
             metavar="NAME",
@@ -129,8 +123,6 @@ class AddSiblingDataverse(ValidatedInterface):
             In this case, sibling creation can be skipped ('skip') or the
             sibling (re-)configured ('reconfigure') in the dataset, or the
             command be instructed to fail ('error').""", ),
-        recursive=recursion_flag,
-        recursion_limit=recursion_limit,
         mode=Parameter(
             args=("--mode",),
             doc="""
@@ -177,8 +169,6 @@ class AddSiblingDataverse(ValidatedInterface):
             mode: str = 'annex',
             credential: Optional[str] = None,
             existing: str = 'error',
-            recursive: bool = False,
-            recursion_limit: Optional[int] = None,
     ):
         # dataset is a next' DatasetParameter
         ds = dataset.ds
@@ -198,21 +188,13 @@ class AddSiblingDataverse(ValidatedInterface):
             for r in _fail_on_existing_sibling(
                     ds,
                     (name, storage_name),
-                    recursive=recursive,
-                    recursion_limit=recursion_limit,
                     **res_kwargs):
                 failed = True
                 yield r
             if failed:
                 return
 
-        # 5. use datalad-foreach-dataset command with a wrapper function to
-        #    operate in a singe dataset to address recursive behavior and yield
-        #    results from there
-        def _dummy(ds, refds, **kwargs):
-            """wrapper for use with foreach-dataset"""
-
-            return _add_sibling_dataverse(
+        for res in _add_sibling_dataverse(
                 ds=ds,
                 url=dv_url,
                 credential_name=credential,
@@ -221,19 +203,8 @@ class AddSiblingDataverse(ValidatedInterface):
                 name=name,
                 storage_name=storage_name,
                 existing=existing,
-            )
-        for res in ds.foreach_dataset(
-                _dummy,
-                return_type='generator',
-                result_renderer='disabled',
-                recursive=recursive,
-                # recursive False is not enough to disable recursion
-                # https://github.com/datalad/datalad/issues/6659
-                recursion_limit=0 if not recursive else recursion_limit,
         ):
-            # unwind result generator
-            for partial_result in res.get('result', []):
-                yield dict(res_kwargs, **partial_result)
+            yield dict(res_kwargs, **res)
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
