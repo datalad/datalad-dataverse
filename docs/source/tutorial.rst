@@ -40,6 +40,7 @@ It already has a DOI, and you can find it under the ``Metadata`` tab as "Persist
 
 .. image:: ./_static/tutorial/dv_obtain_doi.png
 
+
 Finally, make a note of the **URL** of your dataverse instance (e.g., ``https://demo.dataverse.org``), and the **DOI** of your draft dataset.
 You will need this information for :ref:`step 3 <3>`.
 
@@ -96,9 +97,18 @@ You'll find this token if you follow the instructions in the prompt under your u
 
 .. image:: ./_static/tutorial/dv_token.png
 
-If authentication with the token was successful, it will be saved into your system's keyring.
-If you have accounts on several different dataverse instances or multiple users with different tokens, you can use and store several tokens with the ``--credential`` parameter of the command.
-For example, ``datalad add-sibling-dataverse https://demo.dataverse.org doi:10.70122/FK2/NQPP6A --credential demo-dataverse`` will search for a previously used credential ``demo-dataverse``, or prompt for a token if it can't find one and save it after success.
+If authentication with the token was successful, it will be saved into your
+system's keyring.  If you have accounts on several different dataverse
+instances or multiple users with different tokens, you can use and store
+several tokens with the ``--credential`` parameter of the command.  For
+example::
+
+  datalad add-sibling-dataverse \
+    --credential demo-dataverse \
+    https://demo.dataverse.org doi:10.70122/FK2/NQPP6A
+
+will search for a previously used credential ``demo-dataverse``, or prompt for
+a token if it can't find one and save it after success.
 
 The ``datalad add-sibling-dataverse`` command needs at least two pieces of information: The **URL** of your Dataverse instance, and a **persistent identifier** of the draft :term:`Dataverse dataset` created in :ref:`step 1 <1>`.
 Depending on what you want to transfer to Dataverse, you also need to configure the command with the correct ``--mode``.
@@ -221,6 +231,21 @@ Once you have this URL, anyone with an account on the Dataverse instance and the
    [INFO   ] access to 1 dataset sibling dataverse-storage not auto-enabled, enable with:
    | 		datalad siblings -d "/tmp/my-clone" enable -s dataverse-storage
    install(ok): /tmp/tmp/my-clone-of-annex-mode (dataset)
+
+.. note::
+
+   As a convenience it is also possible to use the URL of a Dataverse dataset landing
+   page directly for ``clone``::
+
+     datalad clone \
+       https://demo.dataverse.org/dataset.xhtml?persistentId=doi:10.70122/FK2/IPNGCY
+
+   Internally, it will be converted into the format shown above. This is
+   intended to be used for one-off interactive cloning. For scripted access it
+   is advisable to use the detailed format above, because changes in dataset
+   layout and API are less likely to have an impact on this method, whereas the
+   behavior of the convenience method may change in the future.
+
 
 Afterwards, enable the special remote in the clone with the provided command, and retrieve file content using ``datalad get``:
 
