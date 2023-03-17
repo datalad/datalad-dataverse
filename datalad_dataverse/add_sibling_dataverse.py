@@ -17,7 +17,6 @@ from datalad.interface.utils import (
     eval_results,
 )
 from datalad.support.param import Parameter
-from datalad.distribution.utils import _yield_ds_w_matching_siblings
 from datalad_next.commands import (
     build_doc,
     datasetmethod,
@@ -34,7 +33,7 @@ from datalad_next.constraints.dataset import EnsureDataset
 
 __docformat__ = "restructuredtext"
 
-lgr = logging.getLogger('datalad.distributed.add_sibling_dataverse')
+lgr = logging.getLogger('datalad.dataverse.add_sibling_dataverse')
 
 
 @build_doc
@@ -183,16 +182,15 @@ class AddSiblingDataverse(ValidatedInterface):
         if mode != 'git-only' and not storage_name:
             storage_name = "{}-storage".format(name)
 
-        if existing == 'error':
-            failed = False
-            for r in _fail_on_existing_sibling(
-                    ds,
-                    (name, storage_name),
-                    **res_kwargs):
-                failed = True
-                yield r
-            if failed:
-                return
+        sibling_names = set(
+            r['name'] for r in ds.siblings(result_renderer='disabled'))
+        sibling_conflicts = \
+            set((name, storage_name)).intersection(sibling_names)
+        # TODO this should be implemented as a joint-validation
+        # if instructed to error on any existing sibling with a
+        # matching name, do immediately
+        if existing == 'error' and sibling_conflicts:
+            raise ValueError('found existing siblings with conflicting names')
 
         for res in _add_sibling_dataverse(
                 ds=ds,
@@ -203,6 +201,7 @@ class AddSiblingDataverse(ValidatedInterface):
                 name=name,
                 storage_name=storage_name,
                 existing=existing,
+                sibling_conflicts=sibling_conflicts,
         ):
             yield dict(res_kwargs, **res)
 
@@ -231,24 +230,6 @@ class AddSiblingDataverse(ValidatedInterface):
         ))
 
 
-def _fail_on_existing_sibling(ds, names, recursive=False, recursion_limit=None,
-                              **res_kwargs):
-    """yield error results whenever sibling(s) with one of `names` already
-    exists"""
-
-    for dpath, sname in _yield_ds_w_matching_siblings(
-            ds, names, recursive=recursive, recursion_limit=recursion_limit):
-
-        yield get_status_dict(
-            status='error',
-            message=("a sibling %r is already configured in dataset %r",
-                     sname, dpath),
-            type='sibling',
-            name=sname,
-            ds=ds,
-            **res_kwargs)
-
-
 def _add_sibling_dataverse(
         ds, url, credential_name, ds_pid,
         *,
@@ -256,6 +237,7 @@ def _add_sibling_dataverse(
         name=None,
         storage_name=None,
         existing='error',
+        sibling_conflicts=set(),
 ):
     """
     meant to be executed via foreach-dataset
@@ -269,17 +251,11 @@ def _add_sibling_dataverse(
     name: str, optional
     storage_name: str, optional
     existing: str, optional
+    sibling_conflicts: set, optional
     """
     # Set up the actual remotes
     # simplify downstream logic, export yes or no
     export_storage = 'filetree' in mode
-
-    existing_siblings = [
-        r[1] for r in _yield_ds_w_matching_siblings(
-            ds,
-            (name, storage_name),
-            recursive=False)
-    ]
 
     if mode != 'git-only':
         yield from _add_storage_sibling(
@@ -290,7 +266,7 @@ def _add_sibling_dataverse(
             credential_name=credential_name,
             export=export_storage,
             existing=existing,
-            known=storage_name in existing_siblings,
+            known=storage_name in sibling_conflicts,
         )
 
     if mode not in ('annex-only', 'filetree-only'):
@@ -302,7 +278,7 @@ def _add_sibling_dataverse(
             credential_name=credential_name,
             export=export_storage,
             existing=existing,
-            known=name in existing_siblings,
+            known=name in sibling_conflicts,
             publish_depends=storage_name if mode != 'git-only'
             else None
         )
