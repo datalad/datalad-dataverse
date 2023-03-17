@@ -2,7 +2,6 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/main?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/main)
 [![codecov.io](https://codecov.io/github/datalad/datalad-dataverse/coverage.svg?branch=main)](https://codecov.io/github/datalad/datalad-dataverse?branch=main)
-[![docs](https://github.com/datalad/datalad-dataverse/workflows/docs/badge.svg)](https://github.com/datalad/datalad-dataverse/actions?query=workflow%3Adocs)
 [![Documentation Status](https://readthedocs.org/projects/datalad-dataverse/badge/?version=latest)](http://docs.datalad.org/projects/datalad-dataverse/en/latest/?badge=latest)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-15-orange.svg?style=flat-square)](#contributors-)
