@@ -3,6 +3,9 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/fm24tes0vxlq7qis/branch/main?svg=true)](https://ci.appveyor.com/project/mih/datalad-dataverse/branch/main)
 [![codecov](https://codecov.io/gh/datalad/datalad-dataverse/branch/main/graph/badge.svg?token=cPUPplOH3o)](https://codecov.io/gh/datalad/datalad-dataverse)
 [![Documentation Status](https://readthedocs.org/projects/datalad-dataverse/badge/?version=latest)](http://docs.datalad.org/projects/datalad-dataverse/en/latest/?badge=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/release/datalad/datalad-dataverse.svg)](https://GitHub.com/datalad/datalad-dataverse/releases/)
+[![PyPI version fury.io](https://badge.fury.io/py/datalad-dataverse.svg)](https://pypi.python.org/pypi/datalad-dataverse/)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-15-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
