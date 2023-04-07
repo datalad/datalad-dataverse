@@ -98,7 +98,8 @@ class AddSiblingDataverse(ValidatedInterface):
             doc="""URL identifying the dataverse instance to connect to
             (e.g., https://demo.dataverse.org)""",),
         ds_pid=Parameter(
-            args=("PID",),
+            args=("ds_pid",),
+            metavar=("PID",),
             doc="""Persistent identifier of the dataverse dataset to
             use as a sibling. This PID can be found on the dataset's
             landing page on Dataverse. Either right at the top
