@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from pyDataverse.models import (
     Dataverse,
     Dataset as DvDataset,
@@ -61,13 +63,17 @@ def _create_dv_dataset(api, collection, dataset_meta):
     Returns
     -------
     DvDataset
-     """
-    dv_dataset = DvDataset()
-    dv_dataset.set(dataset_meta)
-    if not dv_dataset.validate_json():
-        raise InvalidDatasetMetadata
-    dv_dataset = api.create_dataset(collection['data']['alias'],
-                                    dv_dataset.json())
+    """
+    # we can no longer use pydataverse models, changes in dataverse v5.13
+    # break their assumptions
+    #dv_dataset = DvDataset()
+    #dv_dataset.set(dataset_meta)
+    #if not dv_dataset.validate_json():
+    #    raise InvalidDatasetMetadata
+    dv_dataset = api.create_dataset(
+        collection['data']['alias'],
+        json.dumps(dataset_meta)
+    )
     dv_dataset.raise_for_status()
     return dv_dataset
 
@@ -98,15 +104,26 @@ def create_test_dataverse_dataset(api, collection, name):
     str
       The persistent DOI for the dataset
     """
-    meta = dict(
-        title=name,
-        author=[dict(authorName='DataLad')],
-        datasetContact=[dict(
-            datasetContactEmail='team@datalad.org',
-            datasetContactName='DataLad')],
-        dsDescription=[dict(dsDescriptionValue='no description')],
-        subject=['Medicine, Health and Life Sciences']
-    )
+    meta = {
+        "http://purl.org/dc/terms/title": name,
+        "http://purl.org/dc/terms/subject":
+        "Medicine, Health and Life Sciences",
+        "http://purl.org/dc/terms/creator": {
+            "https://dataverse.org/schema/citation/authorName": "DataLad",
+            "https://dataverse.org/schema/citation/authorAffiliation":
+            "datalad.org"
+        },
+        "https://dataverse.org/schema/citation/datasetContact": {
+            "https://dataverse.org/schema/citation/datasetContactEmail":
+            "team@datalad.org",
+            "https://dataverse.org/schema/citation/datasetContactName":
+            "DataLad"
+        },
+        "https://dataverse.org/schema/citation/dsDescription": {
+            "https://dataverse.org/schema/citation/dsDescriptionValue":
+            "no description"
+        }
+    }
     col = _get_dv_collection(api, collection)
     req = _create_dv_dataset(api, col, meta)
     req.raise_for_status()
