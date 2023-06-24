@@ -161,6 +161,16 @@
       "contributions": [
         "infra"
       ]
+    },
+    {
+      "login": "behinger",
+      "name": "Benedikt Ehinger",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10183650?v=4",
+      "profile": "http://www.benediktehinger.de",
+      "contributions": [
+        "bug",
+        "maintenance"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -168,5 +178,7 @@
   "projectOwner": "datalad",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "skipCi": true
+  "skipCi": true,
+  "commitType": "docs",
+  "commitConvention": "angular"
 }
