@@ -332,7 +332,7 @@ class DataverseRemote(SpecialRemote):
                 # git-annex-testremote ("store when already present").
                 # Generally it's kinda fine, but we'd better figure this out more
                 # reliably. Note, that we have to deal with annex keys, which are
-                # not hash based (for example the special keys fo datalad-annex
+                # not hash based (for example the special keys of datalad-annex
                 # git-remote-helper).
                 # Hence, having the key on the remote end, doesn't mean it's
                 # identical. So, we can't catch it beforehand this way.
