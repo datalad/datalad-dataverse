@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import requests
 
 from pyDataverse.models import (
     Dataverse,
@@ -104,26 +105,12 @@ def create_test_dataverse_dataset(api, collection, name):
     str
       The persistent DOI for the dataset
     """
-    meta = {
-        "http://purl.org/dc/terms/title": name,
-        "http://purl.org/dc/terms/subject":
-        "Medicine, Health and Life Sciences",
-        "http://purl.org/dc/terms/creator": {
-            "https://dataverse.org/schema/citation/authorName": "DataLad",
-            "https://dataverse.org/schema/citation/authorAffiliation":
-            "datalad.org"
-        },
-        "https://dataverse.org/schema/citation/datasetContact": {
-            "https://dataverse.org/schema/citation/datasetContactEmail":
-            "team@datalad.org",
-            "https://dataverse.org/schema/citation/datasetContactName":
-            "DataLad"
-        },
-        "https://dataverse.org/schema/citation/dsDescription": {
-            "https://dataverse.org/schema/citation/dsDescriptionValue":
-            "no description"
-        }
-    }
+    # this url points to the API guide, specifically a minimal json example that
+    # should work with the current dataverse version deployed on
+    # demo.dataverse.org
+    current_meta_example = \
+        "https://guides.dataverse.org/en/latest/_downloads/fc56af1c414df69fd4721ce3629f0c03/dataset-finch1.json"
+    meta = json.loads(requests.get(current_meta_example).text)
     col = _get_dv_collection(api, collection)
     req = _create_dv_dataset(api, col, meta)
     req.raise_for_status()
