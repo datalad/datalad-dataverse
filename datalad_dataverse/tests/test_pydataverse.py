@@ -130,7 +130,8 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     assert df['checksum']['type'] == 'MD5'
     assert df['md5'] == df['checksum']['value'] == src_md5
     assert df['persistentId'] == ''
-    assert df['pidURL'] == ''
+    # TODO: seemingly discontinued between Dataverse 5.13 and 6.0?
+    #assert df['pidURL'] == ''
     assert df['rootDataFileId'] == -1
     assert df['storageIdentifier'].startswith('s3://demo-dataverse')
 
