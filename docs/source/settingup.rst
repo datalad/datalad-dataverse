@@ -156,6 +156,7 @@ Help others getting started
 
 Its not always obvious to outsiders whether a Dataverse Dataset is a DataLad Dataset as well.
 To help others get started with your shared datasets, we recommend to add a short DataLad-specific description to your dataset's "Description" metadata.
+For convenience, a template to copy-and-paste can be found below.
 
 .. code-block:: text
 
@@ -169,6 +170,22 @@ To help others get started with your shared datasets, we recommend to add a shor
    the two placeholders <DATAVERSE-INSTANCE-URL> and <DATASET-DOI>):
 
        datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=<DATAVERSE-INSTANCE-URL>&doi=<DATASET-DOI>' my-dataset-clone
+
+   Once a dataset is cloned, it is a light-weight directory on your local
+   machine.
+   At this point, it contains only small metadata and information on the
+   identity of the files in the dataset, but not actual *content* of the
+   (sometimes large) data files.
+   After cloning a dataset, you can retrieve file contents by running
+   "datalad get <path/to/directory/or/file>"
+   This command will trigger a download of the files, directories, or
+   subdatasets you have specified.
+
+   More information on DataLad and how to use it can be found in the DataLad
+   Handbook at https://handbook.datalad.org/index.html. The chapter "DataLad
+   datasets" can help you to familiarize yourself with the concept of a dataset.
+
+
 
 .. admonition:: HELP! I'm new to this!
 
