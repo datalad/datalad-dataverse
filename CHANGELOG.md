@@ -2,7 +2,7 @@
 
 ## 🐛 Bug Fixes
 
-- Wrong argument specification broke the commmand line interface of
+- Wrong argument specification broke the command line interface of
   `add-sibling-dataverse`.  Fixes
   https://github.com/datalad/datalad-dataverse/issues/289 via
   https://github.com/datalad/datalad-dataverse/pull/290 (by

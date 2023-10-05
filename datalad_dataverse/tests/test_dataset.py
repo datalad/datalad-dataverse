@@ -1,6 +1,6 @@
 """Tests OnlineDataverseDataset
 
-These tests (should) somewhat close mirror the ones fpr pydataverse.
+These tests (should) somewhat close mirror the ones for pydataverse.
 At least as long as we are using that API layer.
 """
 

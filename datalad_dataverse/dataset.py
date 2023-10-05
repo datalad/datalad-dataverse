@@ -58,7 +58,7 @@ class OnlineDataverseDataset:
     scopes.
 
     On initialization only a record of what is in the latest version (draft or
-    not) of the dataverse dataset is retrived, including an annotation of
+    not) of the dataverse dataset is retrieved, including an annotation of
     content on whether it is released. This annotation is crucial, since it has
     implications on what to record should changes be uploaded.  For
     example: It is not possible to actually remove content from a released
@@ -442,7 +442,7 @@ class OnlineDataverseDataset:
         retrieval of keys that are not present in the latest version anymore.
 
         Note, that whie initially we may not be in a draft, we are as soon as we
-        change things (upload/repace/remove/rename). We keep track of those
+        change things (upload/replace/remove/rename). We keep track of those
         changes herein w/o rerequesting the new state.
         """
 

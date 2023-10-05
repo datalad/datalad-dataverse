@@ -333,7 +333,7 @@ def _add_git_sibling(
     name: str
     credential_name: str
         originally given credential reference - needed to decide whether or not
-        to incude in datalad-annex URL
+        to include in datalad-annex URL
     export: bool
     existing: {skip, error, reconfigure}
     known: bool
@@ -404,7 +404,7 @@ def _add_storage_sibling(
         (Presently unused)
     known: bool
         Flag whether the sibling is a known remote (no implied
-        necessary existance of content on the remote).
+        necessary existence of content on the remote).
     """
     if known and existing == 'skip':
         yield _get_skip_sibling_result(name, ds, 'storage')
