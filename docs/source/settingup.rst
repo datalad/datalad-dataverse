@@ -160,16 +160,16 @@ For convenience, a template to copy-and-paste can be found below.
 
 .. code-block:: text
 
-   This dataset is a DataLad (https://www.datalad.org) dataset, published with
-   the DataLad-dataverse software (https://docs.datalad.org/projects/dataverse).
-   If you "datalad clone" it, it provides fine-grained data access down to the
+   This dataset is a <b>DataLad dataset</b> (https://www.datalad.org), published with
+   the <code>DataLad-dataverse</code> software (https://docs.datalad.org/projects/dataverse).
+   If you <code>"datalad clone"</code> it, it provides fine-grained data access down to the
    level of individual files, and allows for tracking future updates. For this,
    DataLad and datalad-dataverse are required. You can find installation instructions
    at https://docs.datalad.org/projects/dataverse/settingup.html#installation.
    Afterwards, you can clone it with the following command-line call (replace
-   the two placeholders DATAVERSE-INSTANCE-URL and DATASET-DOI):
+   the two placeholders <code>DATAVERSE-INSTANCE-URL</code> and <code>DATASET-DOI</code>): <br><br>
 
-       datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=DATAVERSE-INSTANCE-URL&doi=DATASET-DOI' my-dataset-clone
+       <code>datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=DATAVERSE-INSTANCE-URL&doi=DATASET-DOI' my-dataset-clone</code> <br><br>
 
    Once a dataset is cloned, it is a light-weight directory on your local
    machine.
@@ -177,9 +177,9 @@ For convenience, a template to copy-and-paste can be found below.
    identity of the files in the dataset, but not actual *content* of the
    (sometimes large) data files.
    After cloning a dataset, you can retrieve file contents by running
-   "datalad get <path/to/directory/or/file>"
+   <code>"datalad get path/to/directory/or/file"</code>
    This command will trigger a download of the files, directories, or
-   subdatasets you have specified.
+   subdatasets you have specified.<br><br>
 
    More information on DataLad and how to use it can be found in the DataLad
    Handbook at https://handbook.datalad.org/index.html. The chapter "DataLad
