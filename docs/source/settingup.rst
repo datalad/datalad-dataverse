@@ -167,9 +167,9 @@ For convenience, a template to copy-and-paste can be found below.
    DataLad and datalad-dataverse are required. You can find installation instructions
    at https://docs.datalad.org/projects/dataverse/settingup.html#installation.
    Afterwards, you can clone it with the following command-line call (replace
-   the two placeholders <DATAVERSE-INSTANCE-URL> and <DATASET-DOI>):
+   the two placeholders DATAVERSE-INSTANCE-URL and DATASET-DOI):
 
-       datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=<DATAVERSE-INSTANCE-URL>&doi=<DATASET-DOI>' my-dataset-clone
+       datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=DATAVERSE-INSTANCE-URL&doi=DATASET-DOI' my-dataset-clone
 
    Once a dataset is cloned, it is a light-weight directory on your local
    machine.
