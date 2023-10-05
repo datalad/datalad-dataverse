@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import requests
+
 from pyDataverse.models import (
     Dataverse,
     Dataset as DvDataset,
@@ -61,13 +64,17 @@ def _create_dv_dataset(api, collection, dataset_meta):
     Returns
     -------
     DvDataset
-     """
-    dv_dataset = DvDataset()
-    dv_dataset.set(dataset_meta)
-    if not dv_dataset.validate_json():
-        raise InvalidDatasetMetadata
-    dv_dataset = api.create_dataset(collection['data']['alias'],
-                                    dv_dataset.json())
+    """
+    # we can no longer use pydataverse models, changes in dataverse v5.13
+    # break their assumptions
+    #dv_dataset = DvDataset()
+    #dv_dataset.set(dataset_meta)
+    #if not dv_dataset.validate_json():
+    #    raise InvalidDatasetMetadata
+    dv_dataset = api.create_dataset(
+        collection['data']['alias'],
+        json.dumps(dataset_meta)
+    )
     dv_dataset.raise_for_status()
     return dv_dataset
 
@@ -98,15 +105,12 @@ def create_test_dataverse_dataset(api, collection, name):
     str
       The persistent DOI for the dataset
     """
-    meta = dict(
-        title=name,
-        author=[dict(authorName='DataLad')],
-        datasetContact=[dict(
-            datasetContactEmail='team@datalad.org',
-            datasetContactName='DataLad')],
-        dsDescription=[dict(dsDescriptionValue='no description')],
-        subject=['Medicine, Health and Life Sciences']
-    )
+    # this url points to the API guide, specifically a minimal json example that
+    # should work with the current dataverse version deployed on
+    # demo.dataverse.org
+    current_meta_example = \
+        "https://guides.dataverse.org/en/latest/_downloads/fc56af1c414df69fd4721ce3629f0c03/dataset-finch1.json"
+    meta = json.loads(requests.get(current_meta_example).text)
     col = _get_dv_collection(api, collection)
     req = _create_dv_dataset(api, col, meta)
     req.raise_for_status()

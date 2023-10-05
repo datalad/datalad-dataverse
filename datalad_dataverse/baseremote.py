@@ -61,7 +61,7 @@ class DataverseRemote(SpecialRemote):
     special remote records the IDs of annex keys and tries to rely on them if
     possible.
 
-    Dataverse imposes strict nameing limitations for directories and files.
+    Dataverse imposes strict naming limitations for directories and files.
     See https://github.com/IQSS/dataverse/issues/8807#issuecomment-1164434278
     Therefore, remote paths are mangles to match these limitations.
     """
@@ -257,7 +257,7 @@ class DataverseRemote(SpecialRemote):
         self._set_annex_fileid_record(key, r)
 
     def _get_remotepath_for_key(self, key: str) -> PurePosixPath:
-        """Return the cannonical remote path for a given key
+        """Return the canonical remote path for a given key
 
         Parameters
         ----------
@@ -332,7 +332,7 @@ class DataverseRemote(SpecialRemote):
                 # git-annex-testremote ("store when already present").
                 # Generally it's kinda fine, but we'd better figure this out more
                 # reliably. Note, that we have to deal with annex keys, which are
-                # not hash based (for example the special keys fo datalad-annex
+                # not hash based (for example the special keys of datalad-annex
                 # git-remote-helper).
                 # Hence, having the key on the remote end, doesn't mean it's
                 # identical. So, we can't catch it beforehand this way.
@@ -399,7 +399,7 @@ class DataverseRemote(SpecialRemote):
             # file, if it has a persistent URL (should be findable in
             # self.old_dataset_versions) or even via api/access/datafile/811.
             # However, that depends on permissions, etc., so not clear it's
-            # useful or desireable to always do that.
+            # useful or desirable to always do that.
             # Otherwise not seeing a solution ATM. See https://github.com/datalad/datalad-dataverse/issues/146#issuecomment-1214409351
             pass
 
