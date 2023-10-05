@@ -151,6 +151,25 @@ Once the dataset is available on Dataverse, it can also be cloned using the
       'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=https%3A//demo.dataverse.org&doi=doi:10.70122/MYT/ESTDOI'
 
 
+Help others getting started
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Its not always obvious to outsiders whether a Dataverse Dataset is a DataLad Dataset as well.
+To help others get started with your shared datasets, we recommend to add a short DataLad-specific description to your dataset's "Description" metadata.
+
+.. code-block:: text
+
+   This dataset is a DataLad (https://www.datalad.org) dataset, published with
+   the DataLad-dataverse software (https://docs.datalad.org/projects/dataverse).
+   If you "datalad clone" it, it provides fine-grained data access down to the
+   level of individual files, and allows for tracking future updates. For this,
+   DataLad and datalad-dataverse are required. You can find installation instructions
+   at https://docs.datalad.org/projects/dataverse/settingup.html#installation.
+   Afterwards, you can clone it with the following command-line call (replace
+   the two placeholders <DATAVERSE-INSTANCE-URL> and <DATASET-DOI>):
+
+       datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=<DATAVERSE-INSTANCE-URL>&doi=<DATASET-DOI>' my-dataset-clone
+
 .. admonition:: HELP! I'm new to this!
 
    If this is your reaction to reading the words DataLad dataset, sibling, or dataset publishing,  please head over to the `DataLad Handbook`_ for an introduction to DataLad.
