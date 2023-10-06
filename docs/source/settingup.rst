@@ -176,8 +176,8 @@ For convenience, a template to copy-and-paste can be found below.
    At this point, it contains only small metadata and information on the
    identity of the files in the dataset, but not actual *content* of the
    (sometimes large) data files.
-   After cloning a dataset, you can retrieve file contents by running
-   <code>"datalad get path/to/directory/or/file"</code>
+   After cloning a dataset, you can retrieve file contents from available locations
+   by running <code>"datalad get path/to/directory/or/file"</code>.
    This command will trigger a download of the files, directories, or
    subdatasets you have specified.<br><br>
 
