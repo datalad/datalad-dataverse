@@ -161,7 +161,7 @@ For convenience, a template to copy-and-paste can be found below.
 .. code-block:: text
 
    This dataset is a <b>DataLad dataset</b> (https://www.datalad.org), published with
-   the <code>DataLad-dataverse</code> software (https://docs.datalad.org/projects/dataverse).
+   the datalad-dataverse software (https://docs.datalad.org/projects/dataverse).
    If you <code>"datalad clone"</code> it, it provides fine-grained data access down to the
    level of individual files, and allows for tracking future updates. For this,
    DataLad and datalad-dataverse are required. You can find installation instructions
