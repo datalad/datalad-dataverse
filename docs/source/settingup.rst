@@ -103,6 +103,21 @@ Installation
    # install from PyPi
    $ pip install datalad-dataverse
 
+In order to allow additional features for `datalad push` and `datalad clone`
+to be enabled, the `datalad.extensions.load` config must be set to `next` and `dataverse`.
+Configurations can be set at the dataset level (`.datalad/config` within the dataset) or
+any git-config location (local, global, system).
+To set it globally (meaning it's stored in your `~/.gitconfig`) run:
+
+.. code-block:: bash
+
+   # Make sure datalad-next is loaded whenever a datalad command runs;
+   # This allows to git push/fetch from/to a dataverse dataset:
+   $ git config --global --add datalad.extensions.load next
+   # Same thing for datalad-dataverse, enabling datalad-clone directly
+   # from the URL of a dataverse dataset landing page.
+   $ git config --global --add datalad.extensions.load dataverse
+
 
 Getting started
 ^^^^^^^^^^^^^^^
