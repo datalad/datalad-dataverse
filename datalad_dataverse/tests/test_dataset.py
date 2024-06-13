@@ -19,34 +19,46 @@ def test_file_handling(
         dataverse_dataaccess_api,
         dataverse_dataset,
 ):
-    # the starting point of `dataverse_dataset` is a freshly
-    # created, non-published dataset in draft mode, with no prior
-    # version
     odd = ODD(dataverse_admin_api, dataverse_dataset)
 
-    fcontent = 'some_content'
-    fpath = tmp_path / 'dummy.txt'
-    fpath.write_text(fcontent)
-    src_md5 = md5sum(fpath)
+    paths = (
+        tmp_path / '.Ö-dot-Ö-in-front' / '!-üö-.txt',
+        tmp_path / '.dot-in-front' / 'c1.txt',
+        tmp_path / ' space-in-front' / 'c2.txt',
+        tmp_path / '-minus-in-front' / 'c3.txt',
+        tmp_path / 'Ö-in-front' / 'überflüssiger_fuß.txt',
+        tmp_path / ' Ö-space-Ö-in-front' / 'a.txt',
+        tmp_path / 'dummy.txt',
+    )
 
-    fileid = check_upload(odd, fcontent, fpath, src_md5)
+    path_info = dict()
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        relative_path = path.relative_to(tmp_path)
+        fcontent = 'content of: ' + str(relative_path)
+        path.write_text(fcontent)
+        src_md5 = md5sum(path)
+        fileid = check_upload(odd, fcontent, relative_path, tmp_path, src_md5)
+        path_info[path] = (src_md5, fileid)
 
-    check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
+    for path, (src_md5, fileid) in path_info.items():
+        relative_path = path.relative_to(tmp_path)
+        check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
+        check_file_metadata_update(
+            dataverse_admin_api, dataverse_dataset, odd, fileid, path
+        )
+        path_to_check = relative_path.parent / 'mykey'
+        fileid = check_replace_file(odd, fileid, path_to_check, tmp_path)
+        check_rename_file(
+            odd, fileid,
+            name=PurePosixPath(relative_path.parent / ('ren' + path.name))
+        )
+        check_remove(odd, fileid, PurePosixPath(path.name))
+        check_duplicate_file_deposition(odd, tmp_path)
 
-    check_file_metadata_update(dataverse_admin_api, dataverse_dataset, odd,
-                               fileid, fpath)
 
-    fileid = check_replace_file(odd, fileid, tmp_path)
-
-    check_rename_file(odd, fileid)
-
-    check_remove(odd, fileid, PurePosixPath(fpath.name))
-
-    check_duplicate_file_deposition(odd, tmp_path)
-
-
-def check_rename_file(odd, fileid, name='place.txt'):
-    new_path = PurePosixPath('fresh') / name
+def check_rename_file(odd, fileid, name=PurePosixPath('place.txt')):
+    new_path = PurePosixPath('fresh' / name)
     assert not odd.has_path(new_path)
     assert odd.has_fileid(fileid)
     odd.rename_file(new_path, fileid)
@@ -54,14 +66,14 @@ def check_rename_file(odd, fileid, name='place.txt'):
     assert odd.has_path_in_latest_version(new_path)
 
 
-def check_replace_file(odd, fileid, tmp_path):
-    fpath = tmp_path / 'replace_source.txt'
-    fpath.write_text('some_new_content')
-    remote_path = PurePosixPath('downstairs') / fpath.name
+def check_replace_file(odd, fileid, relative_fpath, tmp_path):
+    new_path = tmp_path / relative_fpath.parent / ('replace_' + relative_fpath.name)
+    new_path.write_text('some_new_content')
+    remote_path = PurePosixPath(relative_fpath.parent) / new_path.name
 
     odd.has_fileid(fileid)
     # we replace the file AND give it a new name at the same time
-    new_fileid = odd.upload_file(fpath, remote_path, fileid)
+    new_fileid = odd.upload_file(new_path, remote_path, fileid)
     assert fileid != new_fileid
     assert not odd.has_fileid(fileid)
     assert odd.has_fileid(new_fileid)
@@ -92,10 +104,10 @@ def check_duplicate_file_deposition(odd, tmp_path):
     assert odd.has_path(PurePosixPath(fpaths[1].name))
 
 
-def check_upload(odd, fcontent, fpath, src_md5):
+def check_upload(odd, fcontent, fpath, base_path, src_md5):
     # the simplest possible upload, just a source file name
-    remote_path = PurePosixPath(fpath.name)
-    file_id = odd.upload_file(fpath, remote_path)
+    remote_path = PurePosixPath(fpath)
+    file_id = odd.upload_file(base_path / fpath, remote_path)
     # internal consistency
     assert odd.has_fileid(file_id)
     assert odd.has_fileid_in_latest_version(file_id)
@@ -198,46 +210,3 @@ def check_file_metadata_update(api, dsid, odd, fileid, fpath):
     assert info['label'] == info['dataFile']['filename'] == 'mykey'
     old = [m for m in mm if m['label'] == mangle_path(fpath.name)]
     assert old == []
-
-
-def test_name_mangling(
-        tmp_path,
-        dataverse_admin_api,
-        dataverse_dataaccess_api,
-        dataverse_dataset,
-):
-    odd = ODD(dataverse_admin_api, dataverse_dataset)
-
-    paths = (
-        tmp_path / ".dot-in-front" 'c1.txt',
-        tmp_path / " space-in-front" 'c2.txt',
-        tmp_path / "-minus-in-front" 'c3.txt',
-        tmp_path / "Ö-in-front" 'c4.txt',
-        tmp_path / ".Ö-dot-Ö-in-front" 'c5.txt',
-        tmp_path / " Ö-space-Ö-in-front" 'c6.txt',
-    )
-
-    path_info = dict()
-    for path in paths:
-        if path.parent != tmp_path:
-            path.parent.mkdir()
-        fcontent = path.name
-        path.write_text(path.name)
-        src_md5 = md5sum(path)
-        fileid = check_upload(odd, fcontent, path, src_md5)
-        path_info[path] = (src_md5, fileid)
-
-    for path, (src_md5, fileid) in path_info.items():
-        check_download(odd, fileid, tmp_path / 'downloaded.txt', src_md5)
-
-        check_file_metadata_update(
-            dataverse_admin_api,
-            dataverse_dataset,
-            odd,
-            fileid,
-            path)
-
-        fileid = check_replace_file(odd, fileid, tmp_path)
-        check_rename_file(odd, fileid, name="ren" + path.name)
-        check_remove(odd, fileid, PurePosixPath(path.name))
-        check_duplicate_file_deposition(odd, tmp_path)
