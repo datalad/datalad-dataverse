@@ -94,7 +94,7 @@ class OnlineDataverseDataset:
         # check if project with specified doi exists
         # TODO ask for ':latest' and cache?
         dv_ds = api.get_dataset(identifier=dsid)
-        if not dv_ds.ok:
+        if not dv_ds.status_code < 400:
             raise RuntimeError("Cannot find dataset")
 
     def get_fileid_from_path(
