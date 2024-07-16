@@ -171,7 +171,7 @@ class OnlineDataverseDataset:
         # https://github.com/gdcc/pyDataverse/issues/49
         # the code below is nevertheless readied for such a
         # scenario
-        response = self.data_access_api.get_datafile(fid)
+        response = self.data_access_api.get_datafile(fid, data_format="original")
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:
