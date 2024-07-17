@@ -177,7 +177,7 @@ class OnlineDataverseDataset:
         with path.open("wb") as f:
             # `chunk_size=None` means
             # "read data in whatever size the chunks are received"
-            for chunk in response.iter_content(chunk_size=None):
+            for chunk in response.iter_bytes(chunk_size=None):
                 f.write(chunk)
 
     def remove_file(self, fid: int):

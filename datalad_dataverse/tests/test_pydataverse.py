@@ -61,7 +61,7 @@ def check_download(api, fileid, dsid, fpath, src_md5):
     with fpath.open("wb") as f:
         # use a stupdly small chunksize to actual get chunking on
         # our tiny test file
-        for chunk in response.iter_content(chunk_size=1):
+        for chunk in response.iter_bytes(chunk_size=1):
             f.write(chunk)
 
     # confirm identity
