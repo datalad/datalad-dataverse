@@ -74,7 +74,7 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       # Python version specification is non-standard on windows
       PY: 39-x64
-      INSTALL_GITANNEX: git-annex -m datalad/git-annex:release
+      INSTALL_GITANNEX: git-annex -m datalad/packages
     # MacOS core tests
     - ID: MacP38core
       DTS: datalad_dataverse
