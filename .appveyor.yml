@@ -89,20 +89,13 @@ matrix:
     - KNOWN2FAIL: 1
 
 
-# do not run the CI if only documentation changes were made
+# only run the CI for code changes.
 # documentation builds are tested elsewhere and cheaper
-skip_commits:
+only_commits:
   files:
-    - docs/
-    - changelog.d/
-    - .github/
-    - CHANGELOG.md
-    - CITATION.cff
-    - CONTRIBUTORS
-    - LICENSE
-    - Makefile
-    - README.md
-    - readthedocs.yml
+    - .appveyor.yml
+    - datalad_dataverse/
+    - tools/
 
 
 # it is OK to specify paths that may not exist for a particular test run
