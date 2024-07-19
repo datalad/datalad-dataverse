@@ -54,14 +54,21 @@ def test_file_handling(
 def check_download(api, fileid, dsid, fpath, src_md5):
     # TODO there is no standalone implementation of the following
     # reimplementing DataverseRemote._download_file
-    response = api.get_datafile(fileid)
+
+    # recent pydataverse requires saying `is_pid=False` for a file-id
+    response = api.get_datafile(fileid, is_pid=False)
     # TODO this could also just be a download via HttpUrlOperations
     # avoiding any custom code
     assert response.status_code == 200
     with fpath.open("wb") as f:
-        # use a stupdly small chunksize to actual get chunking on
+        # accommodate old and newer pydataverse version
+        try:
+            it = response.iter_content
+        except AttributeError:
+            it = response.iter_bytes
+        # use a stupdily small chunksize to actual get chunking on
         # our tiny test file
-        for chunk in response.iter_content(chunk_size=1):
+        for chunk in it(chunk_size=1):
             f.write(chunk)
 
     # confirm identity
