@@ -175,9 +175,14 @@ class OnlineDataverseDataset:
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:
+            # accommodate old and newer pydataverse version
+            try:
+                it = response.iter_content
+            except AttributeError:
+                it = response.iter_bytes
             # `chunk_size=None` means
             # "read data in whatever size the chunks are received"
-            for chunk in response.iter_content(chunk_size=None):
+            for chunk in it(chunk_size=None):
                 f.write(chunk)
 
     def remove_file(self, fid: int):
