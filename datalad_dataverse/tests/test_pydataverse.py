@@ -83,14 +83,16 @@ def check_duplicate_file_deposition(api, dsid, tmp_path):
 
     response = api.upload_datafile(
         identifier=dsid,
-        filename=tmp_path / 'nonunique1.txt'
+        filename=tmp_path / 'nonunique1.txt',
+        json_str='{}'
     )
     # we do not expect issues here
     response.raise_for_status()
     # now upload the second file with the same content
     response = api.upload_datafile(
         identifier=dsid,
-        filename=tmp_path / 'nonunique2.txt'
+        filename=tmp_path / 'nonunique2.txt',
+        json_str='{}'
     )
     response.raise_for_status()
 
@@ -109,6 +111,7 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     response = api.upload_datafile(
         identifier=dsid,
         filename=fpath,
+        json_str='{}'
     )
     # worked
     assert response.status_code == 200
@@ -161,6 +164,7 @@ def test_file_removal(
     response = dataverse_admin_api.upload_datafile(
         identifier=dataverse_dataset,
         filename=fpath,
+        json_str='{}'
     )
     # worked
     assert response.status_code == 200, \
@@ -184,6 +188,7 @@ def test_file_removal(
     response = dataverse_admin_api.upload_datafile(
         identifier=dataverse_dataset,
         filename=fpath,
+        json_str='{}'
     )
     assert response.status_code == 200, \
         f"failed to upload file {response.status_code}: {response.json()}"
