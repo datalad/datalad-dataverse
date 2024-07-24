@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import os
 from requests import delete
 from requests.auth import HTTPBasicAuth
 
@@ -140,7 +141,12 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     # TODO: seemingly discontinued between Dataverse 5.13 and 6.0?
     #assert df['pidURL'] == ''
     assert df['rootDataFileId'] == -1
-    assert df['storageIdentifier'].startswith('s3://demo-dataverse')
+
+    dv_url = os.getenv('DATAVERSE_TEST_BASEURL')
+    if 'localhost' in dv_url or '127.0.0.1' in dv_url:
+        assert df['storageIdentifier'].startswith('local://')
+    else:
+        assert df['storageIdentifier'].startswith('s3://demo-dataverse')
 
     # report the file ID for external use
     return df['id']
