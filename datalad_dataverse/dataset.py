@@ -94,7 +94,7 @@ class OnlineDataverseDataset:
         # check if project with specified doi exists
         # TODO ask for ':latest' and cache?
         dv_ds = api.get_dataset(identifier=dsid)
-        if not dv_ds.ok:
+        if not dv_ds.status_code < 400:
             raise RuntimeError("Cannot find dataset")
 
     def get_fileid_from_path(
@@ -171,13 +171,18 @@ class OnlineDataverseDataset:
         # https://github.com/gdcc/pyDataverse/issues/49
         # the code below is nevertheless readied for such a
         # scenario
-        response = self.data_access_api.get_datafile(fid)
+        response = self.data_access_api.get_datafile(fid, is_pid=False, data_format="original")
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:
+            # accommodate old and newer pydataverse version
+            try:
+                it = response.iter_content
+            except AttributeError:
+                it = response.iter_bytes
             # `chunk_size=None` means
             # "read data in whatever size the chunks are received"
-            for chunk in response.iter_content(chunk_size=None):
+            for chunk in it(chunk_size=None):
                 f.write(chunk)
 
     def remove_file(self, fid: int):

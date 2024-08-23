@@ -103,6 +103,21 @@ Installation
    # install from PyPi
    $ pip install datalad-dataverse
 
+In order to allow additional features for `datalad push` and `datalad clone`
+to be enabled, the `datalad.extensions.load` config must be set to `next` and `dataverse`.
+Configurations can be set at the dataset level (`.datalad/config` within the dataset) or
+any git-config location (local, global, system).
+To set it globally (meaning it's stored in your `~/.gitconfig`) run:
+
+.. code-block:: bash
+
+   # Make sure datalad-next is loaded whenever a datalad command runs;
+   # This allows to git push/fetch from/to a dataverse dataset:
+   $ git config --global --add datalad.extensions.load next
+   # Same thing for datalad-dataverse, enabling datalad-clone directly
+   # from the URL of a dataverse dataset landing page.
+   $ git config --global --add datalad.extensions.load dataverse
+
 
 Getting started
 ^^^^^^^^^^^^^^^
@@ -149,6 +164,42 @@ Once the dataset is available on Dataverse, it can also be cloned using the
    
     datalad clone \
       'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=https%3A//demo.dataverse.org&doi=doi:10.70122/MYT/ESTDOI'
+
+
+Help others getting started
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Its not always obvious to outsiders whether a Dataverse Dataset is a DataLad Dataset as well.
+To help others get started with your shared datasets, we recommend to add a short DataLad-specific description to your dataset's "Description" metadata.
+For convenience, a template to copy-and-paste can be found below.
+
+.. code-block:: text
+
+   This dataset is a <b>DataLad dataset</b> (https://www.datalad.org), published with
+   the datalad-dataverse software (https://docs.datalad.org/projects/dataverse).
+   If you <code>"datalad clone"</code> it, it provides fine-grained data access down to the
+   level of individual files, and allows for tracking future updates. For this,
+   DataLad and datalad-dataverse are required. You can find installation instructions
+   at https://docs.datalad.org/projects/dataverse/settingup.html#installation.
+   Afterwards, you can clone it with the following command-line call (replace
+   the two placeholders <code>DATAVERSE-INSTANCE-URL</code> and <code>DATASET-DOI</code>): <br><br>
+
+       <code>datalad clone 'datalad-annex::?type=external&externaltype=dataverse&encryption=none&exporttree=no&url=DATAVERSE-INSTANCE-URL&doi=DATASET-DOI' my-dataset-clone</code> <br><br>
+
+   Once a dataset is cloned, it is a light-weight directory on your local
+   machine.
+   At this point, it contains only small metadata and information on the
+   identity of the files in the dataset, but not actual *content* of the
+   (sometimes large) data files.
+   After cloning a dataset, you can retrieve file contents from available locations
+   by running <code>"datalad get path/to/directory/or/file"</code>.
+   This command will trigger a download of the files, directories, or
+   subdatasets you have specified.<br><br>
+
+   More information on DataLad and how to use it can be found in the DataLad
+   Handbook at https://handbook.datalad.org/index.html. The chapter "DataLad
+   datasets" can help you to familiarize yourself with the concept of a dataset.
+
 
 
 .. admonition:: HELP! I'm new to this!

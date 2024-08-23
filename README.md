@@ -38,6 +38,9 @@ Doing so will enable the extension to also alter the behavior the core DataLad
 package and its commands, from example to be able to directly clone from
 a Dataverse dataset landing page.
 
+Full-compatibility with Windows requires a git-annex installation of version
+10.20230321 (or later).
+
 
 ## Summary of functionality provided by this extension
 

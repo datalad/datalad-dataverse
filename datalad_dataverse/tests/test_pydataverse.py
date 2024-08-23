@@ -25,6 +25,7 @@ def test_file_handling(
         dataverse_admin_api,
         dataverse_dataaccess_api,
         dataverse_dataset,
+        dataverse_instance_url,
 ):
     # the starting point of `dataverse_dataset` is a freshly
     # created, non-published dataset in draft mode, with no prior
@@ -41,7 +42,7 @@ def test_file_handling(
 
     fileid = check_upload(
         dataverse_admin_api,
-        dataverse_dataset, fcontent, fpath, src_md5)
+        dataverse_dataset, fcontent, fpath, src_md5, dataverse_instance_url)
 
     check_download(
         dataverse_dataaccess_api, fileid,
@@ -54,14 +55,21 @@ def test_file_handling(
 def check_download(api, fileid, dsid, fpath, src_md5):
     # TODO there is no standalone implementation of the following
     # reimplementing DataverseRemote._download_file
-    response = api.get_datafile(fileid)
+
+    # recent pydataverse requires saying `is_pid=False` for a file-id
+    response = api.get_datafile(fileid, is_pid=False)
     # TODO this could also just be a download via HttpUrlOperations
     # avoiding any custom code
     assert response.status_code == 200
     with fpath.open("wb") as f:
-        # use a stupdly small chunksize to actual get chunking on
+        # accommodate old and newer pydataverse version
+        try:
+            it = response.iter_content
+        except AttributeError:
+            it = response.iter_bytes
+        # use a stupdily small chunksize to actual get chunking on
         # our tiny test file
-        for chunk in response.iter_content(chunk_size=1):
+        for chunk in it(chunk_size=1):
             f.write(chunk)
 
     # confirm identity
@@ -97,7 +105,7 @@ def check_duplicate_file_deposition(api, dsid, tmp_path):
                for f in identicals)
 
 
-def check_upload(api, dsid, fcontent, fpath, src_md5):
+def check_upload(api, dsid, fcontent, fpath, src_md5, dv_url):
     # the simplest possible upload, just a source file name
     response = api.upload_datafile(
         identifier=dsid,
@@ -133,7 +141,11 @@ def check_upload(api, dsid, fcontent, fpath, src_md5):
     # TODO: seemingly discontinued between Dataverse 5.13 and 6.0?
     #assert df['pidURL'] == ''
     assert df['rootDataFileId'] == -1
-    assert df['storageIdentifier'].startswith('s3://demo-dataverse')
+
+    if 'localhost' in dv_url or '127.0.0.1' in dv_url:
+        assert df['storageIdentifier'].startswith('local://')
+    else:
+        assert df['storageIdentifier'].startswith('s3://demo-dataverse')
 
     # report the file ID for external use
     return df['id']
