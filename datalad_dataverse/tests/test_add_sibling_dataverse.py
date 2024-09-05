@@ -25,7 +25,7 @@ def test_asdv_invalid_calls(
             credential="dataverse",
             **ckwa
         )
-    assert 'doi:no-ffing-datalad-way-this-exists not found' in str(ve.value)
+    assert 'Cannot find dataset' in str(ve.value)
 
 
 @pytest.mark.parametrize("mode", ["annex", "filetree"])
