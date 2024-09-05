@@ -96,6 +96,7 @@ only_commits:
     - .appveyor.yml
     - datalad_dataverse/
     - tools/
+    - setup.cfg
 
 
 # it is OK to specify paths that may not exist for a particular test run
