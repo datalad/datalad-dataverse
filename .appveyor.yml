@@ -82,7 +82,7 @@ environment:
       PY: 3.8
       INSTALL_GITANNEX: git-annex
       DATALAD_LOCATIONS_SOCKETS: /Users/appveyor/DLTMP/sockets
-      CODECOV_BINARY: https://uploader.codecov.io/latest/macos/codecov
+      CODECOV_BINARY: https://cli.codecov.io/latest/macos/codecov
 
 matrix:
   allow_failures:
@@ -205,7 +205,7 @@ after_test:
   - cmd: .\codecov.exe -f "coverage.xml"
   - sh: "curl -Os $CODECOV_BINARY"
   - sh: chmod +x codecov
-  - sh: ./codecov
+  - sh: ./codecov do-upload
 
 
 #on_success:
