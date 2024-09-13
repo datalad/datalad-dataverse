@@ -3,6 +3,7 @@ from urllib.parse import quote as urlquote
 
 from datalad.api import clone
 
+from datalad_next.exceptions import CommandError
 from datalad_next.utils import (
     on_windows,
     rmtree,
@@ -78,9 +79,13 @@ def test_remote(dataverse_admin_credential_setup,
             'drop', '--from', 'mydv', 'somefile.txt',
         ])
     # run git-annex own testsuite
-    ds.repo.call_annex([
-        'testremote', '--fast', 'mydv',
-    ])
+    # since Dataverse version 5.0, "storeKey when already present" will
+    # fail, as Dataverse forbids replacing files with identical names and
+    # checksums: https://guides.dataverse.org/en/latest/user/dataset-management.html#duplicate-files
+    with pytest.raises(CommandError, match='4 out of 125 tests failed'):
+        ds.repo.call_annex([
+            'testremote', '--fast', 'mydv',
+        ])
 
 
 def test_datalad_annex(dataverse_admin_credential_setup,
