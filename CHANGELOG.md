@@ -1,3 +1,15 @@
+# 1.0.3 (2024-10-29)
+
+Patch release for backwards-compatibility with JülichData (Dataverse 4.20).
+
+## Dependencies
+
+- In conjunction with [PR334](https://github.com/datalad/datalad-dataverse/pull/334) a dependency to LooseVersion was introduced.
+
+## Bug fixes
+
+- A version check makes sure that the "format" parameter only gets used with Dataverses of Version 6.0 or higher [PR334](https://github.com/datalad/datalad-dataverse/pull/334) by [@adswa](https://github.com/adswa)
+
 # 1.0.2 (2024-09-19)
 
 ## Dependencies
