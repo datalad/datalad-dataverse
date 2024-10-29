@@ -10,6 +10,7 @@ from pathlib import (
 )
 import re
 
+from looseversion import LooseVersion
 from pyDataverse.api import ApiAuthorizationError
 from pyDataverse.models import Datafile
 from requests import (
@@ -171,7 +172,14 @@ class OnlineDataverseDataset:
         # https://github.com/gdcc/pyDataverse/issues/49
         # the code below is nevertheless readied for such a
         # scenario
-        response = self.data_access_api.get_datafile(fid, is_pid=False, data_format="original")
+        # for JülichData compatibility while still running on 4.20, a
+        # version-dependent parameter adjustment is necessary
+        version = self._api.get_info_version().json()['data']['version']
+        if LooseVersion(version) < LooseVersion("6.0"):
+            response = self.data_access_api.get_datafile(fid, is_pid=False)
+        else:
+            # see https://github.com/datalad/datalad-dataverse/issues/307
+            response = self.data_access_api.get_datafile(fid, is_pid=False, data_format="original")
         # http error handling
         response.raise_for_status()
         with path.open("wb") as f:

@@ -137,9 +137,11 @@ def check_upload(api, dsid, fcontent, fpath, src_md5, dv_url):
     assert df['id']
     assert df['checksum']['type'] == 'MD5'
     assert df['md5'] == df['checksum']['value'] == src_md5
-    assert df['persistentId'] == ''
-    # TODO: seemingly discontinued between Dataverse 5.13 and 6.0?
-    #assert df['pidURL'] == ''
+    # TODO: Dataverse 6.4 started reporting persistentID and pidURL
+    assert df['persistentId'] is not ''
+    # TODO: this was seemingly discontinued between Dataverse 5.13 and
+    #  6.0, but reintrodcued in 6.4
+    assert df['pidURL'] is not ''
     assert df['rootDataFileId'] == -1
 
     if 'localhost' in dv_url or '127.0.0.1' in dv_url:
