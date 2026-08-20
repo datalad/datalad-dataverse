@@ -1,3 +1,13 @@
+# Unreleased
+
+## 🚀 Enhancements
+
+- Public Dataverse dataset content can now be retrieved without requiring
+  an API token or credential to be configured. Authentication is now
+  requested lazily -- only when the server signals that authorization is
+  actually required (e.g. for restricted files, draft datasets, or write
+  operations). [PR337](https://github.com/datalad/datalad-dataverse/pull/337) by [@LyneVdV](https://github.com/LyneVdV)
+  
 # 1.0.3 (2024-10-29)
 
 Patch release for backwards-compatibility with JülichData (Dataverse 4.20).

@@ -95,6 +95,12 @@ class OnlineDataverseDataset:
         # check if project with specified doi exists
         # TODO ask for ':latest' and cache?
         dv_ds = api.get_dataset(identifier=dsid)
+        
+        # As we relaxed the constrain to always have a Dataverse API token, 
+        # there is still a need to prompt for token when necessary (error 401 or 403)
+        if dv_ds.status_code in (401, 403):
+            raise ApiAuthorizationError(f"Dataset {dsid} requires authorization (status: {dv_ds.status_code})")
+            
         if not dv_ds.status_code < 400:
             raise RuntimeError("Cannot find dataset")
 

@@ -14,4 +14,6 @@ from datalad_dataverse.tests.fixtures import (
     dataverse_dataset,
     dataverse_demoinstance_url,
     dataverse_instance_url,
+    publishable_collection,
+    publishable_dataset,
 )
