@@ -9,6 +9,11 @@ from .utils import (
     create_test_dataverse_collection,
     create_test_dataverse_dataset,
 )
+from uuid import uuid1
+from pyDataverse.exceptions import (
+    OperationFailedError,
+    DataverseNotEmptyError,
+)
 
 
 @pytest.fixture(autouse=False, scope="session")
@@ -98,3 +103,37 @@ def dataverse_admin_credential_setup(
     credman.set('dataverse', secret=dataverse_admin_token,
                 realm=f'{dataverse_instance_url.rstrip("/")}/dataverse')
     yield credman
+
+
+@pytest.fixture(scope='function')
+def publishable_collection(dataverse_admin_api):
+    """A dedicated, function-scoped collection for tests that publish
+    content. Unlike `dataverse_collection` (session-scoped, shared,
+    and assumed to stay in DRAFT), publishing makes content
+    permanently non-destroyable by a regular account -- reusing the
+    shared collection would break cleanup for unrelated tests for the
+    rest of the pytest session. Teardown here is therefore
+    best-effort.
+    """
+    alias = f'dv-pub-{uuid1()}'
+    create_test_dataverse_collection(
+        dataverse_admin_api, alias, collection='demo')
+    yield alias
+    try:
+        dataverse_admin_api.delete_dataverse(alias)
+    except (OperationFailedError, DataverseNotEmptyError):
+        # expected once a dataset within has been published
+        pass
+
+
+@pytest.fixture(scope='function')
+def publishable_dataset(dataverse_admin_api, publishable_collection):
+    dspid = create_test_dataverse_dataset(
+        dataverse_admin_api, publishable_collection, 'testds')
+    yield dspid
+    try:
+        r = dataverse_admin_api.destroy_dataset(dspid)
+        r.raise_for_status()
+    except Exception:
+        # expected if the test published this dataset
+        pass

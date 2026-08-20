@@ -25,7 +25,7 @@ from .utils import (
     get_native_api,
     format_doi,
 )
-
+from pyDataverse.api import ApiAuthorizationError
 
 class DataverseRemote(SpecialRemote):
     """Special remote for IO with Dataverse datasets.
@@ -97,28 +97,87 @@ class DataverseRemote(SpecialRemote):
         credman = CredentialManager(repo.config)
         credential_name = self.annex.getconfig('credential')
         credential_realm = url.rstrip('/') + '/dataverse'
-        credential_name, cred = credman.obtain(
-            name=credential_name if credential_name else None,
+ 
+        # Adjusting to delay the need for API token (so that it may work without any 
+        # API token when dataset files are public
+        
+        # keep these around for lazy/deferred credential retrieval
+        self._credman = credman
+        self._credential_name = credential_name
+        self._credential_realm = credential_realm
+        self._dataverse_url = url
+
+        # try to find an already-known credential WITHOUT prompting.
+        # if none is on record, proceed anonymously -- a token will
+        # only be requested lazily, if/when the server actually
+        # rejects an anonymous request (see _ensure_authenticated_api)
+        apitoken = None
+        try:
+            cred = credman.get(
+                name=credential_name if credential_name else None,
+                realm=credential_realm
+            )
+            if cred:
+                apitoken = cred.get('secret')
+        except Exception:
+            cred = None
+            apitoken = None
+
+        api = get_native_api(url, apitoken)
+        try:
+            self._dvds = OnlineDataverseDataset(api, doi, root_path=dv_root_path)
+        except ApiAuthorizationError:
+            # if anonymous access is not sufficiant (restricted dataset or DRAFT or writing action), ask for Dataverse API token
+            credential_name, cred = credman.obtain(
+                name=credential_name if credential_name else None,
+                prompt=f'A dataverse API token is required for access. '
+                       f'Find it at {url} by clicking on your name at the top '
+                       f'right corner and then clicking on API Token',
+                type_hint='token',
+                expected_props=['secret'],
+                query_props={'realm': credential_realm},
+            )
+            apitoken = cred['secret']
+            api = get_native_api(url, apitoken)
+            self._dvds = OnlineDataverseDataset(api, doi, root_path=dv_root_path)
+            
+        if cred:
+            credman.set(credential_name, _lastused=True, **cred)
+        
+    def _ensure_authenticated_api(self):
+        """
+            (Re-)authenticate, prompting for a token if necessary.
+            Called lazily, only when the server signals that the
+            requested operation requires authorization.
+        """
+        credential_name, cred = self._credman.obtain(
+            name=self._credential_name if self._credential_name else None,
             prompt=f'A dataverse API token is required for access. '
-                   f'Find it at {url} by clicking on your name at the top '
-                   f'right corner and then clicking on API Token',
-            # give to make legacy credentials accessible
+                   f'Find it at {self._dataverse_url} by clicking on your '
+                   f'name at the top right corner and then clicking on '
+                   f'API Token',
             type_hint='token',
             expected_props=['secret'],
-            query_props={'realm': credential_realm},
+            query_props={'realm': self._credential_realm},
         )
-        # the cred must have a secret at this point as it was in expected_props
         apitoken = cred['secret']
-        # we keep this here to not have OnlineDataverseDataset
-        # have to deal with datalad-specific
-        api = get_native_api(
-            url,
-            apitoken,
-        )
-        # TODO this can raise, capture and raise proper error
-        self._dvds = OnlineDataverseDataset(api, doi, root_path=dv_root_path)
-        # save the credential, now that it has successfully been used
-        credman.set(credential_name, _lastused=True, **cred)
+        self._dvds._api = get_native_api(self._dataverse_url, apitoken)
+        self._dvds._data_access_api = None
+        self._credman.set(credential_name, _lastused=True, **cred)
+
+    def _with_auth_retry(self, func, *args, **kwargs):
+        """
+            Run func; if it fails due to missing/insufficient auth,
+            obtain a credential and retry exactly once.
+        """
+        try:
+            return func(*args, **kwargs)
+        except HTTPError as e:
+            if e.response is not None and e.response.status_code in (401, 403):
+                self._ensure_authenticated_api()
+                return func(*args, **kwargs)
+            raise
+    
 
     def initremote(self):
         """
